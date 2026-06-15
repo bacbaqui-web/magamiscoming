@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CLIP Webtoon Viewer</title>
+<style>
+*{box-sizing:border-box}
+html,body{
+  margin:0;
+  padding:0;
+  background:#111;
+  color:#999;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+}
+#toolbar{
+  position:fixed;
+  top:12px;
+  right:12px;
+  z-index:20;
+  display:flex;
+  gap:8px;
+}
+button,.fileButton{
+  width:44px;
+  height:44px;
+  border:0;
+  border-radius:999px;
+  background:rgba(35,35,35,.92);
+  color:white;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+}
+button:hover,.fileButton:hover{background:rgba(80,80,80,.96)}
+svg{width:22px;height:22px;stroke:currentColor}
+#folderInput{display:none}
+#message{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  line-height:1.6;
+  padding:40px;
+  color:#777;
+}
+#viewer{
+  width:690px;
+  max-width:100vw;
+  margin:0 auto;
+  line-height:0;
+  background:#111;
+}
+.page{
+  width:690px;
+  max-width:100vw;
+  height:auto;
+  display:block;
+  margin:0 auto;
+  background:#222;
+}
+#status{
+  position:fixed;
+  left:12px;
+  bottom:12px;
+  z-index:20;
+  max-width:calc(100vw - 24px);
+  background:rgba(0,0,0,.78);
+  border:1px solid #333;
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:12px;
+  line-height:1.45;
+  color:#bbb;
+  white-space:pre-wrap;
+}
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label class="fileButton" title="폴더 열기">
+    <input id="folderInput" type="file" webkitdirectory directory multiple />
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+      <path d="M3 7h7l2 2h9v10H3z"/>
+      <path d="M3 7v12"/>
+    </svg>
+  </label>
+
+  <button id="refreshBtn" title="새로고침">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+      <path d="M21 12a9 9 0 1 1-3-6.7"/>
+      <path d="M21 3v6h-6"/>
+    </svg>
+  </button>
+
+  <button id="clearBtn" title="초기화">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+      <path d="M3 6h18"/>
+      <path d="M8 6V4h8v2"/>
+      <path d="M6 6l1 15h10l1-15"/>
+      <path d="M10 11v6"/>
+      <path d="M14 11v6"/>
+    </svg>
+  </button>
+</div>
+
+<div id="message">오른쪽 위 폴더 버튼을 눌러<br>CLIP 파일이 들어있는 폴더를 선택하세요</div>
+<div id="viewer"></div>
+<div id="status">대기 중</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script>
+const folderInput=document.getElementById("folderInput");
+const viewer=document.getElementById("viewer");
+const message=document.getElementById("message");
+const statusBox=document.getElementById("status");
+
+let lastFiles=[];
+let SQLPromise=null;
+
+function setStatus(t){statusBox.textContent=t;}
+function setMessage(t){message.style.display="flex";message.innerHTML=t;}
+function hideMessage(){message.style.display="none";}
+
+folderInput.addEventListener("change", async e=>{
+  const files=Array.from(e.target.files || []);
+  lastFiles=files;
+  await loadClipFiles(files);
+});
+
+document.getElementById("refreshBtn").onclick=async()=>{
+  if(lastFiles.length) await loadClipFiles(lastFiles);
+  else setStatus("먼저 폴더를 열어주세요");
+};
+
+document.getElementById("clearBtn").onclick=()=>{
+  lastFiles=[];
+  folderInput.value="";
+  viewer.innerHTML="";
+  setMessage("오른쪽 위 폴더 버튼을 눌러<br>CLIP 파일이 들어있는 폴더를 선택하세요");
+  setStatus("초기화됨");
+};
+
+async function getSQL(){
+  if(!SQLPromise){
+    setStatus("sql.js 불러오는 중...");
+    SQLPromise=initSqlJs({
+      locateFile:file=>"https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/"+file
+    });
+  }
+  return SQLPromise;
+}
+
+function naturalSort(a,b){
+  return a.localeCompare(b,undefined,{numeric:true,sensitivity:"base"});
+}
+
+function getSortName(file){
+  return file.webkitRelativePath || file.name;
+}
+
+async function loadClipFiles(files){
+  viewer.innerHTML="";
+  setMessage("불러오는 중...");
+  setStatus("파일 확인 중...");
+
+  const clipFiles=files
+    .filter(f=>f.name.toLowerCase().endsWith(".clip"))
+    .sort((a,b)=>naturalSort(getSortName(a), getSortName(b)));
+
+  if(!clipFiles.length){
+    setMessage(".clip 파일을 찾지 못했습니다");
+    setStatus("실패: .clip 없음");
+    return;
+  }
+
+  let SQL;
+  try{
+    SQL=await getSQL();
+  }catch(e){
+    console.error(e);
+    setMessage("sql.js를 불러오지 못했습니다.<br>인터넷 연결 상태를 확인해주세요.");
+    setStatus("실패: sql.js 로드 오류");
+    return;
+  }
+
+  let success=0;
+  let failed=0;
+
+  for(let i=0;i<clipFiles.length;i++){
+    const file=clipFiles[i];
+    setStatus(`${i+1} / ${clipFiles.length} 불러오는 중\n${file.name}`);
+
+    try{
+      const blob=await extractCanvasPreview(file, SQL);
+
+      if(!blob){
+        failed++;
+        continue;
+      }
+
+      const img=document.createElement("img");
+      img.className="page";
+      img.alt=file.name;
+      img.src=URL.createObjectURL(blob);
+      viewer.appendChild(img);
+      success++;
+
+      if(success===1) hideMessage();
+
+    }catch(err){
+      console.error(file.name, err);
+      failed++;
+    }
+
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  if(success){
+    hideMessage();
+    setStatus(`완료\n표시: ${success}개 / 실패: ${failed}개`);
+  }else{
+    setMessage("미리보기 이미지를 찾지 못했습니다");
+    setStatus(`실패: ${failed}개`);
+  }
+}
+
+async function extractCanvasPreview(file, SQL){
+  const buffer=await file.arrayBuffer();
+  const bytes=new Uint8Array(buffer);
+
+  const sqliteOffset=findAscii(bytes,"SQLite format 3");
+  if(sqliteOffset<0) return null;
+
+  const sqliteBytes=bytes.slice(sqliteOffset);
+  const db=new SQL.Database(sqliteBytes);
+
+  let result;
+  try{
+    result=db.exec(`
+      SELECT ImageData
+      FROM CanvasPreview
+      WHERE ImageData IS NOT NULL
+      ORDER BY ImageWidth * ImageHeight DESC
+      LIMIT 1
+    `);
+  }catch(e){
+    db.close();
+    return null;
+  }
+
+  if(!result.length || !result[0].values.length){
+    db.close();
+    return null;
+  }
+
+  const imageData=result[0].values[0][0];
+  db.close();
+
+  if(!imageData) return null;
+
+  const imgBytes=imageData instanceof Uint8Array ? imageData : new Uint8Array(imageData);
+  const type=detectImageType(imgBytes);
+  if(!type) return null;
+
+  return new Blob([imgBytes],{type});
+}
+
+function detectImageType(bytes){
+  if(bytes[0]===0x89 && bytes[1]===0x50 && bytes[2]===0x4E && bytes[3]===0x47) return "image/png";
+  if(bytes[0]===0xFF && bytes[1]===0xD8) return "image/jpeg";
+  return null;
+}
+
+function findAscii(bytes, text){
+  const pattern=[...text].map(c=>c.charCodeAt(0));
+  outer:for(let i=0;i<=bytes.length-pattern.length;i++){
+    for(let j=0;j<pattern.length;j++){
+      if(bytes[i+j]!==pattern[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
+}
+</script>
+</body>
+</html>
