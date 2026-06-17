@@ -1,10 +1,11 @@
     body{font-family:'Noto Sans KR',sans-serif;background:#000;color:#fff;display:flex;justify-content:flex-start;align-items:center;min-height:100vh;padding:16px;flex-direction:column;gap:0}
     .tab-content{display:none}.tab-content.active{display:flex;flex-direction:column;flex-grow:1}
     .section-card{background:#2a2a2a;border-radius:12px;padding:20px;box-shadow:inset 0 0 10px rgba(0,0,0,.3);text-align:center;width:100%;max-width:800px}
-    .notepad-tabs{display:flex;justify-content:center;align-items:center;gap:.65rem;width:100%;max-width:800px}
-    .notepad-tab{background:#1a1a1a;width:44px;height:38px;padding:0;border-radius:10px 10px 0 0;cursor:pointer;transition:.2s;font-weight:700;color:#737373;font-size:.85rem;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;box-sizing:border-box}
+    .notepad-tabs{display:flex;justify-content:center;align-items:flex-end;gap:.45rem;width:100%;max-width:800px;position:relative;z-index:2}
+    .notepad-tab{background:#1a1a1a;width:44px;height:38px;padding:0;border-radius:10px 10px 0 0;cursor:pointer;transition:.2s;font-weight:700;color:#737373;font-size:.85rem;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;box-sizing:border-box;border:1px solid transparent;border-bottom:0}
     .notepad-tab svg{width:20px;height:20px}
-    .notepad-tab.active,.notepad-tab:hover{background:#2a2a2a;color:#fff}
+    .notepad-tab:hover{background:#242424;color:#fff}
+    .notepad-tab.active{background:#2a2a2a;color:#fff;border-color:#2a2a2a;height:40px;margin-bottom:-1px;box-shadow:none}
 
     .profile-panel{display:flex;flex-direction:column;gap:16px;width:100%;text-align:left}
     .profile-card,.profile-backup-card{background:#1f1f1f;border:1px solid #3a3a3a;border-radius:16px;padding:18px;box-shadow:inset 0 0 12px rgba(0,0,0,.22)}
@@ -495,7 +496,7 @@ body{padding-bottom:76px}
 
     @media (max-width:768px){
       body{padding:12px 0 76px;gap:0;align-items:stretch}.section-card{width:100vw;max-width:none;padding:12px;border-radius:0;box-sizing:border-box}
-      .notepad-tabs{width:100vw;max-width:none;justify-content:flex-start;gap:.5rem;overflow-x:auto;padding:0 8px}.notepad-tab{padding:6px 12px;font-size:.8rem;flex:0 0 auto}
+      .notepad-tabs{width:100vw;max-width:none;justify-content:center;gap:.5rem;overflow-x:auto;padding:0 8px}.notepad-tab{padding:0;font-size:.8rem;flex:0 0 auto}
       .calendar-day{min-height:120px;padding:.35rem .2rem .2rem;gap:1px}.day-number{font-size:.75rem;min-width:14px}.day-top{gap:2px;min-height:24px}.daily-check-btn{font-size:.62rem;padding:3px 0}.calendar-month-counts{display:flex;margin-left:0;margin-top:4px;justify-content:center;font-size:.72rem}
       .task-item{font-size:.85rem;padding:2px 4px;margin-top:2px}
       .calendar-grid,.calendar-header{gap:0}.add-task-btn{width:100%;font-size:.9rem}
