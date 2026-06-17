@@ -1,0 +1,98 @@
+export function initClipViewer({
+  ensureLogin = () => window.ensureLogin?.(),
+  ensureClipCurrentFolder,
+  findDriveFile,
+  uploadDriveMultipart,
+  downloadDriveBlob,
+  getClipPages = () => [],
+  saveClipManifest = async () => {},
+  loadAppDataFromDrive = async () => {},
+  renderEverything = () => {}
+} = {}) {
+  const clipFolderInput=document.getElementById('clipFolderInput');
+  const clipRefreshBtn=document.getElementById('clipRefreshBtn');
+  const clipUploadDriveBtn=document.getElementById('clipUploadDriveBtn');
+  const clipLoadDriveBtn=document.getElementById('clipLoadDriveBtn');
+  const clipClearBtn=document.getElementById('clipClearBtn');
+  const clipViewer=document.getElementById('clipViewer');
+  const clipMessage=document.getElementById('clipMessage');
+  const clipStatus=document.getElementById('clipStatus');
+  let clipFiles=[];
+  let clipLocalPages=[];
+  let clipSQLPromise=null;
+
+  function setClipStatus(t){ if(clipStatus) clipStatus.textContent=t; }
+  function showClipMessage(t){ if(clipMessage){ clipMessage.style.display='flex'; clipMessage.innerHTML=t; } }
+  function hideClipMessage(){ if(clipMessage) clipMessage.style.display='none'; }
+  function clearClipLocal(){ for(const p of clipLocalPages){ if(p.url) URL.revokeObjectURL(p.url); } clipLocalPages=[]; if(clipViewer) clipViewer.innerHTML=''; }
+
+  async function getClipSQL(){
+    if(!clipSQLPromise){
+      clipSQLPromise=initSqlJs({locateFile:file=>'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/'+file});
+    }
+    return clipSQLPromise;
+  }
+
+  function findAsciiBytes(bytes,text){ const p=[...text].map(c=>c.charCodeAt(0)); outer:for(let i=0;i<=bytes.length-p.length;i++){ for(let j=0;j<p.length;j++){ if(bytes[i+j]!==p[j]) continue outer; } return i; } return -1; }
+  function detectImageTypeBytes(bytes){ if(bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4E&&bytes[3]===0x47) return 'image/png'; if(bytes[0]===0xFF&&bytes[1]===0xD8) return 'image/jpeg'; return null; }
+  async function extractClipPreview(file,SQL){
+    const buffer=await file.arrayBuffer(); const bytes=new Uint8Array(buffer); const off=findAsciiBytes(bytes,'SQLite format 3'); if(off<0) return null;
+    const db=new SQL.Database(bytes.slice(off)); let result;
+    try{ result=db.exec('SELECT ImageData FROM CanvasPreview WHERE ImageData IS NOT NULL ORDER BY ImageWidth * ImageHeight DESC LIMIT 1'); }catch(e){ db.close(); return null; }
+    if(!result.length||!result[0].values.length){ db.close(); return null; }
+    const imageData=result[0].values[0][0]; db.close(); if(!imageData) return null;
+    const imgBytes=imageData instanceof Uint8Array?imageData:new Uint8Array(imageData); const type=detectImageTypeBytes(imgBytes); if(!type) return null;
+    return new Blob([imgBytes],{type});
+  }
+
+  async function loadClipFiles(files){
+    clearClipLocal(); showClipMessage('CLIP 파일 불러오는 중...'); setClipStatus('파일 확인 중...');
+    const list=files.filter(f=>f.name.toLowerCase().endsWith('.clip')).sort((a,b)=>(a.webkitRelativePath||a.name).localeCompare((b.webkitRelativePath||b.name),undefined,{numeric:true,sensitivity:'base'}));
+    if(!list.length){ showClipMessage('.clip 파일을 찾지 못했습니다.'); setClipStatus('실패: .clip 없음'); return; }
+    const SQL=await getClipSQL(); let ok=0,fail=0;
+    for(let i=0;i<list.length;i++){
+      const file=list[i]; setClipStatus(`${i+1} / ${list.length} 추출 중\n${file.name}`);
+      try{ const blob=await extractClipPreview(file,SQL); if(!blob){fail++;continue;} const url=URL.createObjectURL(blob); const img=document.createElement('img'); img.className='clip-page'; img.alt=file.name; img.src=url; clipViewer.appendChild(img); clipLocalPages.push({name:file.name.replace(/\.clip$/i,'.png'),blob,url,type:blob.type}); ok++; if(ok===1) hideClipMessage(); }catch(e){ console.error(e); fail++; }
+      await new Promise(r=>setTimeout(r,0));
+    }
+    if(ok){ hideClipMessage(); setClipStatus(`완료\n표시: ${ok}개 / 실패: ${fail}개`); } else { showClipMessage('미리보기 이미지를 찾지 못했습니다.'); setClipStatus(`실패: ${fail}개`); }
+  }
+
+  async function uploadClipPagesToDrive(){
+    if(!ensureLogin()) return;
+    if(!clipLocalPages.length){ setClipStatus('먼저 CLIP 폴더를 열어주세요.'); return; }
+    const clipCurrent=await ensureClipCurrentFolder();
+    const manifest=[];
+    for(let i=0;i<clipLocalPages.length;i++){
+      const p=clipLocalPages[i]; setClipStatus(`${i+1} / ${clipLocalPages.length} Drive 업로드 중\n${p.name}`);
+      const existing=await findDriveFile(p.name,clipCurrent.id);
+      const uploaded=await uploadDriveMultipart({name:p.name,blob:p.blob,parentId:clipCurrent.id,fileId:existing?.id||null,mimeType:p.type||'image/png'});
+      manifest.push({index:i,name:p.name,fileId:uploaded.id,mimeType:uploaded.mimeType||p.type||'image/png'});
+    }
+    await saveClipManifest(manifest);
+    setClipStatus(`Drive 업로드 완료\n페이지: ${manifest.length}개`);
+    window.showFeedbackMessage?.('CLIP 미리보기가 Drive에 저장되었습니다.');
+  }
+
+  async function loadClipPagesFromDrive(render=true){
+    clearClipLocal();
+    const pages=getClipPages();
+    if(!pages.length){ if(render) showClipMessage('Drive에 저장된 CLIP 미리보기가 없습니다.'); return; }
+    if(render) showClipMessage('Drive에서 CLIP 미리보기를 불러오는 중...');
+    for(let i=0;i<pages.length;i++){
+      const p=pages[i]; if(render) setClipStatus(`${i+1} / ${pages.length} Drive 다운로드 중\n${p.name}`);
+      try{ const blob=await downloadDriveBlob(p.fileId); const url=URL.createObjectURL(blob); const img=document.createElement('img'); img.className='clip-page'; img.alt=p.name; img.src=url; clipViewer.appendChild(img); clipLocalPages.push({name:p.name,blob,url,type:blob.type||p.mimeType}); if(i===0) hideClipMessage(); }catch(e){ console.warn(e); }
+    }
+    if(render){ hideClipMessage(); setClipStatus(`Drive 불러오기 완료\n표시: ${clipLocalPages.length}개`); }
+  }
+
+  clipFolderInput?.addEventListener('change',async(e)=>{ clipFiles=Array.from(e.target.files||[]); await loadClipFiles(clipFiles); });
+  clipRefreshBtn?.addEventListener('click',async()=>{ if(!clipFiles.length){ setClipStatus('먼저 CLIP 폴더를 열어주세요.'); return; } await loadClipFiles(clipFiles); });
+  clipClearBtn?.addEventListener('click',()=>{ clipFiles=[]; if(clipFolderInput) clipFolderInput.value=''; clearClipLocal(); showClipMessage('CLIP 파일이 들어있는 폴더를 선택하세요.'); setClipStatus('초기화됨'); });
+  clipUploadDriveBtn?.addEventListener('click',uploadClipPagesToDrive);
+  clipLoadDriveBtn?.addEventListener('click',async()=>{ if(!ensureLogin()) return; await loadAppDataFromDrive(); renderEverything(); await loadClipPagesFromDrive(true); });
+
+  window.setClipStatus = setClipStatus;
+  window.showClipMessage = showClipMessage;
+  window.loadClipPagesFromDrive = loadClipPagesFromDrive;
+}

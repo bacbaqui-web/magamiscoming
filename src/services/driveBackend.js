@@ -1,4 +1,4 @@
-export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
+export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initWorkMusic, initClipViewer }) {
 // ===== Inlined main.js : Google Drive backend =====
 // 모든 데이터는 로그인한 사용자의 Google Drive 안에 저장됩니다.
 
@@ -37,7 +37,6 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
     let appDataFileId=null;
     let driveSaveTimer=null;
     let driveImageUrlCache=new Map();
-    let clipSQLPromise=null;
     window.__unsubs=[];
 
     function getGoogleClientId(){
@@ -157,8 +156,8 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
 
     function renderEverything(){
       if(typeof window.renderCalendar==='function') window.renderCalendar();
-      if(typeof renderImageBookmarks==='function') renderImageBookmarks();
-      if(typeof renderWorkMusicAll==='function') renderWorkMusicAll();
+      if(typeof window.renderImageBookmarks==='function') window.renderImageBookmarks();
+      if(typeof window.renderWorkMusicAll==='function') window.renderWorkMusicAll();
       if(typeof window.renderNotesUI==='function') window.renderNotesUI();
       if(typeof window.renderBookmarkTabsUI==='function') window.renderBookmarkTabsUI();
     }
@@ -490,7 +489,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
       }
       applyAppData(mergeDriveParts(parts));
       await resolveDriveBookmarkImages();
-      await loadClipPagesFromDrive(false);
+      await window.loadClipPagesFromDrive?.(false);
     }
 
     async function resolveDriveBookmarkImages(){
@@ -524,7 +523,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
         driveReady=true; window.isAuthReady=true;
         await loadAppDataFromDrive();
         renderEverything();
-        await loadClipPagesFromDrive(true);
+        await window.loadClipPagesFromDrive?.(true);
         window.showFeedbackMessage('Google Drive 데이터를 불러왔습니다.');
       }catch(e){
         console.error(e); window.showAlert('Google Drive 데이터 로드 실패: '+(e.message||e));
@@ -539,8 +538,8 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
       window.customTasks=[]; window.taskStatus={}; window.imageBookmarks=[]; window.__notesTabs={}; window.__notesTabList=[{id:'memo',name:'메모',order:0}]; window.__notesActiveTabId='memo'; window.__bookmarkTabList=[{id:'default',name:'기본',order:0}]; window.__bookmarkActiveTabId='default'; window.__workMusicTabList=[{id:'default',name:'기본',order:0}]; window.__workMusicActiveTabId='default'; window.workMusicSongs=[];
       renderEverything();
       if(typeof clearClipLocal==='function') clearClipLocal();
-      if(typeof showClipMessage==='function') showClipMessage('로그인하면 Drive에 저장된 CLIP 원고가 표시됩니다.');
-      if(typeof setClipStatus==='function') setClipStatus('로그아웃됨');
+      window.showClipMessage?.('로그인하면 Drive에 저장된 CLIP 원고가 표시됩니다.');
+      window.setClipStatus?.('로그아웃됨');
     };
 
     window.ensureLogin=()=>{
@@ -610,96 +609,37 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks }) {
       return uploaded;
     }
 
-    window.addVideoBookmark=async(url)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),pageUrl:url,url:null,type:'video',title:null,sourceDomain:extractDomain(url),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
-    window.addGenericBookmark=async(url)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),pageUrl:url,url:null,type:'link',title:null,sourceDomain:extractDomain(url),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
-    window.addInstagramBookmark=async(embedCode)=>{ if(!ensureLogin()) return; let pageUrl='인스타그램 게시물'; try{ const doc=new DOMParser().parseFromString(embedCode,'text/html'); const b=doc.querySelector('blockquote.instagram-media'); if(b?.cite) pageUrl=b.cite; }catch(_){} window.imageBookmarks.push({id:genId('bm'),pageUrl,embedCode,url:null,type:'instagram',title:null,sourceDomain:extractDomain(pageUrl),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
-    window.addRemoteImage=async(url,pageUrl)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),url,pageUrl:pageUrl||null,type:'remote',sourceDomain:extractDomain(pageUrl||url),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
-    window.addImage=async(file,pageUrl)=>{ if(!ensureLogin()) return; if(typeof file==='string') return window.addRemoteImage(file,pageUrl||file); try{ const url=URL.createObjectURL(file); const ms=nowMs(); const row={id:genId('bm'),url,pageUrl:pageUrl||null,type:'local_pending_image',driveFileId:null,title:null,sourceDomain:pageUrl?extractDomain(pageUrl):'로컬 캐시',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(ms),timestampMs:ms,uploadStatus:'pending'}; window.imageBookmarks.push(row); renderEverything(); scheduleSaveNonNotesData(); setDriveStatus('이미지 로컬 반영됨 · Drive 업로드 중...'); uploadFileToDrive(file,null,'bookmark').then(uploaded=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===row.id); if(!b) return; b.driveFileId=uploaded.id; b.type='drive_image'; b.sourceDomain=pageUrl?extractDomain(pageUrl):'Google Drive'; b.uploadStatus='done'; if(uploaded.createdMs){ b.timestamp=driveTimestamp(uploaded.createdMs); b.timestampMs=uploaded.createdMs; } renderEverything(); return saveNonNotesDataNow(); }).then(()=>{ setDriveStatus('이미지 Drive 저장 완료'); }).catch(e=>{ console.error(e); const b=(window.imageBookmarks||[]).find(x=>x.id===row.id); if(b) b.uploadStatus='error'; renderEverything(); setDriveStatus('이미지 Drive 업로드 실패', true); }); }catch(e){ window.showAlert('이미지 추가 실패: '+(e.message||e)); } };
+    window.addVideoBookmark=async(url)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),pageUrl:url,url:null,type:'video',title:null,sourceDomain:window.extractDomain?.(url)||'Unknown',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
+    window.addGenericBookmark=async(url)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),pageUrl:url,url:null,type:'link',title:null,sourceDomain:window.extractDomain?.(url)||'Unknown',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
+    window.addInstagramBookmark=async(embedCode)=>{ if(!ensureLogin()) return; let pageUrl='인스타그램 게시물'; try{ const doc=new DOMParser().parseFromString(embedCode,'text/html'); const b=doc.querySelector('blockquote.instagram-media'); if(b?.cite) pageUrl=b.cite; }catch(_){} window.imageBookmarks.push({id:genId('bm'),pageUrl,embedCode,url:null,type:'instagram',title:null,sourceDomain:window.extractDomain?.(pageUrl)||'Unknown',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
+    window.addRemoteImage=async(url,pageUrl)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),url,pageUrl:pageUrl||null,type:'remote',sourceDomain:window.extractDomain?.(pageUrl||url)||'Unknown',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
+    window.addImage=async(file,pageUrl)=>{ if(!ensureLogin()) return; if(typeof file==='string') return window.addRemoteImage(file,pageUrl||file); try{ const url=URL.createObjectURL(file); const ms=nowMs(); const row={id:genId('bm'),url,pageUrl:pageUrl||null,type:'local_pending_image',driveFileId:null,title:null,sourceDomain:pageUrl?(window.extractDomain?.(pageUrl)||'Unknown'):'로컬 캐시',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(ms),timestampMs:ms,uploadStatus:'pending'}; window.imageBookmarks.push(row); renderEverything(); scheduleSaveNonNotesData(); setDriveStatus('이미지 로컬 반영됨 · Drive 업로드 중...'); uploadFileToDrive(file,null,'bookmark').then(uploaded=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===row.id); if(!b) return; b.driveFileId=uploaded.id; b.type='drive_image'; b.sourceDomain=pageUrl?(window.extractDomain?.(pageUrl)||'Unknown'):'Google Drive'; b.uploadStatus='done'; if(uploaded.createdMs){ b.timestamp=driveTimestamp(uploaded.createdMs); b.timestampMs=uploaded.createdMs; } renderEverything(); return saveNonNotesDataNow(); }).then(()=>{ setDriveStatus('이미지 Drive 저장 완료'); }).catch(e=>{ console.error(e); const b=(window.imageBookmarks||[]).find(x=>x.id===row.id); if(b) b.uploadStatus='error'; renderEverything(); setDriveStatus('이미지 Drive 업로드 실패', true); }); }catch(e){ window.showAlert('이미지 추가 실패: '+(e.message||e)); } };
     window.updateBookmarkTitle=async(id,newTitle)=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===id); if(b){ b.title=newTitle||null; renderEverything(); scheduleSaveNonNotesData(); } };
     window.uploadBookmarkPreviewImage=async(bookmarkId,file)=>{ if(!ensureLogin()) return; const b=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(!b) return; b.previewImageUrl=URL.createObjectURL(file); b.previewUploadStatus='pending'; renderEverything(); scheduleSaveNonNotesData(); setDriveStatus('미리보기 로컬 반영됨 · Drive 업로드 중...'); uploadFileToDrive(file,null,'bookmark_preview').then(uploaded=>{ const row=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(!row) return; row.previewDriveFileId=uploaded.id; row.previewUploadStatus='done'; renderEverything(); return saveNonNotesDataNow(); }).then(()=>setDriveStatus('미리보기 Drive 저장 완료')).catch(e=>{ console.error(e); const row=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(row) row.previewUploadStatus='error'; renderEverything(); setDriveStatus('미리보기 Drive 업로드 실패', true); }); };
     window.deleteImage=async(id)=>{ if(!ensureLogin()) return; const row=(window.imageBookmarks||[]).find(b=>b.id===id); if(row){ await deleteDriveFile(row.driveFileId); await deleteDriveFile(row.previewDriveFileId); } window.imageBookmarks=(window.imageBookmarks||[]).filter(b=>b.id!==id); renderEverything(); scheduleSaveNonNotesData(); window.showFeedbackMessage('북마크가 삭제되었습니다.'); };
-
-    // ===== CLIP 뷰어 =====
-    const clipFolderInput=document.getElementById('clipFolderInput');
-    const clipRefreshBtn=document.getElementById('clipRefreshBtn');
-    const clipUploadDriveBtn=document.getElementById('clipUploadDriveBtn');
-    const clipLoadDriveBtn=document.getElementById('clipLoadDriveBtn');
-    const clipClearBtn=document.getElementById('clipClearBtn');
-    const clipViewer=document.getElementById('clipViewer');
-    const clipMessage=document.getElementById('clipMessage');
-    const clipStatus=document.getElementById('clipStatus');
-    let clipFiles=[];
-    let clipLocalPages=[];
-
-    function setClipStatus(t){ if(clipStatus) clipStatus.textContent=t; }
-    function showClipMessage(t){ if(clipMessage){ clipMessage.style.display='flex'; clipMessage.innerHTML=t; } }
-    function hideClipMessage(){ if(clipMessage) clipMessage.style.display='none'; }
-    function clearClipLocal(){ for(const p of clipLocalPages){ if(p.url) URL.revokeObjectURL(p.url); } clipLocalPages=[]; if(clipViewer) clipViewer.innerHTML=''; }
-
-    async function getClipSQL(){
-      if(!clipSQLPromise){
-        clipSQLPromise=initSqlJs({locateFile:file=>'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/'+file});
-      }
-      return clipSQLPromise;
-    }
-    function findAsciiBytes(bytes,text){ const p=[...text].map(c=>c.charCodeAt(0)); outer:for(let i=0;i<=bytes.length-p.length;i++){ for(let j=0;j<p.length;j++){ if(bytes[i+j]!==p[j]) continue outer; } return i; } return -1; }
-    function detectImageTypeBytes(bytes){ if(bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4E&&bytes[3]===0x47) return 'image/png'; if(bytes[0]===0xFF&&bytes[1]===0xD8) return 'image/jpeg'; return null; }
-    async function extractClipPreview(file,SQL){
-      const buffer=await file.arrayBuffer(); const bytes=new Uint8Array(buffer); const off=findAsciiBytes(bytes,'SQLite format 3'); if(off<0) return null;
-      const db=new SQL.Database(bytes.slice(off)); let result;
-      try{ result=db.exec('SELECT ImageData FROM CanvasPreview WHERE ImageData IS NOT NULL ORDER BY ImageWidth * ImageHeight DESC LIMIT 1'); }catch(e){ db.close(); return null; }
-      if(!result.length||!result[0].values.length){ db.close(); return null; }
-      const imageData=result[0].values[0][0]; db.close(); if(!imageData) return null;
-      const imgBytes=imageData instanceof Uint8Array?imageData:new Uint8Array(imageData); const type=detectImageTypeBytes(imgBytes); if(!type) return null;
-      return new Blob([imgBytes],{type});
-    }
-    async function loadClipFiles(files){
-      clearClipLocal(); showClipMessage('CLIP 파일 불러오는 중...'); setClipStatus('파일 확인 중...');
-      const list=files.filter(f=>f.name.toLowerCase().endsWith('.clip')).sort((a,b)=>(a.webkitRelativePath||a.name).localeCompare((b.webkitRelativePath||b.name),undefined,{numeric:true,sensitivity:'base'}));
-      if(!list.length){ showClipMessage('.clip 파일을 찾지 못했습니다.'); setClipStatus('실패: .clip 없음'); return; }
-      const SQL=await getClipSQL(); let ok=0,fail=0;
-      for(let i=0;i<list.length;i++){
-        const file=list[i]; setClipStatus(`${i+1} / ${list.length} 추출 중\n${file.name}`);
-        try{ const blob=await extractClipPreview(file,SQL); if(!blob){fail++;continue;} const url=URL.createObjectURL(blob); const img=document.createElement('img'); img.className='clip-page'; img.alt=file.name; img.src=url; clipViewer.appendChild(img); clipLocalPages.push({name:file.name.replace(/\.clip$/i,'.png'),blob,url,type:blob.type}); ok++; if(ok===1) hideClipMessage(); }catch(e){ console.error(e); fail++; }
-        await new Promise(r=>setTimeout(r,0));
-      }
-      if(ok){ hideClipMessage(); setClipStatus(`완료\n표시: ${ok}개 / 실패: ${fail}개`); } else { showClipMessage('미리보기 이미지를 찾지 못했습니다.'); setClipStatus(`실패: ${fail}개`); }
-    }
-    clipFolderInput?.addEventListener('change',async(e)=>{ clipFiles=Array.from(e.target.files||[]); await loadClipFiles(clipFiles); });
-    clipRefreshBtn?.addEventListener('click',async()=>{ if(!clipFiles.length){ setClipStatus('먼저 CLIP 폴더를 열어주세요.'); return; } await loadClipFiles(clipFiles); });
-    clipClearBtn?.addEventListener('click',()=>{ clipFiles=[]; if(clipFolderInput) clipFolderInput.value=''; clearClipLocal(); showClipMessage('CLIP 파일이 들어있는 폴더를 선택하세요.'); setClipStatus('초기화됨'); });
-    clipUploadDriveBtn?.addEventListener('click',async()=>{
-      if(!ensureLogin()) return; if(!clipLocalPages.length){ setClipStatus('먼저 CLIP 폴더를 열어주세요.'); return; }
-      const folders=await ensureDriveFolders(); const manifest=[];
-      for(let i=0;i<clipLocalPages.length;i++){
-        const p=clipLocalPages[i]; setClipStatus(`${i+1} / ${clipLocalPages.length} Drive 업로드 중\n${p.name}`);
-        const existing=await findDriveFile(p.name,folders.clipCurrent.id);
-        const uploaded=await uploadDriveMultipart({name:p.name,blob:p.blob,parentId:folders.clipCurrent.id,fileId:existing?.id||null,mimeType:p.type||'image/png'});
-        manifest.push({index:i,name:p.name,fileId:uploaded.id,mimeType:uploaded.mimeType||p.type||'image/png'});
-      }
-      currentAppData.state=currentAppData.state||{}; currentAppData.state.clipPages=manifest; await saveAppDataNow(); setClipStatus(`Drive 업로드 완료\n페이지: ${manifest.length}개`); window.showFeedbackMessage('CLIP 미리보기가 Drive에 저장되었습니다.');
-    });
-    async function loadClipPagesFromDrive(render=true){
-      clearClipLocal(); const pages=(currentAppData.state&&currentAppData.state.clipPages)||[]; if(!pages.length){ if(render) showClipMessage('Drive에 저장된 CLIP 미리보기가 없습니다.'); return; }
-      if(render) showClipMessage('Drive에서 CLIP 미리보기를 불러오는 중...');
-      for(let i=0;i<pages.length;i++){
-        const p=pages[i]; if(render) setClipStatus(`${i+1} / ${pages.length} Drive 다운로드 중\n${p.name}`);
-        try{ const blob=await downloadDriveBlob(p.fileId); const url=URL.createObjectURL(blob); const img=document.createElement('img'); img.className='clip-page'; img.alt=p.name; img.src=url; clipViewer.appendChild(img); clipLocalPages.push({name:p.name,blob,url,type:blob.type||p.mimeType}); if(i===0) hideClipMessage(); }catch(e){ console.warn(e); }
-      }
-      if(render){ hideClipMessage(); setClipStatus(`Drive 불러오기 완료\n표시: ${clipLocalPages.length}개`); }
-    }
-    clipLoadDriveBtn?.addEventListener('click',async()=>{ if(!ensureLogin()) return; await loadAppDataFromDrive(); renderEverything(); await loadClipPagesFromDrive(true); });
 
     // 자동 초기 상태
     window.isAuthReady=true;
     setTimeout(async()=>{
       await setupTokenClient();
       if(!driveAccessToken){
-        setClipStatus('구글 로그인하면 Drive 데이터를 자동으로 불러옵니다.');
+        window.setClipStatus?.('구글 로그인하면 Drive 데이터를 자동으로 불러옵니다.');
       }
     },500);
 
     initCalendar();
     initNotes();
     initBookmarks();
+    initWorkMusic?.();
+    initClipViewer?.({
+      ensureLogin,
+      ensureClipCurrentFolder: async()=> (await ensureDriveFolders()).clipCurrent,
+      findDriveFile,
+      uploadDriveMultipart,
+      downloadDriveBlob,
+      getClipPages:()=> (currentAppData.state&&currentAppData.state.clipPages)||[],
+      saveClipManifest:async(manifest)=>{ currentAppData.state=currentAppData.state||{}; currentAppData.state.clipPages=manifest; await saveAppDataNow(); },
+      loadAppDataFromDrive,
+      renderEverything
+    });
 }
