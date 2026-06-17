@@ -11,8 +11,6 @@ export function initClipViewer({
 } = {}) {
   const clipFolderInput=document.getElementById('clipFolderInput');
   const clipRefreshBtn=document.getElementById('clipRefreshBtn');
-  const clipUploadDriveBtn=document.getElementById('clipUploadDriveBtn');
-  const clipLoadDriveBtn=document.getElementById('clipLoadDriveBtn');
   const clipClearBtn=document.getElementById('clipClearBtn');
   const clipViewer=document.getElementById('clipViewer');
   const clipMessage=document.getElementById('clipMessage');
@@ -20,6 +18,10 @@ export function initClipViewer({
   let clipFiles=[];
   let clipLocalPages=[];
   let clipSQLPromise=null;
+  const EMPTY_CLIP_MESSAGE = `
+    <div class="clip-empty-title">CLIP 폴더를 열어주세요</div>
+    <div class="clip-empty-body">원고가 들어있는 폴더를 선택하면 페이지 미리보기를 바로 펼쳐볼 수 있습니다.</div>
+  `;
 
   function setClipStatus(t){ if(clipStatus) clipStatus.textContent=t; }
   function showClipMessage(t){ if(clipMessage){ clipMessage.style.display='flex'; clipMessage.innerHTML=t; } }
@@ -77,7 +79,7 @@ export function initClipViewer({
   async function loadClipPagesFromDrive(render=true){
     clearClipLocal();
     const pages=getClipPages();
-    if(!pages.length){ if(render) showClipMessage('Drive에 저장된 CLIP 미리보기가 없습니다.'); return; }
+    if(!pages.length){ if(render) showClipMessage(EMPTY_CLIP_MESSAGE); return; }
     if(render) showClipMessage('Drive에서 CLIP 미리보기를 불러오는 중...');
     for(let i=0;i<pages.length;i++){
       const p=pages[i]; if(render) setClipStatus(`${i+1} / ${pages.length} Drive 다운로드 중\n${p.name}`);
@@ -88,9 +90,7 @@ export function initClipViewer({
 
   clipFolderInput?.addEventListener('change',async(e)=>{ clipFiles=Array.from(e.target.files||[]); await loadClipFiles(clipFiles); });
   clipRefreshBtn?.addEventListener('click',async()=>{ if(!clipFiles.length){ setClipStatus('먼저 CLIP 폴더를 열어주세요.'); return; } await loadClipFiles(clipFiles); });
-  clipClearBtn?.addEventListener('click',()=>{ clipFiles=[]; if(clipFolderInput) clipFolderInput.value=''; clearClipLocal(); showClipMessage('CLIP 파일이 들어있는 폴더를 선택하세요.'); setClipStatus('초기화됨'); });
-  clipUploadDriveBtn?.addEventListener('click',uploadClipPagesToDrive);
-  clipLoadDriveBtn?.addEventListener('click',async()=>{ if(!ensureLogin()) return; await loadAppDataFromDrive(); renderEverything(); await loadClipPagesFromDrive(true); });
+  clipClearBtn?.addEventListener('click',()=>{ clipFiles=[]; if(clipFolderInput) clipFolderInput.value=''; clearClipLocal(); showClipMessage(EMPTY_CLIP_MESSAGE); setClipStatus(''); });
 
   window.setClipStatus = setClipStatus;
   window.showClipMessage = showClipMessage;

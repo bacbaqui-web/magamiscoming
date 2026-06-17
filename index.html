@@ -88,17 +88,22 @@
   <div id="clipviewer-section" class="section-card tab-content text-left">
     <div class="clip-viewer-panel">
       <div class="clip-toolbar">
-        <label class="clip-file-btn pc-only" title="CLIP 폴더 열기">
+        <label class="clip-file-btn pc-only" title="CLIP 폴더 열기" aria-label="CLIP 폴더 열기">
           <input id="clipFolderInput" type="file" webkitdirectory directory multiple />
-          📂 폴더 열기
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v1H3z"/><path d="M3 10h18l-2 8a2 2 0 0 1-2 1.5H7A2 2 0 0 1 5 18z"/></svg>
         </label>
-        <button id="clipRefreshBtn" class="clip-btn pc-only" type="button">🔄 다시 읽기</button>
-        <button id="clipUploadDriveBtn" class="clip-btn pc-only" type="button">☁️ Drive 업로드</button>
-        <button id="clipLoadDriveBtn" class="clip-btn" type="button">📥 Drive 최신보기</button>
-        <button id="clipClearBtn" class="clip-btn" type="button">🗑 초기화</button>
+        <button id="clipRefreshBtn" class="clip-btn pc-only" type="button" title="다시 읽기" aria-label="다시 읽기">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.5 6.2"/><path d="M3 12A9 9 0 0 1 18.5 5.8"/><path d="M18 2v4h4"/><path d="M6 22v-4H2"/></svg>
+        </button>
+        <button id="clipClearBtn" class="clip-btn" type="button" title="초기화" aria-label="초기화">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
       </div>
-      <div id="clipStatus" class="clip-status">PC에서는 CLIP 폴더를 열고 Drive 업로드를 누르세요.\n폰/다른 기기에서는 로그인하면 최신 Drive 원고가 자동으로 표시됩니다.</div>
-      <div id="clipMessage" class="clip-message">CLIP 파일이 들어있는 폴더를 선택하세요.</div>
+      <div id="clipStatus" class="clip-status"></div>
+      <div id="clipMessage" class="clip-message">
+        <div class="clip-empty-title">CLIP 폴더를 열어주세요</div>
+        <div class="clip-empty-body">원고가 들어있는 폴더를 선택하면 페이지 미리보기를 바로 펼쳐볼 수 있습니다.</div>
+      </div>
       <div id="clipViewer" class="clip-viewer"></div>
     </div>
   </div>

@@ -651,8 +651,8 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
       window.customTasks=[]; window.taskStatus={}; window.imageBookmarks=[]; window.__notesTabs={}; window.__notesTabList=[{id:'memo',name:'메모',order:0}]; window.__notesActiveTabId='memo'; window.__bookmarkTabList=[{id:'default',name:'기본',order:0}]; window.__bookmarkActiveTabId='default'; window.__workMusicTabList=[{id:'default',name:'기본',order:0}]; window.__workMusicActiveTabId='default'; window.workMusicSongs=[];
       renderEverything();
       if(typeof clearClipLocal==='function') clearClipLocal();
-      window.showClipMessage?.('로그인하면 Drive에 저장된 CLIP 원고가 표시됩니다.');
-      window.setClipStatus?.('로그아웃됨');
+      window.showClipMessage?.('<div class="clip-empty-title">CLIP 폴더를 열어주세요</div><div class="clip-empty-body">원고가 들어있는 폴더를 선택하면 페이지 미리보기를 바로 펼쳐볼 수 있습니다.</div>');
+      window.setClipStatus?.('');
     };
 
     window.ensureLogin=()=>{
@@ -778,7 +778,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
     setTimeout(async()=>{
       await setupTokenClient();
       if(!driveAccessToken){
-        window.setClipStatus?.('구글 로그인하면 Drive 데이터를 자동으로 불러옵니다.');
+        window.setClipStatus?.('');
       }
     },500);
 
