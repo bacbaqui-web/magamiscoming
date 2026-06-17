@@ -4167,6 +4167,31 @@ function initBookmarks(){
         throw e;
       }
     }
+    async function saveNonNotesDataNow(){
+      if(!driveReady || !driveAccessToken) return;
+      setDriveBusy('Google Drive 저장 중...');
+      try{
+        const folders=await ensureDriveFolders();
+        const data=buildAppData();
+        currentAppData=data;
+        const parts=splitAppDataForDrive(data);
+        await saveJsonToDrive(folders.calendar.id,DRIVE_CALENDAR_FILE,parts.calendar);
+        await saveJsonToDrive(folders.bookmarks.id,DRIVE_BOOKMARKS_FILE,parts.bookmarks);
+        await saveJsonToDrive(folders.workmusic.id,DRIVE_WORKMUSIC_FILE,parts.workmusic);
+        await saveJsonToDrive(folders.clipviewer.id,DRIVE_CLIP_FILE,parts.clipviewer);
+        setDriveStatus('Google Drive 저장 완료');
+      }catch(e){
+        console.error(e);
+        setDriveStatus('Drive 저장 실패', true);
+        throw e;
+      }
+    }
+    function scheduleSaveNonNotesData(){
+      clearTimeout(driveSaveTimer);
+      setDriveStatus('로컬 반영됨 · Drive 저장 예약됨');
+      driveSaveTimer=setTimeout(()=>saveNonNotesDataNow().catch(e=>console.error(e)),700);
+    }
+
     function scheduleSaveAppData(){
       clearTimeout(driveSaveTimer);
       setDriveStatus('저장 예약됨');
@@ -4260,8 +4285,8 @@ function initBookmarks(){
         else window.cloudSaveNotes();
       },800);
     };
-    window.cloudSaveAll=async()=>{ if(!ensureLogin()) return; await saveAppDataNow(); };
-    window.cloudSaveStateOnly=async()=>{ if(!ensureLogin()) return; scheduleSaveAppData(); };
+    window.cloudSaveAll=async()=>{ if(!ensureLogin()) return; scheduleSaveNonNotesData(); };
+    window.cloudSaveStateOnly=async()=>{ if(!ensureLogin()) return; scheduleSaveNonNotesData(); };
     window.cloudSaveNotes=async(tabIdArg,valueArg)=>{
       if(!ensureLogin()) return;
       const id=tabIdArg || window.__notesActiveTabId || 'memo';
@@ -4278,22 +4303,22 @@ function initBookmarks(){
     window.cloudReorderNotesTabs=async(list)=>{ window.__notesTabList=list; renderEverything(); scheduleSaveAppData(); };
     window.cloudDeleteNotesTab=async(tabId)=>{ let list=(window.__notesTabList||[]).filter(t=>t.id!==tabId); window.__notesTabs=window.__notesTabs||{}; delete window.__notesTabs[tabId]; if(!list.length) list=[{id:'memo',name:'메모',order:0}]; window.__notesTabList=list; if(window.__notesActiveTabId===tabId) window.__notesActiveTabId=list[0].id; renderEverything(); scheduleSaveAppData(); };
 
-    window.cloudSetActiveBookmarkTab=async(tabId)=>{ window.__bookmarkActiveTabId=tabId||'default'; renderEverything(); scheduleSaveAppData(); };
-    window.cloudAddBookmarkTab=async({id,name})=>{ const list=window.__bookmarkTabList||[{id:'default',name:'기본',order:0}]; const max=list.reduce((m,t)=>Math.max(m,Number(t.order||0)),0); window.__bookmarkTabList=[...list,{id,name,order:max+10}]; window.__bookmarkActiveTabId=id; renderEverything(); scheduleSaveAppData(); };
-    window.cloudRenameBookmarkTab=async(tabId,name)=>{ window.__bookmarkTabList=(window.__bookmarkTabList||[]).map(t=>t.id===tabId?{...t,name}:t); renderEverything(); scheduleSaveAppData(); };
-    window.cloudReorderBookmarkTabs=async(list)=>{ window.__bookmarkTabList=list; renderEverything(); scheduleSaveAppData(); };
-    window.cloudDeleteBookmarkTab=async(tabId)=>{ window.imageBookmarks=(window.imageBookmarks||[]).filter(b=>(b.bookmarkTabId||'default')!==tabId); let list=(window.__bookmarkTabList||[]).filter(t=>t.id!==tabId); if(!list.length) list=[{id:'default',name:'기본',order:0}]; window.__bookmarkTabList=list; if(window.__bookmarkActiveTabId===tabId) window.__bookmarkActiveTabId=list[0].id; renderEverything(); await saveAppDataNow(); };
-    window.moveBookmarkToTab=async(id,tabId)=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===id); if(b){ b.bookmarkTabId=tabId||'default'; renderEverything(); scheduleSaveAppData(); } };
+    window.cloudSetActiveBookmarkTab=async(tabId)=>{ window.__bookmarkActiveTabId=tabId||'default'; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudAddBookmarkTab=async({id,name})=>{ const list=window.__bookmarkTabList||[{id:'default',name:'기본',order:0}]; const max=list.reduce((m,t)=>Math.max(m,Number(t.order||0)),0); window.__bookmarkTabList=[...list,{id,name,order:max+10}]; window.__bookmarkActiveTabId=id; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudRenameBookmarkTab=async(tabId,name)=>{ window.__bookmarkTabList=(window.__bookmarkTabList||[]).map(t=>t.id===tabId?{...t,name}:t); renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudReorderBookmarkTabs=async(list)=>{ window.__bookmarkTabList=list; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudDeleteBookmarkTab=async(tabId)=>{ window.imageBookmarks=(window.imageBookmarks||[]).filter(b=>(b.bookmarkTabId||'default')!==tabId); let list=(window.__bookmarkTabList||[]).filter(t=>t.id!==tabId); if(!list.length) list=[{id:'default',name:'기본',order:0}]; window.__bookmarkTabList=list; if(window.__bookmarkActiveTabId===tabId) window.__bookmarkActiveTabId=list[0].id; renderEverything(); scheduleSaveNonNotesData(); };
+    window.moveBookmarkToTab=async(id,tabId)=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===id); if(b){ b.bookmarkTabId=tabId||'default'; renderEverything(); scheduleSaveNonNotesData(); } };
 
-    window.cloudEnsureWorkMusicDefaultTab=async()=>{ if(!window.__workMusicTabList?.length) window.__workMusicTabList=[{id:'default',name:'기본',order:0}]; scheduleSaveAppData(); };
-    window.cloudSetActiveWorkMusicTab=async(tabId)=>{ window.__workMusicActiveTabId=tabId||'default'; window.workMusicCurrentIndex=0; renderEverything(); scheduleSaveAppData(); };
-    window.cloudAddWorkMusicTab=async(tab)=>{ const list=window.__workMusicTabList||[{id:'default',name:'기본',order:0}]; const max=list.reduce((m,t)=>Math.max(m,Number(t.order||0)),0); window.__workMusicTabList=[...list,{...tab,order:tab.order??max+10}]; window.__workMusicActiveTabId=tab.id; renderEverything(); scheduleSaveAppData(); };
-    window.cloudRenameWorkMusicTab=async(tabId,name)=>{ window.__workMusicTabList=(window.__workMusicTabList||[]).map(t=>t.id===tabId?{...t,name}:t); renderEverything(); scheduleSaveAppData(); };
-    window.cloudReorderWorkMusicTabs=async(list)=>{ window.__workMusicTabList=list; renderEverything(); scheduleSaveAppData(); };
-    window.cloudDeleteWorkMusicTab=async(tabId)=>{ let list=(window.__workMusicTabList||[]).filter(t=>t.id!==tabId); if(!list.length) list=[{id:'default',name:'기본',order:0}]; window.__workMusicTabList=list; window.workMusicSongs=(window.workMusicSongs||[]).filter(s=>(s.workMusicTabId||'default')!==tabId); if(window.__workMusicActiveTabId===tabId) window.__workMusicActiveTabId=list[0].id; renderEverything(); scheduleSaveAppData(); };
-    window.cloudSaveWorkMusic=async()=>{ if(!ensureLogin()) return; scheduleSaveAppData(); };
+    window.cloudEnsureWorkMusicDefaultTab=async()=>{ if(!window.__workMusicTabList?.length) window.__workMusicTabList=[{id:'default',name:'기본',order:0}]; scheduleSaveNonNotesData(); };
+    window.cloudSetActiveWorkMusicTab=async(tabId)=>{ window.__workMusicActiveTabId=tabId||'default'; window.workMusicCurrentIndex=0; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudAddWorkMusicTab=async(tab)=>{ const list=window.__workMusicTabList||[{id:'default',name:'기본',order:0}]; const max=list.reduce((m,t)=>Math.max(m,Number(t.order||0)),0); window.__workMusicTabList=[...list,{...tab,order:tab.order??max+10}]; window.__workMusicActiveTabId=tab.id; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudRenameWorkMusicTab=async(tabId,name)=>{ window.__workMusicTabList=(window.__workMusicTabList||[]).map(t=>t.id===tabId?{...t,name}:t); renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudReorderWorkMusicTabs=async(list)=>{ window.__workMusicTabList=list; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudDeleteWorkMusicTab=async(tabId)=>{ let list=(window.__workMusicTabList||[]).filter(t=>t.id!==tabId); if(!list.length) list=[{id:'default',name:'기본',order:0}]; window.__workMusicTabList=list; window.workMusicSongs=(window.workMusicSongs||[]).filter(s=>(s.workMusicTabId||'default')!==tabId); if(window.__workMusicActiveTabId===tabId) window.__workMusicActiveTabId=list[0].id; renderEverything(); scheduleSaveNonNotesData(); };
+    window.cloudSaveWorkMusic=async()=>{ if(!ensureLogin()) return; scheduleSaveNonNotesData(); };
 
-    window.deleteTask=async()=>{ if(!ensureLogin()||!window.currentTask?.id){ if(typeof closeModal==='function') closeModal(); return; } window.customTasks=(window.customTasks||[]).filter(t=>t.id!==window.currentTask.id); renderEverything(); scheduleSaveAppData(); };
+    window.deleteTask=async()=>{ if(!ensureLogin()||!window.currentTask?.id){ if(typeof closeModal==='function') closeModal(); return; } window.customTasks=(window.customTasks||[]).filter(t=>t.id!==window.currentTask.id); renderEverything(); scheduleSaveNonNotesData(); };
 
     async function uploadFileToDrive(file,folderId,namePrefix='file'){
       const ms=nowMs();
@@ -4315,10 +4340,10 @@ function initBookmarks(){
     window.addGenericBookmark=async(url)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),pageUrl:url,url:null,type:'link',title:null,sourceDomain:extractDomain(url),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
     window.addInstagramBookmark=async(embedCode)=>{ if(!ensureLogin()) return; let pageUrl='인스타그램 게시물'; try{ const doc=new DOMParser().parseFromString(embedCode,'text/html'); const b=doc.querySelector('blockquote.instagram-media'); if(b?.cite) pageUrl=b.cite; }catch(_){} window.imageBookmarks.push({id:genId('bm'),pageUrl,embedCode,url:null,type:'instagram',title:null,sourceDomain:extractDomain(pageUrl),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
     window.addRemoteImage=async(url,pageUrl)=>{ if(!ensureLogin()) return; window.imageBookmarks.push({id:genId('bm'),url,pageUrl:pageUrl||null,type:'remote',sourceDomain:extractDomain(pageUrl||url),bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(nowMs()),timestampMs:nowMs()}); renderEverything(); scheduleSaveAppData(); };
-    window.addImage=async(file,pageUrl)=>{ if(!ensureLogin()) return; if(typeof file==='string') return window.addRemoteImage(file,pageUrl||file); try{ showFeedbackMessage('Drive에 이미지 업로드 중...'); const uploaded=await uploadFileToDrive(file,null,'bookmark'); const url=URL.createObjectURL(file); const ms=uploaded.createdMs||nowMs(); window.imageBookmarks.push({id:genId('bm'),url,pageUrl:pageUrl||null,type:'drive_image',driveFileId:uploaded.id,title:null,sourceDomain:pageUrl?extractDomain(pageUrl):'Google Drive',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(ms),timestampMs:ms}); renderEverything(); await saveAppDataNow(); showFeedbackMessage('이미지가 Drive에 저장되었습니다.'); }catch(e){ showAlert('이미지 추가 실패: '+(e.message||e)); } };
-    window.updateBookmarkTitle=async(id,newTitle)=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===id); if(b){ b.title=newTitle||null; renderEverything(); scheduleSaveAppData(); } };
-    window.uploadBookmarkPreviewImage=async(bookmarkId,file)=>{ if(!ensureLogin()) return; const b=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(!b) return; const uploaded=await uploadFileToDrive(file,null,'bookmark_preview'); b.previewDriveFileId=uploaded.id; b.previewImageUrl=URL.createObjectURL(file); renderEverything(); await saveAppDataNow(); };
-    window.deleteImage=async(id)=>{ if(!ensureLogin()) return; const row=(window.imageBookmarks||[]).find(b=>b.id===id); if(row){ await deleteDriveFile(row.driveFileId); await deleteDriveFile(row.previewDriveFileId); } window.imageBookmarks=(window.imageBookmarks||[]).filter(b=>b.id!==id); renderEverything(); await saveAppDataNow(); showFeedbackMessage('북마크가 삭제되었습니다.'); };
+    window.addImage=async(file,pageUrl)=>{ if(!ensureLogin()) return; if(typeof file==='string') return window.addRemoteImage(file,pageUrl||file); try{ const url=URL.createObjectURL(file); const ms=nowMs(); const row={id:genId('bm'),url,pageUrl:pageUrl||null,type:'local_pending_image',driveFileId:null,title:null,sourceDomain:pageUrl?extractDomain(pageUrl):'로컬 캐시',bookmarkTabId:window.__bookmarkActiveTabId||'default',timestamp:driveTimestamp(ms),timestampMs:ms,uploadStatus:'pending'}; window.imageBookmarks.push(row); renderEverything(); scheduleSaveNonNotesData(); setDriveStatus('이미지 로컬 반영됨 · Drive 업로드 중...'); uploadFileToDrive(file,null,'bookmark').then(uploaded=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===row.id); if(!b) return; b.driveFileId=uploaded.id; b.type='drive_image'; b.sourceDomain=pageUrl?extractDomain(pageUrl):'Google Drive'; b.uploadStatus='done'; if(uploaded.createdMs){ b.timestamp=driveTimestamp(uploaded.createdMs); b.timestampMs=uploaded.createdMs; } renderEverything(); return saveNonNotesDataNow(); }).then(()=>{ setDriveStatus('이미지 Drive 저장 완료'); }).catch(e=>{ console.error(e); const b=(window.imageBookmarks||[]).find(x=>x.id===row.id); if(b) b.uploadStatus='error'; renderEverything(); setDriveStatus('이미지 Drive 업로드 실패', true); }); }catch(e){ showAlert('이미지 추가 실패: '+(e.message||e)); } };
+    window.updateBookmarkTitle=async(id,newTitle)=>{ const b=(window.imageBookmarks||[]).find(x=>x.id===id); if(b){ b.title=newTitle||null; renderEverything(); scheduleSaveNonNotesData(); } };
+    window.uploadBookmarkPreviewImage=async(bookmarkId,file)=>{ if(!ensureLogin()) return; const b=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(!b) return; b.previewImageUrl=URL.createObjectURL(file); b.previewUploadStatus='pending'; renderEverything(); scheduleSaveNonNotesData(); setDriveStatus('미리보기 로컬 반영됨 · Drive 업로드 중...'); uploadFileToDrive(file,null,'bookmark_preview').then(uploaded=>{ const row=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(!row) return; row.previewDriveFileId=uploaded.id; row.previewUploadStatus='done'; renderEverything(); return saveNonNotesDataNow(); }).then(()=>setDriveStatus('미리보기 Drive 저장 완료')).catch(e=>{ console.error(e); const row=(window.imageBookmarks||[]).find(x=>x.id===bookmarkId); if(row) row.previewUploadStatus='error'; renderEverything(); setDriveStatus('미리보기 Drive 업로드 실패', true); }); };
+    window.deleteImage=async(id)=>{ if(!ensureLogin()) return; const row=(window.imageBookmarks||[]).find(b=>b.id===id); if(row){ await deleteDriveFile(row.driveFileId); await deleteDriveFile(row.previewDriveFileId); } window.imageBookmarks=(window.imageBookmarks||[]).filter(b=>b.id!==id); renderEverything(); scheduleSaveNonNotesData(); showFeedbackMessage('북마크가 삭제되었습니다.'); };
 
     // ===== CLIP 뷰어 =====
     const clipFolderInput=document.getElementById('clipFolderInput');
