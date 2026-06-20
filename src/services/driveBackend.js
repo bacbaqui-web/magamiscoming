@@ -23,6 +23,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
     const DRIVE_WORKMUSIC_FILE = DRIVE_FILES.workmusic || 'workmusic.json';
     const DRIVE_CLIP_FILE = DRIVE_FILES.clipviewer || 'clipviewer.json';
     const DEFAULT_GOOGLE_CLIENT_ID = DRIVE_APP_CONFIG.googleClientId || '';
+    const AUTO_LOGIN_STORAGE_KEY = 'magamiscoming.autoLogin';
     const SAVE_DELAY_MS = 450;
     const NON_NOTES_SAVE_DELAY_MS = 500;
     const NOTES_INPUT_DELAY_MS = 350;
@@ -36,6 +37,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
     const driveSaveIndicator=document.getElementById('driveSaveIndicator');
 
     let googleTokenClient=null;
+    let googleTokenRequestMode='manual';
     let driveAccessToken=null;
     let driveUser=null;
     let driveReady=false;
@@ -50,6 +52,15 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
 
     function getGoogleClientId(){
       return DEFAULT_GOOGLE_CLIENT_ID;
+    }
+    function shouldAutoLogin(){
+      try{ return localStorage.getItem(AUTO_LOGIN_STORAGE_KEY)==='1'; }catch(_){ return false; }
+    }
+    function rememberAutoLogin(){
+      try{ localStorage.setItem(AUTO_LOGIN_STORAGE_KEY,'1'); }catch(_){}
+    }
+    function forgetAutoLogin(){
+      try{ localStorage.removeItem(AUTO_LOGIN_STORAGE_KEY); }catch(_){}
     }
 
     function nowMs(){ return Date.now(); }
@@ -221,15 +232,38 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
         client_id:clientId,
         scope:DRIVE_SCOPE,
         callback:async(resp)=>{
+          const requestMode=googleTokenRequestMode;
+          googleTokenRequestMode='manual';
           if(resp?.access_token){
             driveAccessToken=resp.access_token;
+            rememberAutoLogin();
             await afterGoogleLogin();
           }else{
-            window.showAlert('구글 로그인에 실패했습니다.');
+            if(requestMode==='silent'){
+              hideDriveStatus();
+              console.info('Silent Google login skipped', resp);
+            }else{
+              window.showAlert('구글 로그인에 실패했습니다.');
+            }
           }
+        },
+        error_callback:(err)=>{
+          const requestMode=googleTokenRequestMode;
+          googleTokenRequestMode='manual';
+          if(requestMode==='silent'){
+            hideDriveStatus();
+            console.info('Silent Google login unavailable', err);
+            return;
+          }
+          window.showAlert('구글 로그인 창을 열지 못했습니다. 팝업 차단 설정을 확인해 주세요.');
         }
       });
       return true;
+    }
+
+    function requestGoogleAccessToken({prompt='consent', mode='manual'}={}){
+      googleTokenRequestMode=mode;
+      googleTokenClient.requestAccessToken({prompt});
     }
 
     async function doSignIn(){
@@ -237,7 +271,17 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
         const ok=await setupTokenClient();
         if(!ok) return;
       }
-      googleTokenClient.requestAccessToken({prompt: driveAccessToken ? '' : 'consent'});
+      requestGoogleAccessToken({prompt: driveAccessToken ? '' : 'consent', mode:'manual'});
+    }
+
+    async function tryAutoSignIn(){
+      if(!shouldAutoLogin() || driveAccessToken) return;
+      if(!googleTokenClient){
+        const ok=await setupTokenClient();
+        if(!ok) return;
+      }
+      setDriveBusy('Google 로그인 확인 중...');
+      requestGoogleAccessToken({prompt:'', mode:'silent'});
     }
 
     async function driveFetch(url, options={}){
@@ -680,6 +724,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
 
     signInBtn.onclick=()=>doSignIn();
     signOutBtn.onclick=()=>{
+      forgetAutoLogin();
       driveAccessToken=null; driveReady=false; driveUser=null; driveFolders=null; appDataFileId=null;
       updateProfileUI(null); signOutBtn.classList.add('hidden'); signInBtn.classList.remove('hidden');
       window.isAuthReady=true;
@@ -823,6 +868,7 @@ export function initDriveBackend({ initCalendar, initNotes, initBookmarks, initW
       await setupTokenClient();
       if(!driveAccessToken){
         window.setClipStatus?.('');
+        await tryAutoSignIn();
       }
     },500);
 
