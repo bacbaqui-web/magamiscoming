@@ -2,6 +2,7 @@ import {
   applyStoredAppData,
   buildAppData as buildCurrentAppData,
   getDefaultAppData,
+  getDefaultPomodoroState,
   mergeDriveParts,
   normalizeTabList,
   splitAppDataForDrive
@@ -18,7 +19,8 @@ export function initCloudSyncBackend({
   initNotes,
   initBookmarks,
   initWorkMusic,
-  initClipViewer
+  initClipViewer,
+  initPomodoro
 }) {
   // ===== Hybrid Firebase metadata + Google Drive file backend =====
   // Firebase가 켜진 상태에서는 앱 메타데이터를 Firestore에만 저장합니다.
@@ -45,6 +47,7 @@ export function initCloudSyncBackend({
   const DRIVE_CALENDAR_FILE = DRIVE_FILES.calendar || 'calendar.json';
   const DRIVE_BOOKMARKS_FILE = DRIVE_FILES.bookmarks || 'bookmarks.json';
   const DRIVE_WORKMUSIC_FILE = DRIVE_FILES.workmusic || 'workmusic.json';
+  const DRIVE_POMODORO_FILE = DRIVE_FILES.pomodoro || 'pomodoro.json';
   const DRIVE_CLIP_FILE = DRIVE_FILES.clipviewer || 'clipviewer.json';
   const DEFAULT_GOOGLE_CLIENT_ID = DRIVE_APP_CONFIG.googleClientId || '';
   const AUTO_LOGIN_STORAGE_KEY = 'magamiscoming.autoLogin';
@@ -212,6 +215,7 @@ export function initCloudSyncBackend({
     if (typeof window.renderCalendar === 'function') window.renderCalendar();
     if (typeof window.renderImageBookmarks === 'function') window.renderImageBookmarks();
     if (typeof window.renderWorkMusicAll === 'function') window.renderWorkMusicAll();
+    if (typeof window.renderPomodoroUI === 'function') window.renderPomodoroUI();
     if (typeof window.renderNotesUI === 'function') window.renderNotesUI();
     if (typeof window.renderBookmarkTabsUI === 'function') window.renderBookmarkTabsUI();
   }
@@ -405,6 +409,7 @@ export function initCloudSyncBackend({
           saveNotesToDrive(folders.notes.id, folders.system.id, parts.notes),
           saveJsonToDrive(folders.system.id, DRIVE_BOOKMARKS_FILE, parts.bookmarks),
           saveJsonToDrive(folders.system.id, DRIVE_WORKMUSIC_FILE, parts.workmusic),
+          saveJsonToDrive(folders.system.id, DRIVE_POMODORO_FILE, parts.pomodoro),
           saveJsonToDrive(folders.system.id, DRIVE_CLIP_FILE, parts.clipviewer)
         ]);
         await cleanupLegacyJsonFiles();
@@ -435,6 +440,7 @@ export function initCloudSyncBackend({
           saveJsonToDrive(folders.system.id, DRIVE_CALENDAR_FILE, parts.calendar),
           saveJsonToDrive(folders.system.id, DRIVE_BOOKMARKS_FILE, parts.bookmarks),
           saveJsonToDrive(folders.system.id, DRIVE_WORKMUSIC_FILE, parts.workmusic),
+          saveJsonToDrive(folders.system.id, DRIVE_POMODORO_FILE, parts.pomodoro),
           saveJsonToDrive(folders.system.id, DRIVE_CLIP_FILE, parts.clipviewer)
         ]);
         await cleanupLegacyJsonFiles();
@@ -572,6 +578,7 @@ export function initCloudSyncBackend({
         (legacyWorkmusic
           ? await loadJsonFromDrive(legacyWorkmusic.id, DRIVE_WORKMUSIC_FILE)
           : null),
+      pomodoro: await loadJsonFromDrive(folders.system.id, DRIVE_POMODORO_FILE),
       clipviewer:
         (await loadJsonFromDrive(folders.system.id, DRIVE_CLIP_FILE)) ||
         (legacyClipviewer ? await loadJsonFromDrive(legacyClipviewer.id, DRIVE_CLIP_FILE) : null)
@@ -672,6 +679,7 @@ export function initCloudSyncBackend({
         (legacyWorkmusic
           ? await loadJsonFromDrive(legacyWorkmusic.id, DRIVE_WORKMUSIC_FILE)
           : null),
+      pomodoro: await loadJsonFromDrive(folders.system.id, DRIVE_POMODORO_FILE),
       clipviewer:
         (await loadJsonFromDrive(folders.system.id, DRIVE_CLIP_FILE)) ||
         (legacyClipviewer ? await loadJsonFromDrive(legacyClipviewer.id, DRIVE_CLIP_FILE) : null)
@@ -765,6 +773,7 @@ export function initCloudSyncBackend({
     window.__workMusicTabList = [{ id: 'default', name: '기본', order: 0 }];
     window.__workMusicActiveTabId = 'default';
     window.workMusicSongs = [];
+    window.__pomodoroState = getDefaultPomodoroState();
     renderEverything();
     window.clearClipLocal?.();
     window.showClipMessage?.(
@@ -874,6 +883,7 @@ export function initCloudSyncBackend({
   initNotes();
   initBookmarks();
   initWorkMusic?.();
+  initPomodoro?.();
   initClipViewer?.({
     ensureLogin,
     isDriveLoggedIn: () => !!driveAccessToken,

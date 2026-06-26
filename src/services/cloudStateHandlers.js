@@ -230,6 +230,11 @@ export function installCloudStateHandlers({
     scheduleSaveNonNotesData();
   };
 
+  window.cloudSavePomodoro = async () => {
+    if (!ensureLogin()) return;
+    scheduleSaveNonNotesData();
+  };
+
   window.deleteTask = async () => {
     if (!ensureLogin() || !window.currentTask?.id) {
       window.closeTaskModal?.();

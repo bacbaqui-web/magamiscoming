@@ -15,6 +15,66 @@ export function driveTimestamp(ms) {
   return { toMillis: () => Number(ms || 0) };
 }
 
+export function getDefaultPomodoroState() {
+  return {
+    mode: 'focus',
+    status: 'idle',
+    startedAt: null,
+    endAt: null,
+    remainingMs: 25 * 60 * 1000,
+    completedFocusCount: 0,
+    completedToday: 0,
+    completedDate: '',
+    settings: {
+      focusMinutes: 25,
+      shortBreakMinutes: 5,
+      longBreakMinutes: 15,
+      longBreakEvery: 4
+    }
+  };
+}
+
+export function normalizePomodoroState(state) {
+  const fallback = getDefaultPomodoroState();
+  const src = state && typeof state === 'object' ? state : {};
+  const settings = src.settings && typeof src.settings === 'object' ? src.settings : {};
+  const focusMinutes = Math.max(1, Math.min(180, Number(settings.focusMinutes || 25)));
+  const shortBreakMinutes = Math.max(1, Math.min(60, Number(settings.shortBreakMinutes || 5)));
+  const longBreakMinutes = Math.max(1, Math.min(120, Number(settings.longBreakMinutes || 15)));
+  const longBreakEvery = Math.max(1, Math.min(12, Number(settings.longBreakEvery || 4)));
+  const mode = ['focus', 'shortBreak', 'longBreak'].includes(src.mode) ? src.mode : fallback.mode;
+  const status = ['idle', 'running', 'paused'].includes(src.status) ? src.status : fallback.status;
+  const durationMsByMode = {
+    focus: focusMinutes * 60 * 1000,
+    shortBreak: shortBreakMinutes * 60 * 1000,
+    longBreak: longBreakMinutes * 60 * 1000
+  };
+  const remainingMs = Math.max(
+    0,
+    Math.min(
+      durationMsByMode[mode],
+      Number.isFinite(Number(src.remainingMs)) ? Number(src.remainingMs) : durationMsByMode[mode]
+    )
+  );
+
+  return {
+    mode,
+    status,
+    startedAt: Number.isFinite(Number(src.startedAt)) ? Number(src.startedAt) : null,
+    endAt: Number.isFinite(Number(src.endAt)) ? Number(src.endAt) : null,
+    remainingMs,
+    completedFocusCount: Math.max(0, Number(src.completedFocusCount || 0)),
+    completedToday: Math.max(0, Number(src.completedToday || 0)),
+    completedDate: String(src.completedDate || ''),
+    settings: {
+      focusMinutes,
+      shortBreakMinutes,
+      longBreakMinutes,
+      longBreakEvery
+    }
+  };
+}
+
 export function getDefaultAppData() {
   return {
     version: 1,
@@ -36,6 +96,7 @@ export function getDefaultAppData() {
       workMusicIsMuted: false,
       workMusicTabList: [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: 'default',
+      pomodoro: getDefaultPomodoroState(),
       clipPages: []
     }
   };
@@ -57,6 +118,7 @@ export function collectState(currentAppData = getDefaultAppData()) {
     workMusicIsMuted: !!window.workMusicIsMuted,
     workMusicTabList: window.__workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
     workMusicActiveTabId: window.__workMusicActiveTabId || 'default',
+    pomodoro: normalizePomodoroState(window.__pomodoroState),
     clipPages: (currentAppData.state && currentAppData.state.clipPages) || []
   };
 }
@@ -117,6 +179,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
   window.workMusicVolume = Number(st.workMusicVolume ?? 80);
   window.workMusicLastVolume = Number(st.workMusicLastVolume ?? 80);
   window.workMusicIsMuted = !!st.workMusicIsMuted;
+  window.__pomodoroState = normalizePomodoroState(st.pomodoro);
   revokeAllDriveImageUrls();
   window.imageBookmarks = (
     Array.isArray(currentAppData.imageBookmarks) ? currentAppData.imageBookmarks : []
@@ -159,6 +222,10 @@ export function splitAppDataForDrive(data) {
       workMusicActiveTabId: st.workMusicActiveTabId || 'default',
       updatedAt: data.updatedAt || new Date().toISOString()
     },
+    pomodoro: {
+      ...normalizePomodoroState(st.pomodoro),
+      updatedAt: data.updatedAt || new Date().toISOString()
+    },
     clipviewer: {
       clipPages: st.clipPages || [],
       updatedAt: data.updatedAt || new Date().toISOString()
@@ -191,6 +258,9 @@ export function mergeDriveParts(parts) {
     base.state.workMusicIsMuted = !!parts.workmusic.workMusicIsMuted;
     base.state.workMusicTabList = parts.workmusic.workMusicTabList || base.state.workMusicTabList;
     base.state.workMusicActiveTabId = parts.workmusic.workMusicActiveTabId || 'default';
+  }
+  if (parts.pomodoro) {
+    base.state.pomodoro = normalizePomodoroState(parts.pomodoro);
   }
   if (parts.clipviewer) {
     base.state.clipPages = parts.clipviewer.clipPages || [];

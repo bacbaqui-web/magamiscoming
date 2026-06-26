@@ -40,6 +40,22 @@
           <path d="M3 10h18" />
         </svg>
       </button>
+      <button class="notepad-tab" data-tab="pomodoro" title="뽀모도로" aria-label="뽀모도로">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M10 2h4" />
+          <path d="M12 14V8" />
+          <circle cx="12" cy="14" r="8" />
+        </svg>
+      </button>
       <button class="notepad-tab" data-tab="notes" title="메모" aria-label="메모">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -190,6 +206,57 @@
         "
       >
         <div id="agendaList" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <div id="pomodoro-section" class="section-card tab-content">
+      <div class="pomodoro-panel">
+        <div class="pomodoro-mode-row" aria-label="뽀모도로 모드">
+          <button class="pomodoro-mode-btn active" type="button" data-mode="focus">집중</button>
+          <button class="pomodoro-mode-btn" type="button" data-mode="shortBreak">짧은 휴식</button>
+          <button class="pomodoro-mode-btn" type="button" data-mode="longBreak">긴 휴식</button>
+        </div>
+        <div class="pomodoro-timer-card">
+          <div class="pomodoro-ring" id="pomodoroRing">
+            <div class="pomodoro-time" id="pomodoroTime">25:00</div>
+            <div class="pomodoro-label" id="pomodoroLabel">집중</div>
+          </div>
+          <div class="pomodoro-stats">
+            <div>
+              <span>오늘</span>
+              <strong id="pomodoroTodayCount">0</strong>
+            </div>
+            <div>
+              <span>연속</span>
+              <strong id="pomodoroCycleCount">0/4</strong>
+            </div>
+          </div>
+          <div class="pomodoro-controls">
+            <button id="pomodoroStartPauseBtn" class="pomodoro-primary-btn" type="button">
+              시작
+            </button>
+            <button id="pomodoroResetBtn" class="pomodoro-icon-btn" type="button">리셋</button>
+            <button id="pomodoroSkipBtn" class="pomodoro-icon-btn" type="button">다음</button>
+          </div>
+        </div>
+        <div class="pomodoro-settings">
+          <label>
+            <span>집중</span>
+            <input id="pomodoroFocusInput" type="number" min="1" max="180" step="1" value="25" />
+          </label>
+          <label>
+            <span>짧은 휴식</span>
+            <input id="pomodoroShortInput" type="number" min="1" max="60" step="1" value="5" />
+          </label>
+          <label>
+            <span>긴 휴식</span>
+            <input id="pomodoroLongInput" type="number" min="1" max="120" step="1" value="15" />
+          </label>
+          <label>
+            <span>긴 휴식 주기</span>
+            <input id="pomodoroEveryInput" type="number" min="1" max="12" step="1" value="4" />
+          </label>
+        </div>
       </div>
     </div>
 
@@ -1024,6 +1091,7 @@
       import { initBookmarks } from './src/features/bookmarks.js';
       import { initWorkMusic } from './src/features/workmusic.js';
       import { initClipViewer } from './src/features/clipviewer.js';
+      import { initPomodoro } from './src/features/pomodoro.js';
 
       import { initCloudSyncBackend } from './src/services/cloudSyncBackend.js';
 
@@ -1032,7 +1100,8 @@
         initNotes,
         initBookmarks,
         initWorkMusic: () => initWorkMusic({ showTab: window.showTab }),
-        initClipViewer
+        initClipViewer,
+        initPomodoro
       });
     </script>
   </body>

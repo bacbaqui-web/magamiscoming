@@ -266,6 +266,7 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
         setDocument('calendar', 'main', parts.calendar),
         saveBookmarksPart(parts.bookmarks),
         saveWorkmusicPart(parts.workmusic),
+        setDocument('pomodoro', 'main', parts.pomodoro),
         setDocument('clipviewer', 'main', parts.clipviewer)
       );
     }
@@ -282,6 +283,7 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
       parts.notes = await loadNotesPart();
       parts.bookmarks = await loadBookmarksPart();
       parts.workmusic = await loadWorkmusicPart();
+      parts.pomodoro = await getDocument('pomodoro', 'main');
       parts.clipviewer = await getDocument('clipviewer', 'main');
     }
     return Object.values(parts).some(Boolean) ? parts : null;

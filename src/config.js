@@ -30,6 +30,7 @@
         oldNotes: 'notes.json',
         bookmarks: 'bookmarks.json',
         workmusic: 'workmusic.json',
+        pomodoro: 'pomodoro.json',
         clipviewer: 'clipviewer.json'
       }
     }
