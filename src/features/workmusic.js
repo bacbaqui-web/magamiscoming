@@ -53,6 +53,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicPlaybackWatchToken = 0;
   let workMusicFailureSkipTimer = null;
   let workMusicAutoSkipSession = null;
+  let workMusicAutoSkipPending = false;
   window.workMusicCurrentPlayOrder = window.workMusicCurrentPlayOrder || [];
 
   const showFeedbackMessage = (message) => window.showFeedbackMessage?.(message);
@@ -508,6 +509,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function clearWorkMusicFailureSkipTimer() {
     clearTimeout(workMusicFailureSkipTimer);
     workMusicFailureSkipTimer = null;
+    workMusicAutoSkipPending = false;
   }
 
   function resetWorkMusicAutoSkipSession() {
@@ -624,6 +626,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function handleWorkMusicPlaybackFailure(index = getWorkMusicCurrentPlayerIndex(), code = '') {
     const songs = getActiveWorkMusicSongs();
     if (!songs.length) return;
+    clearWorkMusicFailureSkipTimer();
     const failedIndex =
       index >= 0 && index < songs.length ? index : getWorkMusicCurrentPlayerIndex();
     const failedSong = songs[failedIndex];
@@ -633,24 +636,26 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicCurrentIndex = failedIndex;
     window.workMusicIsPlaying = false;
     markWorkMusicPlaybackError(failedIndex, code);
+    const nextIndex = getNextWorkMusicIndexAfterFailure(failedIndex);
+    workMusicAutoSkipPending = nextIndex >= 0;
     renderWorkMusicPlayButton();
     updateWorkMusicRemoteUI();
     renderWorkMusic();
 
-    const nextIndex = getNextWorkMusicIndexAfterFailure(failedIndex);
     if (nextIndex < 0) {
       resetWorkMusicAutoSkipSession();
+      workMusicAutoSkipPending = false;
       showFeedbackMessage('재생 가능한 다음 곡을 찾지 못했습니다.');
       return;
     }
 
     const failedTitle = failedSong.title || `YouTube ${failedSong.videoId || ''}`;
     showFeedbackMessage(`${failedTitle} 재생 실패, 다음 곡으로 넘어갑니다.`);
-    clearWorkMusicFailureSkipTimer();
     const expectedTabId = getActiveWorkMusicTabId();
     const expectedSongKey = getWorkMusicSongKey(failedSong, failedIndex);
     workMusicFailureSkipTimer = setTimeout(() => {
       workMusicFailureSkipTimer = null;
+      workMusicAutoSkipPending = false;
       if (getActiveWorkMusicTabId() !== expectedTabId) return;
       const currentSongs = getActiveWorkMusicSongs();
       const currentSong = currentSongs[failedIndex];
@@ -1013,6 +1018,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (
       window.workMusicMode === 'random' &&
       !window.workMusicIsPlaying &&
+      !workMusicAutoSkipPending &&
       Number.isInteger(displayOrder[0]) &&
       displayOrder[0] !== Number(window.workMusicCurrentIndex || 0)
     ) {
