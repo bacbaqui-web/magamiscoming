@@ -48,7 +48,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicIframe = null;
   let workMusicPlayer = null;
   let workMusicSyncTimer = null;
-  let workMusicDurationSaveTimer = null;
   let workMusicPlaybackWatchTimer = null;
   let workMusicPlaybackWatchToken = 0;
   let workMusicFailureSkipTimer = null;
@@ -426,10 +425,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         changed = true;
       }
     }
-    if (changed) {
-      await window.cloudSaveWorkMusic?.();
-      renderWorkMusic();
-    }
+    if (changed) renderWorkMusic();
   }
 
   async function fillMissingWorkMusicDurations() {
@@ -444,10 +440,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         changed = true;
       }
     }
-    if (changed) {
-      await window.cloudSaveWorkMusic?.();
-      renderWorkMusic();
-    }
+    if (changed) renderWorkMusic();
   }
 
   function rememberWorkMusicDuration(index, seconds) {
@@ -457,8 +450,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (!song || !n || song.durationSeconds) return;
     song.durationSeconds = n;
     renderWorkMusic();
-    clearTimeout(workMusicDurationSaveTimer);
-    workMusicDurationSaveTimer = setTimeout(() => window.cloudSaveWorkMusic?.(), 800);
   }
 
   function getWorkMusicNextIndex(step = 1) {
@@ -590,7 +581,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     delete song.playbackErrorReason;
     delete song.playbackErrorCode;
     delete song.playbackErrorAt;
-    window.cloudSaveWorkMusic?.();
     return true;
   }
 
@@ -818,7 +808,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       ) {
         window.workMusicCurrentIndex = mapped;
         renderWorkMusic();
-        window.cloudSaveWorkMusic?.();
       }
       if (
         Number.isInteger(Number(window.workMusicCurrentIndex)) &&
@@ -956,7 +945,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     renderWorkMusic();
     updateWorkMusicRemoteUI();
     renderWorkMusicIframe(index, true);
-    window.cloudSaveWorkMusic?.();
   }
 
   function toggleWorkMusicPlay() {

@@ -2110,7 +2110,8 @@ body {
 .drive-save-indicator {
   position: fixed;
   right: 14px;
-  bottom: 14px;
+  top: 14px;
+  bottom: auto;
   z-index: 1200;
   background: rgba(0, 0, 0, 0.78);
   border: 1px solid #444;
@@ -2120,18 +2121,11 @@ body {
   color: #ddd;
   display: none;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  max-width: calc(100vw - 28px);
+  pointer-events: none;
 }
 .drive-save-indicator.show {
   display: block;
-}
-.drive-save-indicator.in-notes-editor {
-  position: absolute;
-  top: 22px;
-  right: 12px;
-  bottom: auto;
-  z-index: 10;
-  max-width: calc(100% - 24px);
-  pointer-events: none;
 }
 @media (max-width: 768px) {
   .pc-only {

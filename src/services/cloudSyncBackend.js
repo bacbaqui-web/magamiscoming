@@ -306,7 +306,7 @@ export function initCloudSyncBackend({
       if (!ok) return;
     }
     autoSignInAttempting = true;
-    setDriveBusy('Google Drive 데이터 확인 중...');
+    setDriveBusy('Google 로그인 확인 중...');
     requestGoogleAccessToken({ prompt: '', mode: 'silent' });
   }
 

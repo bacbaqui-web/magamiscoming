@@ -1018,7 +1018,6 @@
       const tabButtons = document.querySelectorAll('#main-tabs .notepad-tab');
       const tabContents = document.querySelectorAll('.tab-content');
       const driveSaveIndicator = document.getElementById('driveSaveIndicator');
-      const notesEditorFrame = document.getElementById('notesEditorFrame');
       // 유틸리티 함수
       const showFeedbackMessage = (message) => {
         const el = document.createElement('div');
@@ -1069,13 +1068,10 @@
         if (btn) btn.classList.add('active');
         syncDriveSaveIndicatorPlacement(tabId);
       }
-      function syncDriveSaveIndicatorPlacement(tabId) {
+      function syncDriveSaveIndicatorPlacement() {
         if (!driveSaveIndicator) return;
-        const useNotesPosition = tabId === 'notes' && notesEditorFrame;
-        driveSaveIndicator.classList.toggle('in-notes-editor', Boolean(useNotesPosition));
-        const nextParent = useNotesPosition ? notesEditorFrame : document.body;
-        if (driveSaveIndicator.parentElement !== nextParent) {
-          nextParent.appendChild(driveSaveIndicator);
+        if (driveSaveIndicator.parentElement !== document.body) {
+          document.body.appendChild(driveSaveIndicator);
         }
       }
       window.showTab = showTab;
