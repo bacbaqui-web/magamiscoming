@@ -64,7 +64,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const showAlert = (message) => window.showAlert?.(message);
   const WORK_MUSIC_PLAYBACK_TIMEOUT_MS = 12000;
   const WORK_MUSIC_FAILURE_SKIP_DELAY_MS = 1200;
-  const WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS = 5;
+  const WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS = 10;
   const WORK_MUSIC_PLAYBACK_ERROR_LABELS = {
     2: '잘못된 링크',
     5: '재생 오류',

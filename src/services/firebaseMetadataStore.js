@@ -222,13 +222,14 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
   }
 
   async function saveWorkmusicPart(workmusicPart) {
-    const rows = (workmusicPart?.workMusicSongs || []).map((song) => ({
+    const songs = (workmusicPart?.workMusicSongs || []).map((song) => ({
       ...song,
-      id: song.id || genId('wm')
+      id: String(song.id || genId('wm'))
     }));
-    await setDocument('workmusic', 'meta', {
-      version: 1,
+    await setDocument('workmusic', 'main', {
+      version: 2,
       updatedAt: workmusicPart?.updatedAt || new Date().toISOString(),
+      workMusicSongs: songs,
       workMusicMode: workmusicPart?.workMusicMode || 'sequential',
       workMusicCurrentIndex: Number(workmusicPart?.workMusicCurrentIndex || 0),
       workMusicVolume: Number(workmusicPart?.workMusicVolume ?? 80),
@@ -240,10 +241,24 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
       ],
       workMusicActiveTabId: workmusicPart?.workMusicActiveTabId || 'default'
     });
-    await syncCollection('workmusicSongs', rows, (song) => song.id);
   }
 
   async function loadWorkmusicPart() {
+    const main = await getDocument('workmusic', 'main');
+    if (main) {
+      return {
+        workMusicSongs: Array.isArray(main.workMusicSongs) ? main.workMusicSongs : [],
+        workMusicMode: main.workMusicMode || 'sequential',
+        workMusicCurrentIndex: Number(main.workMusicCurrentIndex || 0),
+        workMusicVolume: Number(main.workMusicVolume ?? 80),
+        workMusicLastVolume: Number(main.workMusicLastVolume ?? 80),
+        workMusicIsMuted: !!main.workMusicIsMuted,
+        workMusicSeamlessEnabled: !!main.workMusicSeamlessEnabled,
+        workMusicTabList: main.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
+        workMusicActiveTabId: main.workMusicActiveTabId || 'default',
+        updatedAt: main.updatedAt || new Date().toISOString()
+      };
+    }
     const meta = await getDocument('workmusic', 'meta');
     if (!meta) return null;
     return {
