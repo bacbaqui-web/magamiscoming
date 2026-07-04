@@ -773,6 +773,7 @@ export function initCloudSyncBackend({
     window.__workMusicTabList = [{ id: 'default', name: '기본', order: 0 }];
     window.__workMusicActiveTabId = 'default';
     window.workMusicSongs = [];
+    window.workMusicSeamlessEnabled = false;
     window.__pomodoroState = getDefaultPomodoroState();
     renderEverything();
     window.clearClipLocal?.();

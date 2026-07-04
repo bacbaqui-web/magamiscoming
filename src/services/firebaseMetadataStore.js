@@ -234,6 +234,7 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
       workMusicVolume: Number(workmusicPart?.workMusicVolume ?? 80),
       workMusicLastVolume: Number(workmusicPart?.workMusicLastVolume ?? 80),
       workMusicIsMuted: !!workmusicPart?.workMusicIsMuted,
+      workMusicSeamlessEnabled: !!workmusicPart?.workMusicSeamlessEnabled,
       workMusicTabList: workmusicPart?.workMusicTabList || [
         { id: 'default', name: '기본', order: 0 }
       ],
@@ -252,6 +253,7 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
       workMusicVolume: Number(meta.workMusicVolume ?? 80),
       workMusicLastVolume: Number(meta.workMusicLastVolume ?? 80),
       workMusicIsMuted: !!meta.workMusicIsMuted,
+      workMusicSeamlessEnabled: !!meta.workMusicSeamlessEnabled,
       workMusicTabList: meta.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: meta.workMusicActiveTabId || 'default',
       updatedAt: meta.updatedAt || new Date().toISOString()

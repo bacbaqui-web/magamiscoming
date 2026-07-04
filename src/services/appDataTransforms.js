@@ -94,6 +94,7 @@ export function getDefaultAppData() {
       workMusicVolume: 80,
       workMusicLastVolume: 80,
       workMusicIsMuted: false,
+      workMusicSeamlessEnabled: false,
       workMusicTabList: [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: 'default',
       pomodoro: getDefaultPomodoroState(),
@@ -116,6 +117,7 @@ export function collectState(currentAppData = getDefaultAppData()) {
     workMusicVolume: Number(window.workMusicVolume ?? 80),
     workMusicLastVolume: Number(window.workMusicLastVolume ?? 80),
     workMusicIsMuted: !!window.workMusicIsMuted,
+    workMusicSeamlessEnabled: !!window.workMusicSeamlessEnabled,
     workMusicTabList: window.__workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
     workMusicActiveTabId: window.__workMusicActiveTabId || 'default',
     pomodoro: normalizePomodoroState(window.__pomodoroState),
@@ -179,6 +181,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
   window.workMusicVolume = Number(st.workMusicVolume ?? 80);
   window.workMusicLastVolume = Number(st.workMusicLastVolume ?? 80);
   window.workMusicIsMuted = !!st.workMusicIsMuted;
+  window.workMusicSeamlessEnabled = !!st.workMusicSeamlessEnabled;
   window.__pomodoroState = normalizePomodoroState(st.pomodoro);
   revokeAllDriveImageUrls();
   window.imageBookmarks = (
@@ -218,6 +221,7 @@ export function splitAppDataForDrive(data) {
       workMusicVolume: Number(st.workMusicVolume ?? 80),
       workMusicLastVolume: Number(st.workMusicLastVolume ?? 80),
       workMusicIsMuted: !!st.workMusicIsMuted,
+      workMusicSeamlessEnabled: !!st.workMusicSeamlessEnabled,
       workMusicTabList: st.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: st.workMusicActiveTabId || 'default',
       updatedAt: data.updatedAt || new Date().toISOString()
@@ -256,6 +260,7 @@ export function mergeDriveParts(parts) {
     base.state.workMusicVolume = Number(parts.workmusic.workMusicVolume ?? 80);
     base.state.workMusicLastVolume = Number(parts.workmusic.workMusicLastVolume ?? 80);
     base.state.workMusicIsMuted = !!parts.workmusic.workMusicIsMuted;
+    base.state.workMusicSeamlessEnabled = !!parts.workmusic.workMusicSeamlessEnabled;
     base.state.workMusicTabList = parts.workmusic.workMusicTabList || base.state.workMusicTabList;
     base.state.workMusicActiveTabId = parts.workmusic.workMusicActiveTabId || 'default';
   }

@@ -1228,6 +1228,31 @@ textarea#notesArea::-webkit-resizer {
   color: #777;
   font-size: 0.9rem;
 }
+#workMusicPlayerBox.seamless {
+  position: relative;
+  display: block;
+}
+#workMusicPlayerBox .workmusic-youtube-slot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#workMusicPlayerBox .workmusic-youtube-slot.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+}
+#workMusicPlayerBox .workmusic-youtube-slot.standby {
+  z-index: 1;
+}
+#workMusicPlayerBox .workmusic-youtube-slot > div {
+  width: 100%;
+  height: 100%;
+}
 #workMusicPlayerBox iframe {
   width: 100%;
   height: 100%;
@@ -1272,6 +1297,12 @@ textarea#notesArea::-webkit-resizer {
   color: #777;
 }
 #workMusicModeBtn.random {
+  color: #fff;
+}
+#workMusicSeamlessBtn {
+  color: #777;
+}
+#workMusicSeamlessBtn.enabled {
   color: #fff;
 }
 .workmusic-volume {

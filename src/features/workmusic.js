@@ -15,6 +15,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicLastVolume ??
     (Number(window.workMusicVolume) > 0 ? Number(window.workMusicVolume) : 80);
   window.workMusicIsMuted = window.workMusicIsMuted || Number(window.workMusicVolume) === 0;
+  window.workMusicSeamlessEnabled = window.workMusicSeamlessEnabled ?? false;
   window.workMusicIsPlaying = window.workMusicIsPlaying || false;
   window.currentWorkMusicSettingIndex = null;
 
@@ -24,6 +25,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicPlayBtn = document.getElementById('workMusicPlayBtn');
   const workMusicNextBtn = document.getElementById('workMusicNextBtn');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
+  const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
   const workMusicMuteBtn = document.getElementById('workMusicMuteBtn');
   const workMusicVolumeRange = document.getElementById('workMusicVolumeRange');
   const workMusicVolumePercent = document.getElementById('workMusicVolumePercent');
@@ -53,12 +55,16 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicFailureSkipTimer = null;
   let workMusicAutoSkipSession = null;
   let workMusicAutoSkipPending = false;
+  let workMusicSeamless = null;
+  let workMusicSeamlessMonitorTimer = null;
+  let workMusicSeamlessFadeTimer = null;
   window.workMusicCurrentPlayOrder = window.workMusicCurrentPlayOrder || [];
 
   const showFeedbackMessage = (message) => window.showFeedbackMessage?.(message);
   const showAlert = (message) => window.showAlert?.(message);
   const WORK_MUSIC_PLAYBACK_TIMEOUT_MS = 12000;
   const WORK_MUSIC_FAILURE_SKIP_DELAY_MS = 1200;
+  const WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS = 5;
   const WORK_MUSIC_PLAYBACK_ERROR_LABELS = {
     2: '잘못된 링크',
     5: '재생 오류',
@@ -159,6 +165,14 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         window.workMusicIsPlaying ? '일시정지' : '재생'
       );
     }
+  }
+
+  function renderWorkMusicSeamlessButton() {
+    if (!workMusicSeamlessBtn) return;
+    const enabled = !!window.workMusicSeamlessEnabled;
+    workMusicSeamlessBtn.classList.toggle('enabled', enabled);
+    workMusicSeamlessBtn.title = enabled ? '이어듣기 켜짐' : '이어듣기 꺼짐';
+    workMusicSeamlessBtn.setAttribute('aria-label', enabled ? '이어듣기 켜짐' : '이어듣기 꺼짐');
   }
 
   function updateWorkMusicRemoteUI() {
@@ -481,6 +495,24 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     return songs.map((_, offset) => (startIndex + offset) % songs.length);
   }
 
+  function getNextWorkMusicIndexFromOrder(currentIndex) {
+    const songs = getActiveWorkMusicSongs();
+    if (songs.length <= 1) return -1;
+    const rawOrder = window.workMusicCurrentPlayOrder?.length
+      ? window.workMusicCurrentPlayOrder
+      : getWorkMusicPlayOrder(currentIndex);
+    const order = rawOrder.filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < songs.length);
+    if (!order.length) return -1;
+    const start = Math.max(0, order.indexOf(currentIndex));
+    for (let offset = 1; offset <= order.length; offset += 1) {
+      const idx = order[(start + offset) % order.length];
+      if (idx === currentIndex) continue;
+      if (songs[idx]?.playbackStatus === 'error') continue;
+      return idx;
+    }
+    return -1;
+  }
+
   function getWorkMusicSongKey(song, index) {
     const activeTabId = song?.workMusicTabId || getActiveWorkMusicTabId();
     return String(song?.id || `${activeTabId}:${song?.videoId || index}`);
@@ -712,6 +744,64 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     }
   }
 
+  function getWorkMusicPlayerVolume() {
+    const raw = Math.max(0, Math.min(100, Number(window.workMusicVolume ?? 80)));
+    return !!window.workMusicIsMuted || raw === 0 ? 0 : raw;
+  }
+
+  function setWorkMusicPlayerVolume(player, volume) {
+    if (!player || typeof player.setVolume !== 'function') return;
+    const nextVolume = Math.max(0, Math.min(100, Math.round(Number(volume || 0))));
+    try {
+      player.setVolume(nextVolume);
+      if (nextVolume <= 0 && typeof player.mute === 'function') player.mute();
+      if (nextVolume > 0 && typeof player.unMute === 'function') player.unMute();
+    } catch (err) {
+      console.warn('work music volume apply failed', err);
+    }
+  }
+
+  function clearWorkMusicSeamlessTimers() {
+    clearInterval(workMusicSeamlessMonitorTimer);
+    clearInterval(workMusicSeamlessFadeTimer);
+    workMusicSeamlessMonitorTimer = null;
+    workMusicSeamlessFadeTimer = null;
+    if (workMusicSeamless) {
+      workMusicSeamless.transitioning = false;
+      workMusicSeamless.transitionStarted = false;
+    }
+  }
+
+  function destroyWorkMusicSeamlessPlayers() {
+    clearWorkMusicSeamlessTimers();
+    if (!workMusicSeamless?.players) {
+      workMusicSeamless = null;
+      return;
+    }
+    Object.values(workMusicSeamless.players).forEach((player) => {
+      if (player && typeof player.destroy === 'function') {
+        try {
+          player.destroy();
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    });
+    workMusicSeamless = null;
+  }
+
+  function pauseWorkMusicSeamlessPlayers() {
+    if (!workMusicSeamless?.players) return;
+    clearWorkMusicSeamlessTimers();
+    Object.values(workMusicSeamless.players).forEach((player) => {
+      try {
+        player?.pauseVideo?.();
+      } catch (_) {
+        /* ignore */
+      }
+    });
+  }
+
   function renderWorkMusicVolumeUI() {
     const raw = Math.max(0, Math.min(100, Number(window.workMusicVolume ?? 80)));
     const muted = !!window.workMusicIsMuted || raw === 0;
@@ -733,12 +823,17 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   }
 
   function applyWorkMusicVolume() {
-    const raw = Math.max(0, Math.min(100, Number(window.workMusicVolume ?? 80)));
-    const muted = !!window.workMusicIsMuted || raw === 0;
-    const playerVolume = muted ? 0 : raw;
     renderWorkMusicVolumeUI();
+    const playerVolume = getWorkMusicPlayerVolume();
+    if (workMusicSeamless?.players && !workMusicSeamless.transitioning) {
+      const activePlayer = workMusicSeamless.players[workMusicSeamless.activeSlot];
+      const standbyPlayer = workMusicSeamless.players[workMusicSeamless.standbySlot];
+      setWorkMusicPlayerVolume(activePlayer, playerVolume);
+      setWorkMusicPlayerVolume(standbyPlayer, 0);
+      return;
+    }
     sendWorkMusicCommand('setVolume', [playerVolume]);
-    if (muted) sendWorkMusicCommand('mute');
+    if (playerVolume <= 0) sendWorkMusicCommand('mute');
     else sendWorkMusicCommand('unMute');
   }
 
@@ -791,6 +886,170 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       }, 200);
     });
     return window.__workMusicYTApiPromise;
+  }
+
+  function getWorkMusicSeamlessSlotId(slot) {
+    return slot === 'a' ? 'workMusicSeamlessSlotA' : 'workMusicSeamlessSlotB';
+  }
+
+  function getWorkMusicSeamlessPlayerId(slot) {
+    return slot === 'a' ? 'workMusicSeamlessA' : 'workMusicSeamlessB';
+  }
+
+  function setWorkMusicSeamlessSlotClasses() {
+    if (!workMusicSeamless) return;
+    ['a', 'b'].forEach((slot) => {
+      const el = document.getElementById(getWorkMusicSeamlessSlotId(slot));
+      if (!el) return;
+      el.classList.toggle('active', slot === workMusicSeamless.activeSlot);
+      el.classList.toggle('standby', slot === workMusicSeamless.standbySlot);
+    });
+  }
+
+  function cueWorkMusicSeamlessStandby(fromIndex = Number(window.workMusicCurrentIndex || 0)) {
+    if (!workMusicSeamless?.players) return;
+    const songs = getActiveWorkMusicSongs();
+    const nextIndex = getNextWorkMusicIndexFromOrder(fromIndex);
+    workMusicSeamless.standbyIndex = nextIndex;
+    workMusicSeamless.transitioning = false;
+    workMusicSeamless.transitionStarted = false;
+    const standbyPlayer = workMusicSeamless.players[workMusicSeamless.standbySlot];
+    const nextSong = songs[nextIndex];
+    if (!standbyPlayer || !nextSong?.videoId) return;
+    try {
+      standbyPlayer.stopVideo?.();
+      standbyPlayer.cueVideoById(nextSong.videoId);
+      setWorkMusicPlayerVolume(standbyPlayer, 0);
+    } catch (err) {
+      console.warn('work music standby cue failed', err);
+    }
+  }
+
+  function completeWorkMusicSeamlessTransition(previousSlot, nextSlot, nextIndex) {
+    if (!workMusicSeamless?.players) return;
+    const previousPlayer = workMusicSeamless.players[previousSlot];
+    const nextPlayer = workMusicSeamless.players[nextSlot];
+    workMusicSeamless.activeSlot = nextSlot;
+    workMusicSeamless.standbySlot = previousSlot;
+    workMusicSeamless.transitioning = false;
+    workMusicSeamless.transitionStarted = false;
+    window.workMusicCurrentIndex = nextIndex;
+    workMusicPlayer = nextPlayer;
+    workMusicIframe = document.getElementById(getWorkMusicSeamlessPlayerId(nextSlot));
+    try {
+      previousPlayer?.stopVideo?.();
+    } catch (_) {
+      /* ignore */
+    }
+    setWorkMusicPlayerVolume(nextPlayer, getWorkMusicPlayerVolume());
+    setWorkMusicPlayerVolume(previousPlayer, 0);
+    setWorkMusicSeamlessSlotClasses();
+    renderWorkMusic();
+    updateWorkMusicRemoteUI();
+    cueWorkMusicSeamlessStandby(nextIndex);
+  }
+
+  function startWorkMusicSeamlessTransition() {
+    if (!workMusicSeamless?.players || workMusicSeamless.transitionStarted) return;
+    const songs = getActiveWorkMusicSongs();
+    const nextIndex = Number(workMusicSeamless.standbyIndex);
+    const nextSong = songs[nextIndex];
+    if (!nextSong?.videoId) return;
+    const previousSlot = workMusicSeamless.activeSlot;
+    const nextSlot = workMusicSeamless.standbySlot;
+    const previousPlayer = workMusicSeamless.players[previousSlot];
+    const nextPlayer = workMusicSeamless.players[nextSlot];
+    if (!previousPlayer || !nextPlayer) return;
+    workMusicSeamless.transitionStarted = true;
+    workMusicSeamless.transitioning = true;
+    setWorkMusicPlayerVolume(nextPlayer, 0);
+    try {
+      nextPlayer.playVideo();
+    } catch (err) {
+      console.warn('work music seamless play failed', err);
+      return;
+    }
+    clearInterval(workMusicSeamlessFadeTimer);
+    const startedAt = Date.now();
+    workMusicSeamlessFadeTimer = setInterval(() => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      const ratio = Math.min(1, elapsed / WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS);
+      const volume = getWorkMusicPlayerVolume();
+      setWorkMusicPlayerVolume(previousPlayer, volume * (1 - ratio));
+      setWorkMusicPlayerVolume(nextPlayer, volume * ratio);
+      if (ratio >= 1) {
+        clearInterval(workMusicSeamlessFadeTimer);
+        workMusicSeamlessFadeTimer = null;
+        completeWorkMusicSeamlessTransition(previousSlot, nextSlot, nextIndex);
+      }
+    }, 250);
+  }
+
+  function monitorWorkMusicSeamlessPlayback() {
+    if (!workMusicSeamless?.players || !window.workMusicIsPlaying) return;
+    const activePlayer = workMusicSeamless.players[workMusicSeamless.activeSlot];
+    if (!activePlayer || workMusicSeamless.transitionStarted) return;
+    try {
+      const duration = Number(activePlayer.getDuration?.() || 0);
+      const current = Number(activePlayer.getCurrentTime?.() || 0);
+      if (!duration || !current || duration <= WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS + 1) return;
+      const remaining = duration - current;
+      if (remaining <= WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS) {
+        startWorkMusicSeamlessTransition();
+      }
+    } catch (err) {
+      console.warn('work music seamless monitor failed', err);
+    }
+  }
+
+  function startWorkMusicSeamlessMonitor() {
+    clearInterval(workMusicSeamlessMonitorTimer);
+    workMusicSeamlessMonitorTimer = setInterval(monitorWorkMusicSeamlessPlayback, 500);
+  }
+
+  function onWorkMusicSeamlessStateChange(slot, event) {
+    if (!workMusicSeamless || slot !== workMusicSeamless.activeSlot) return;
+    const state = event?.data;
+    if (window.YT && state === window.YT.PlayerState.PLAYING) {
+      clearWorkMusicPlaybackWatch();
+      resetWorkMusicAutoSkipSession();
+      window.workMusicIsPlaying = true;
+      workMusicPlayer = workMusicSeamless.players[slot];
+      clearWorkMusicPlaybackError(Number(window.workMusicCurrentIndex || 0));
+      renderWorkMusicPlayButton();
+      renderWorkMusic();
+      startWorkMusicSeamlessMonitor();
+    } else if (window.YT && state === window.YT.PlayerState.PAUSED) {
+      if (workMusicSeamless.transitioning) return;
+      clearWorkMusicPlaybackWatch();
+      window.workMusicIsPlaying = false;
+      renderWorkMusicPlayButton();
+      renderWorkMusic();
+      clearWorkMusicSeamlessTimers();
+    } else if (window.YT && state === window.YT.PlayerState.ENDED) {
+      if (workMusicSeamless.transitioning) return;
+      const nextIndex = getNextWorkMusicIndexFromOrder(Number(window.workMusicCurrentIndex || 0));
+      if (nextIndex >= 0) playWorkMusicAt(nextIndex, { resetSkipSession: false });
+      else {
+        window.workMusicIsPlaying = false;
+        renderWorkMusicPlayButton();
+        renderWorkMusic();
+      }
+    }
+  }
+
+  function onWorkMusicSeamlessError(slot, event) {
+    if (!workMusicSeamless) return;
+    if (slot === workMusicSeamless.activeSlot) {
+      handleWorkMusicPlaybackFailure(Number(window.workMusicCurrentIndex || 0), event?.data || '');
+      return;
+    }
+    const failedIndex = Number(workMusicSeamless.standbyIndex);
+    if (Number.isInteger(failedIndex) && failedIndex >= 0) {
+      markWorkMusicPlaybackError(failedIndex, event?.data || '');
+      renderWorkMusic();
+    }
+    cueWorkMusicSeamlessStandby(Number(window.workMusicCurrentIndex || 0));
   }
 
   function syncWorkMusicFromPlayer() {
@@ -858,12 +1117,108 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     handleWorkMusicPlaybackFailure(getWorkMusicCurrentPlayerIndex(), event?.data || '');
   }
 
+  async function renderWorkMusicSeamlessIframe(index, autoplay = true) {
+    const box = document.getElementById('workMusicPlayerBox');
+    const songs = getActiveWorkMusicSongs();
+    if (!box) return;
+    if (index < 0 || index >= songs.length) index = 0;
+    const song = songs[index];
+    if (!song?.videoId || songs.length <= 1) return;
+
+    destroyWorkMusicSeamlessPlayers();
+    if (workMusicPlayer && typeof workMusicPlayer.destroy === 'function') {
+      try {
+        workMusicPlayer.destroy();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    workMusicPlayer = null;
+    workMusicIframe = null;
+
+    const order = getWorkMusicPlayOrder(index);
+    window.workMusicCurrentPlayOrder = order;
+    const nextIndex = getNextWorkMusicIndexFromOrder(index);
+    const nextSong = songs[nextIndex];
+
+    box.classList.add('seamless');
+    box.innerHTML = `
+      <div id="workMusicSeamlessSlotA" class="workmusic-youtube-slot active">
+        <div id="workMusicSeamlessA"></div>
+      </div>
+      <div id="workMusicSeamlessSlotB" class="workmusic-youtube-slot standby">
+        <div id="workMusicSeamlessB"></div>
+      </div>`;
+    window.workMusicIsPlaying = !!autoplay;
+    renderWorkMusicPlayButton();
+    renderWorkMusicSeamlessButton();
+    await ensureYouTubeIframeAPI();
+
+    workMusicSeamless = {
+      players: { a: null, b: null },
+      activeSlot: 'a',
+      standbySlot: 'b',
+      standbyIndex: nextIndex,
+      transitionStarted: false,
+      transitioning: false
+    };
+
+    workMusicSeamless.players.a = new YT.Player('workMusicSeamlessA', {
+      width: '100%',
+      height: '100%',
+      videoId: song.videoId,
+      playerVars: {
+        autoplay: autoplay ? 1 : 0,
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1
+      },
+      events: {
+        onReady: (event) => {
+          workMusicPlayer = event.target;
+          workMusicIframe = document.getElementById(getWorkMusicSeamlessPlayerId('a'));
+          setWorkMusicPlayerVolume(event.target, getWorkMusicPlayerVolume());
+          if (autoplay) event.target.playVideo();
+          if (autoplay) {
+            scheduleWorkMusicPlaybackWatch(index);
+            startWorkMusicSeamlessMonitor();
+          }
+        },
+        onStateChange: (event) => onWorkMusicSeamlessStateChange('a', event),
+        onError: (event) => onWorkMusicSeamlessError('a', event)
+      }
+    });
+
+    workMusicSeamless.players.b = new YT.Player('workMusicSeamlessB', {
+      width: '100%',
+      height: '100%',
+      videoId: nextSong?.videoId || song.videoId,
+      playerVars: {
+        autoplay: 0,
+        playsinline: 1,
+        rel: 0,
+        modestbranding: 1
+      },
+      events: {
+        onReady: (event) => {
+          setWorkMusicPlayerVolume(event.target, 0);
+          if (!nextSong?.videoId) event.target.stopVideo();
+        },
+        onStateChange: (event) => onWorkMusicSeamlessStateChange('b', event),
+        onError: (event) => onWorkMusicSeamlessError('b', event)
+      }
+    });
+  }
+
   async function renderWorkMusicIframe(index, autoplay = true) {
     const box = document.getElementById('workMusicPlayerBox');
     const songs = getActiveWorkMusicSongs();
     if (!box) return;
     stopWorkMusicSyncTimer();
     clearWorkMusicPlaybackWatch();
+    clearWorkMusicSeamlessTimers();
+    destroyWorkMusicSeamlessPlayers();
+    box.classList.remove('seamless');
     if (workMusicPlayer && typeof workMusicPlayer.destroy === 'function') {
       try {
         workMusicPlayer.destroy();
@@ -893,6 +1248,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       updateWorkMusicRemoteUI();
       if (autoplay) handleWorkMusicPlaybackFailure(index, 'invalid');
       return;
+    }
+    if (window.workMusicSeamlessEnabled && songs.length > 1) {
+      return renderWorkMusicSeamlessIframe(index, autoplay);
     }
     const order = getWorkMusicPlayOrder(index);
     window.workMusicCurrentPlayOrder = order;
@@ -960,13 +1318,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     } else if (window.workMusicIsPlaying) {
       clearWorkMusicPlaybackWatch();
       clearWorkMusicFailureSkipTimer();
-      sendWorkMusicCommand('pauseVideo');
+      if (workMusicSeamless?.players) pauseWorkMusicSeamlessPlayers();
+      else sendWorkMusicCommand('pauseVideo');
       window.workMusicIsPlaying = false;
     } else {
       resetWorkMusicAutoSkipSession();
       sendWorkMusicCommand('playVideo');
       window.workMusicIsPlaying = true;
       scheduleWorkMusicPlaybackWatch(Number(window.workMusicCurrentIndex || 0));
+      if (workMusicSeamless?.players) startWorkMusicSeamlessMonitor();
     }
     renderWorkMusicPlayButton();
     updateWorkMusicRemoteUI();
@@ -982,6 +1342,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중';
     }
     renderWorkMusicPlayButton();
+    renderWorkMusicSeamlessButton();
     renderWorkMusicVolumeUI();
     updateWorkMusicRemoteUI();
     if (!songs.length) renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
@@ -1944,6 +2305,14 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicModeBtn?.addEventListener('click', async () => {
       window.workMusicMode = window.workMusicMode === 'random' ? 'sequential' : 'random';
       resetWorkMusicDisplayShuffle();
+      await window.cloudSaveWorkMusic?.();
+      renderWorkMusic();
+      if (getActiveWorkMusicSongs().length)
+        renderWorkMusicIframe(window.workMusicCurrentIndex || 0, window.workMusicIsPlaying);
+    });
+    workMusicSeamlessBtn?.addEventListener('click', async () => {
+      window.workMusicSeamlessEnabled = !window.workMusicSeamlessEnabled;
+      renderWorkMusicSeamlessButton();
       await window.cloudSaveWorkMusic?.();
       renderWorkMusic();
       if (getActiveWorkMusicSongs().length)
