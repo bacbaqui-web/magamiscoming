@@ -449,28 +449,34 @@
               <path d="M4 4l5 5" />
             </svg>
           </button>
-          <button
-            id="workMusicSeamlessBtn"
-            class="workmusic-icon-btn"
-            title="이어듣기 전환"
-            aria-label="이어듣기 전환"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
+          <div class="workmusic-seamless-control">
+            <button
+              id="workMusicSeamlessBtn"
+              class="workmusic-icon-btn"
+              title="이어듣기 전환"
+              aria-label="이어듣기 전환"
             >
-              <path d="M4 8h4c4 0 4 8 8 8h4" />
-              <path d="M4 16h4c4 0 4-8 8-8h4" />
-              <path d="m18 5 3 3-3 3" />
-              <path d="m18 13 3 3-3 3" />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 8h4c4 0 4 8 8 8h4" />
+                <path d="M4 16h4c4 0 4-8 8-8h4" />
+                <path d="m18 5 3 3-3 3" />
+                <path d="m18 13 3 3-3 3" />
+              </svg>
+            </button>
+            <div class="workmusic-seamless-popover" aria-label="이어듣기 겹침 시간">
+              <input id="workMusicSeamlessRange" type="range" min="0" max="20" step="1" value="0" />
+              <span id="workMusicSeamlessSeconds" class="workmusic-seamless-seconds">0초</span>
+            </div>
+          </div>
           <div class="workmusic-volume" title="볼륨">
             <button
               id="workMusicMuteBtn"

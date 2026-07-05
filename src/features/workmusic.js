@@ -15,7 +15,10 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicLastVolume ??
     (Number(window.workMusicVolume) > 0 ? Number(window.workMusicVolume) : 80);
   window.workMusicIsMuted = window.workMusicIsMuted || Number(window.workMusicVolume) === 0;
-  window.workMusicSeamlessEnabled = window.workMusicSeamlessEnabled ?? false;
+  window.workMusicSeamlessOverlapSeconds = normalizeWorkMusicSeamlessSeconds(
+    window.workMusicSeamlessOverlapSeconds ?? (window.workMusicSeamlessEnabled ? 10 : 0)
+  );
+  window.workMusicSeamlessEnabled = window.workMusicSeamlessOverlapSeconds > 0;
   window.workMusicIsPlaying = window.workMusicIsPlaying || false;
   window.currentWorkMusicSettingIndex = null;
 
@@ -26,6 +29,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicNextBtn = document.getElementById('workMusicNextBtn');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
+  const workMusicSeamlessRange = document.getElementById('workMusicSeamlessRange');
+  const workMusicSeamlessSeconds = document.getElementById('workMusicSeamlessSeconds');
   const workMusicMuteBtn = document.getElementById('workMusicMuteBtn');
   const workMusicVolumeRange = document.getElementById('workMusicVolumeRange');
   const workMusicVolumePercent = document.getElementById('workMusicVolumePercent');
@@ -64,7 +69,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const showAlert = (message) => window.showAlert?.(message);
   const WORK_MUSIC_PLAYBACK_TIMEOUT_MS = 12000;
   const WORK_MUSIC_FAILURE_SKIP_DELAY_MS = 1200;
-  const WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS = 10;
   const WORK_MUSIC_PLAYBACK_ERROR_LABELS = {
     2: '잘못된 링크',
     5: '재생 오류',
@@ -77,6 +81,10 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
 
   // ===== 노동요(YouTube) =====
   // 일반 embed iframe + YouTube postMessage 제어. 재생/일시정지는 iframe을 다시 만들지 않고 명령만 보냅니다.
+  function normalizeWorkMusicSeamlessSeconds(value) {
+    return Math.max(0, Math.min(20, Math.round(Number(value || 0))));
+  }
+
   function escapeHtml(str) {
     return String(str ?? '').replace(
       /[&<>"']/g,
@@ -168,11 +176,18 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   }
 
   function renderWorkMusicSeamlessButton() {
-    if (!workMusicSeamlessBtn) return;
-    const enabled = !!window.workMusicSeamlessEnabled;
-    workMusicSeamlessBtn.classList.toggle('enabled', enabled);
-    workMusicSeamlessBtn.title = enabled ? '이어듣기 켜짐' : '이어듣기 꺼짐';
-    workMusicSeamlessBtn.setAttribute('aria-label', enabled ? '이어듣기 켜짐' : '이어듣기 꺼짐');
+    const seconds = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
+    window.workMusicSeamlessOverlapSeconds = seconds;
+    window.workMusicSeamlessEnabled = seconds > 0;
+    const enabled = seconds > 0;
+    if (workMusicSeamlessBtn) {
+      const label = enabled ? `이어듣기 켜짐, ${seconds}초 겹침` : '이어듣기 꺼짐';
+      workMusicSeamlessBtn.classList.toggle('enabled', enabled);
+      workMusicSeamlessBtn.title = label;
+      workMusicSeamlessBtn.setAttribute('aria-label', label);
+    }
+    if (workMusicSeamlessRange) workMusicSeamlessRange.value = String(seconds);
+    if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = `${seconds}초`;
   }
 
   function updateWorkMusicRemoteUI() {
@@ -846,6 +861,21 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (save) await window.cloudSaveWorkMusic?.();
   }
 
+  async function setWorkMusicSeamlessSeconds(value, { save = true, refreshPlayer = true } = {}) {
+    const previousEnabled = !!window.workMusicSeamlessEnabled;
+    const seconds = normalizeWorkMusicSeamlessSeconds(value);
+    window.workMusicSeamlessOverlapSeconds = seconds;
+    window.workMusicSeamlessEnabled = seconds > 0;
+    renderWorkMusicSeamlessButton();
+    if (save) await window.cloudSaveWorkMusic?.();
+    if (refreshPlayer && previousEnabled !== window.workMusicSeamlessEnabled) {
+      renderWorkMusic();
+      if (getActiveWorkMusicSongs().length) {
+        renderWorkMusicIframe(window.workMusicCurrentIndex || 0, window.workMusicIsPlaying);
+      }
+    }
+  }
+
   async function toggleWorkMusicMute() {
     if (window.workMusicIsMuted || Number(window.workMusicVolume || 0) === 0) {
       const restore = Math.max(5, Math.min(100, Number(window.workMusicLastVolume || 80)));
@@ -951,6 +981,10 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
 
   function startWorkMusicSeamlessTransition() {
     if (!workMusicSeamless?.players || workMusicSeamless.transitionStarted) return;
+    const crossfadeSeconds = normalizeWorkMusicSeamlessSeconds(
+      window.workMusicSeamlessOverlapSeconds
+    );
+    if (crossfadeSeconds <= 0) return;
     const songs = getActiveWorkMusicSongs();
     const nextIndex = Number(workMusicSeamless.standbyIndex);
     const nextSong = songs[nextIndex];
@@ -973,7 +1007,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const startedAt = Date.now();
     workMusicSeamlessFadeTimer = setInterval(() => {
       const elapsed = (Date.now() - startedAt) / 1000;
-      const ratio = Math.min(1, elapsed / WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS);
+      const ratio = Math.min(1, elapsed / crossfadeSeconds);
       const volume = getWorkMusicPlayerVolume();
       setWorkMusicPlayerVolume(previousPlayer, volume * (1 - ratio));
       setWorkMusicPlayerVolume(nextPlayer, volume * ratio);
@@ -990,11 +1024,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const activePlayer = workMusicSeamless.players[workMusicSeamless.activeSlot];
     if (!activePlayer || workMusicSeamless.transitionStarted) return;
     try {
+      const crossfadeSeconds = normalizeWorkMusicSeamlessSeconds(
+        window.workMusicSeamlessOverlapSeconds
+      );
+      if (crossfadeSeconds <= 0) return;
       const duration = Number(activePlayer.getDuration?.() || 0);
       const current = Number(activePlayer.getCurrentTime?.() || 0);
-      if (!duration || !current || duration <= WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS + 1) return;
+      if (!duration || !current || duration <= crossfadeSeconds + 1) return;
       const remaining = duration - current;
-      if (remaining <= WORK_MUSIC_SEAMLESS_CROSSFADE_SECONDS) {
+      if (remaining <= crossfadeSeconds) {
         startWorkMusicSeamlessTransition();
       }
     } catch (err) {
@@ -1249,7 +1287,11 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       if (autoplay) handleWorkMusicPlaybackFailure(index, 'invalid');
       return;
     }
-    if (window.workMusicSeamlessEnabled && songs.length > 1) {
+    if (
+      window.workMusicSeamlessEnabled &&
+      normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds) > 0 &&
+      songs.length > 1
+    ) {
       return renderWorkMusicSeamlessIframe(index, autoplay);
     }
     const order = getWorkMusicPlayOrder(index);
@@ -2311,15 +2353,22 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         renderWorkMusicIframe(window.workMusicCurrentIndex || 0, window.workMusicIsPlaying);
     });
     workMusicSeamlessBtn?.addEventListener('click', async () => {
-      window.workMusicSeamlessEnabled = !window.workMusicSeamlessEnabled;
-      renderWorkMusicSeamlessButton();
-      await window.cloudSaveWorkMusic?.();
-      renderWorkMusic();
-      if (getActiveWorkMusicSongs().length)
-        renderWorkMusicIframe(window.workMusicCurrentIndex || 0, window.workMusicIsPlaying);
+      const current = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
+      await setWorkMusicSeamlessSeconds(current > 0 ? 0 : 10);
     });
     workMusicMuteBtn?.addEventListener('click', toggleWorkMusicMute);
     workMusicRemoteMuteBtn?.addEventListener('click', toggleWorkMusicMute);
+    workMusicSeamlessRange?.addEventListener('input', async (e) => {
+      await setWorkMusicSeamlessSeconds(Number(e.target.value || 0));
+    });
+    workMusicSeamlessRange?.addEventListener('keydown', async (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      const delta = e.key === 'ArrowRight' ? 1 : -1;
+      await setWorkMusicSeamlessSeconds(
+        normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds) + delta
+      );
+    });
     workMusicVolumeRange?.addEventListener('input', async (e) => {
       await setWorkMusicVolume(Number(e.target.value || 0));
     });

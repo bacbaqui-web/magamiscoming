@@ -95,6 +95,7 @@ export function getDefaultAppData() {
       workMusicLastVolume: 80,
       workMusicIsMuted: false,
       workMusicSeamlessEnabled: false,
+      workMusicSeamlessOverlapSeconds: 0,
       workMusicTabList: [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: 'default',
       pomodoro: getDefaultPomodoroState(),
@@ -118,6 +119,7 @@ export function collectState(currentAppData = getDefaultAppData()) {
     workMusicLastVolume: Number(window.workMusicLastVolume ?? 80),
     workMusicIsMuted: !!window.workMusicIsMuted,
     workMusicSeamlessEnabled: !!window.workMusicSeamlessEnabled,
+    workMusicSeamlessOverlapSeconds: Number(window.workMusicSeamlessOverlapSeconds ?? 0),
     workMusicTabList: window.__workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
     workMusicActiveTabId: window.__workMusicActiveTabId || 'default',
     pomodoro: normalizePomodoroState(window.__pomodoroState),
@@ -182,6 +184,9 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
   window.workMusicLastVolume = Number(st.workMusicLastVolume ?? 80);
   window.workMusicIsMuted = !!st.workMusicIsMuted;
   window.workMusicSeamlessEnabled = !!st.workMusicSeamlessEnabled;
+  window.workMusicSeamlessOverlapSeconds = Number(
+    st.workMusicSeamlessOverlapSeconds ?? (st.workMusicSeamlessEnabled ? 10 : 0)
+  );
   window.__pomodoroState = normalizePomodoroState(st.pomodoro);
   revokeAllDriveImageUrls();
   window.imageBookmarks = (
@@ -222,6 +227,7 @@ export function splitAppDataForDrive(data) {
       workMusicLastVolume: Number(st.workMusicLastVolume ?? 80),
       workMusicIsMuted: !!st.workMusicIsMuted,
       workMusicSeamlessEnabled: !!st.workMusicSeamlessEnabled,
+      workMusicSeamlessOverlapSeconds: Number(st.workMusicSeamlessOverlapSeconds ?? 0),
       workMusicTabList: st.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: st.workMusicActiveTabId || 'default',
       updatedAt: data.updatedAt || new Date().toISOString()
@@ -261,6 +267,10 @@ export function mergeDriveParts(parts) {
     base.state.workMusicLastVolume = Number(parts.workmusic.workMusicLastVolume ?? 80);
     base.state.workMusicIsMuted = !!parts.workmusic.workMusicIsMuted;
     base.state.workMusicSeamlessEnabled = !!parts.workmusic.workMusicSeamlessEnabled;
+    base.state.workMusicSeamlessOverlapSeconds = Number(
+      parts.workmusic.workMusicSeamlessOverlapSeconds ??
+        (parts.workmusic.workMusicSeamlessEnabled ? 10 : 0)
+    );
     base.state.workMusicTabList = parts.workmusic.workMusicTabList || base.state.workMusicTabList;
     base.state.workMusicActiveTabId = parts.workmusic.workMusicActiveTabId || 'default';
   }

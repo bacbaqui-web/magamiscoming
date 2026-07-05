@@ -236,6 +236,10 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
       workMusicLastVolume: Number(workmusicPart?.workMusicLastVolume ?? 80),
       workMusicIsMuted: !!workmusicPart?.workMusicIsMuted,
       workMusicSeamlessEnabled: !!workmusicPart?.workMusicSeamlessEnabled,
+      workMusicSeamlessOverlapSeconds: Number(
+        workmusicPart?.workMusicSeamlessOverlapSeconds ??
+          (workmusicPart?.workMusicSeamlessEnabled ? 10 : 0)
+      ),
       workMusicTabList: workmusicPart?.workMusicTabList || [
         { id: 'default', name: '기본', order: 0 }
       ],
@@ -254,6 +258,9 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
         workMusicLastVolume: Number(main.workMusicLastVolume ?? 80),
         workMusicIsMuted: !!main.workMusicIsMuted,
         workMusicSeamlessEnabled: !!main.workMusicSeamlessEnabled,
+        workMusicSeamlessOverlapSeconds: Number(
+          main.workMusicSeamlessOverlapSeconds ?? (main.workMusicSeamlessEnabled ? 10 : 0)
+        ),
         workMusicTabList: main.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
         workMusicActiveTabId: main.workMusicActiveTabId || 'default',
         updatedAt: main.updatedAt || new Date().toISOString()
@@ -269,6 +276,9 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
       workMusicLastVolume: Number(meta.workMusicLastVolume ?? 80),
       workMusicIsMuted: !!meta.workMusicIsMuted,
       workMusicSeamlessEnabled: !!meta.workMusicSeamlessEnabled,
+      workMusicSeamlessOverlapSeconds: Number(
+        meta.workMusicSeamlessOverlapSeconds ?? (meta.workMusicSeamlessEnabled ? 10 : 0)
+      ),
       workMusicTabList: meta.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }],
       workMusicActiveTabId: meta.workMusicActiveTabId || 'default',
       updatedAt: meta.updatedAt || new Date().toISOString()

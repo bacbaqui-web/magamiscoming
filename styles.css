@@ -1305,6 +1305,57 @@ textarea#notesArea::-webkit-resizer {
 #workMusicSeamlessBtn.enabled {
   color: #fff;
 }
+.workmusic-seamless-control {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+}
+.workmusic-seamless-control .workmusic-icon-btn {
+  width: 100%;
+  height: 100%;
+}
+.workmusic-seamless-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 174px;
+  padding: 8px 10px;
+  border: 1px solid #4a4a4a;
+  border-radius: 999px;
+  background: #242424;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 0.16s,
+    transform 0.16s;
+  z-index: 5;
+}
+.workmusic-seamless-control:hover .workmusic-seamless-popover,
+.workmusic-seamless-control:focus-within .workmusic-seamless-popover {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+.workmusic-seamless-popover input {
+  width: 112px;
+  accent-color: #fff;
+  cursor: pointer;
+}
+.workmusic-seamless-seconds {
+  min-width: 28px;
+  color: #e5e5e5;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .workmusic-volume {
   display: flex;
   align-items: center;

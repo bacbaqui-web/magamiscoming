@@ -774,6 +774,7 @@ export function initCloudSyncBackend({
     window.__workMusicActiveTabId = 'default';
     window.workMusicSongs = [];
     window.workMusicSeamlessEnabled = false;
+    window.workMusicSeamlessOverlapSeconds = 0;
     window.__pomodoroState = getDefaultPomodoroState();
     renderEverything();
     window.clearClipLocal?.();
