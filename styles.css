@@ -1596,40 +1596,38 @@ textarea#notesArea::-webkit-resizer {
 }
 .slider-value {
   position: absolute;
-  right: -3px;
-  bottom: -4px;
-  min-width: 18px;
-  min-height: 18px;
-  height: 18px;
+  left: 50%;
+  top: auto;
+  bottom: calc(var(--slider-control-value-bottom) + 3px);
+  transform: translateX(-50%);
+  min-width: 0;
   text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
+  font-size: 1.11rem;
   font-weight: 800;
-  color: #f1f5f9;
+  color: #ffffff;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  background: #707070;
+  background: none;
   border: none;
-  border-radius: 999px;
-  padding: 0 4px;
+  border-radius: 0;
+  padding: 0;
   pointer-events: none;
   box-shadow: none;
-  opacity: 1;
-  visibility: visible;
+  opacity: 0;
+  visibility: hidden;
   transition:
     opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1) 0s,
     visibility 0.22s cubic-bezier(0.22, 1, 0.36, 1) 0s,
     pointer-events 0s;
-  z-index: 10;
+  z-index: 9999;
+  isolation: isolate;
 }
 .slider-control:hover .slider-value,
 .slider-control:focus-within .slider-value,
 .slider-control.is-open .slider-value,
 .slider-control .slider-popover:hover .slider-value {
-  opacity: 0;
-  visibility: hidden;
+  opacity: 1;
+  visibility: visible;
 }
 .workmusic-volume-btn {
   width: 24px;
