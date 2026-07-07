@@ -1265,6 +1265,8 @@ textarea#notesArea::-webkit-resizer {
   gap: 8px;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 950;
 }
 .workmusic-icon-btn {
   width: 42px;
@@ -1429,6 +1431,12 @@ textarea#notesArea::-webkit-resizer {
   justify-content: center;
   isolation: isolate;
   overflow: visible;
+  z-index: 2;
+}
+.slider-control:hover,
+.slider-control:focus-within,
+.slider-control.is-open {
+  z-index: 950;
 }
 .slider-icon-button {
   position: relative;
@@ -1499,11 +1507,7 @@ textarea#notesArea::-webkit-resizer {
 .slider-control:hover .slider-track-wrap,
 .slider-control:focus-within .slider-track-wrap,
 .slider-control.is-open .slider-track-wrap,
-.slider-control .slider-popover:hover .slider-track-wrap,
-.slider-control:hover .slider-value,
-.slider-control:focus-within .slider-value,
-.slider-control.is-open .slider-value,
-.slider-control .slider-popover:hover .slider-value {
+.slider-control .slider-popover:hover .slider-track-wrap {
   opacity: 1;
   pointer-events: auto;
   transition-delay: 0s;
@@ -1592,27 +1596,31 @@ textarea#notesArea::-webkit-resizer {
 }
 .slider-value {
   position: absolute;
-  left: 50%;
-  top: auto;
-  bottom: calc(var(--slider-control-value-bottom) + 3px);
-  transform: translateX(-50%);
-  min-width: 0;
+  right: -3px;
+  bottom: -4px;
+  min-width: 18px;
+  min-height: 18px;
+  height: 18px;
   text-align: center;
-  font-size: 1.11rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
   font-weight: 800;
-  color: #ffffff;
+  color: #f1f5f9;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  background: none;
+  background: #707070;
   border: none;
-  border-radius: 0;
-  padding: 0;
+  border-radius: 999px;
+  padding: 0 4px;
   pointer-events: none;
   box-shadow: none;
-  opacity: 0;
-  visibility: hidden;
+  opacity: 1;
+  visibility: visible;
   transition:
     opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1) 0s,
+    visibility 0.22s cubic-bezier(0.22, 1, 0.36, 1) 0s,
     pointer-events 0s;
   z-index: 10;
 }
@@ -1620,8 +1628,8 @@ textarea#notesArea::-webkit-resizer {
 .slider-control:focus-within .slider-value,
 .slider-control.is-open .slider-value,
 .slider-control .slider-popover:hover .slider-value {
-  opacity: 1;
-  visibility: visible;
+  opacity: 0;
+  visibility: hidden;
 }
 .workmusic-volume-btn {
   width: 24px;
