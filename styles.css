@@ -2062,6 +2062,9 @@ body {
   background: #111;
   flex: 0 0 40px;
 }
+.workmusic-remote-thumb.is-missing {
+  background: #000;
+}
 .workmusic-remote-text {
   min-width: 0;
   flex: 1 1 auto;

@@ -82,6 +82,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     invalid: '잘못된 링크',
     timeout: '응답 없음'
   };
+  const WORK_MUSIC_EMPTY_THUMB_SRC =
+    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 
   // ===== 노동요(YouTube) =====
   // 일반 embed iframe + YouTube postMessage 제어. 재생/일시정지는 iframe을 다시 만들지 않고 명령만 보냅니다.
@@ -231,15 +233,30 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
 
   function updateWorkMusicRemoteUI() {
     if (!workMusicRemote) return;
+    workMusicRemote.classList.add('show');
     const songs = getActiveWorkMusicSongs();
     if (!songs.length) {
-      workMusicRemote.classList.remove('show');
+      if (workMusicRemoteThumb) {
+        workMusicRemoteThumb.src = WORK_MUSIC_EMPTY_THUMB_SRC;
+        workMusicRemoteThumb.classList.add('is-missing');
+      }
+      if (workMusicRemoteTitle) workMusicRemoteTitle.textContent = '재생 중인 노동요 없음';
+      if (workMusicRemoteArtist) workMusicRemoteArtist.textContent = '';
+      renderWorkMusicPlayButton();
+      renderWorkMusicVolumeUI();
       return;
     }
     normalizeWorkMusicCurrentIndex(songs);
     const song = songs[Number(window.workMusicCurrentIndex || 0)] || songs[0];
     if (!song) {
-      workMusicRemote.classList.remove('show');
+      if (workMusicRemoteThumb) {
+        workMusicRemoteThumb.src = WORK_MUSIC_EMPTY_THUMB_SRC;
+        workMusicRemoteThumb.classList.add('is-missing');
+      }
+      if (workMusicRemoteTitle) workMusicRemoteTitle.textContent = '재생 중인 노동요 없음';
+      if (workMusicRemoteArtist) workMusicRemoteArtist.textContent = '';
+      renderWorkMusicPlayButton();
+      renderWorkMusicVolumeUI();
       return;
     }
     const title = song.title || `YouTube ${song.videoId || ''}`;
@@ -252,8 +269,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (workMusicRemoteArtist)
       workMusicRemoteArtist.textContent =
         artist || (window.workMusicIsPlaying ? '재생 중' : '일시정지');
-    if (workMusicRemoteThumb && thumb && workMusicRemoteThumb.src !== thumb)
-      workMusicRemoteThumb.src = thumb;
+    if (workMusicRemoteThumb) {
+      if (thumb) {
+        if (workMusicRemoteThumb.classList) workMusicRemoteThumb.classList.remove('is-missing');
+        if (workMusicRemoteThumb.src !== thumb) workMusicRemoteThumb.src = thumb;
+      } else {
+        workMusicRemoteThumb.src = WORK_MUSIC_EMPTY_THUMB_SRC;
+        workMusicRemoteThumb.classList.add('is-missing');
+      }
+    }
     renderWorkMusicPlayButton();
     renderWorkMusicVolumeUI();
   }
