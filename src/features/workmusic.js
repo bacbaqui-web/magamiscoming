@@ -578,27 +578,33 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     renderWorkMusic();
   }
 
-  function getWorkMusicNextIndex(step = 1) {
-    const songs = getActiveWorkMusicSongs();
-    if (!songs.length) return -1;
-    const cur = Math.max(0, Number(window.workMusicCurrentIndex || 0));
-    if (window.workMusicMode === 'random' && songs.length > 1) {
-      let next = cur;
-      while (next === cur) next = Math.floor(Math.random() * songs.length);
-      return next;
-    }
-    return (cur + step + songs.length) % songs.length;
-  }
-
-  function getWorkMusicPreviewIndex(step = 1, songs = getActiveWorkMusicSongs()) {
+  function getWorkMusicAdjacentIndex(step = 1, songs = getActiveWorkMusicSongs()) {
     if (!songs.length) return -1;
     const cur = Math.max(0, Number(window.workMusicCurrentIndex || 0));
     if (window.workMusicMode !== 'random') return (cur + step + songs.length) % songs.length;
-    const order = getWorkMusicDisplayOrder(songs);
+    const currentOrder = Array.isArray(window.workMusicCurrentPlayOrder)
+      ? window.workMusicCurrentPlayOrder
+      : [];
+    const validCurrentOrder = currentOrder.filter(
+      (idx) => Number.isInteger(idx) && idx >= 0 && idx < songs.length
+    );
+    const order =
+      validCurrentOrder.includes(cur) && validCurrentOrder.length
+        ? validCurrentOrder
+        : getWorkMusicDisplayOrder(songs);
     const currentPosition = order.indexOf(cur);
     if (currentPosition < 0) return (cur + step + songs.length) % songs.length;
     const nextPosition = (currentPosition + step + order.length) % order.length;
     return Number.isInteger(order[nextPosition]) ? order[nextPosition] : -1;
+  }
+
+  function getWorkMusicNextIndex(step = 1) {
+    const songs = getActiveWorkMusicSongs();
+    return getWorkMusicAdjacentIndex(step, songs);
+  }
+
+  function getWorkMusicPreviewIndex(step = 1, songs = getActiveWorkMusicSongs()) {
+    return getWorkMusicAdjacentIndex(step, songs);
   }
 
   function renderWorkMusicTrackPreview(step, { thumbEl, titleEl, artistEl, fallbackTitle }) {
