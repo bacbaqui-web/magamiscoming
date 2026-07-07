@@ -29,6 +29,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicNextBtn = document.getElementById('workMusicNextBtn');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
+  const workMusicSeamlessBadge = document.getElementById('workMusicSeamlessBadge');
   const workMusicSeamlessRange = document.getElementById('workMusicSeamlessRange');
   const workMusicSeamlessSeconds = document.getElementById('workMusicSeamlessSeconds');
   const workMusicMuteBtn = document.getElementById('workMusicMuteBtn');
@@ -185,6 +186,10 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicSeamlessBtn.classList.toggle('enabled', enabled);
       workMusicSeamlessBtn.title = label;
       workMusicSeamlessBtn.setAttribute('aria-label', label);
+    }
+    if (workMusicSeamlessBadge) {
+      workMusicSeamlessBadge.textContent = `${seconds}초`;
+      workMusicSeamlessBadge.classList.toggle('show', enabled);
     }
     if (workMusicSeamlessRange) workMusicSeamlessRange.value = String(seconds);
     if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = `${seconds}초`;
