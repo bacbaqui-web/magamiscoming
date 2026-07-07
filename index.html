@@ -426,39 +426,33 @@
               />
             </svg>
           </button>
-          <div class="slider-icon-control">
-            <button
-              id="workMusicModeBtn"
-              class="workmusic-icon-btn slider-icon-button"
-              title="랜덤 재생 전환"
-              aria-label="랜덤 재생 전환"
+          <button
+            id="workMusicModeBtn"
+            class="workmusic-icon-btn"
+            title="랜덤 재생 전환"
+            aria-label="랜덤 재생 전환"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M16 3h5v5" />
-                <path d="M4 20 21 3" />
-                <path d="M21 16v5h-5" />
-                <path d="m15 15 6 6" />
-                <path d="M4 4l5 5" />
-              </svg>
-            </button>
-            <div class="slider-popover" aria-label="테스트 세로 슬라이더">
-              <input type="range" class="vertical-slider" min="0" max="100" step="5" value="50" />
-              <span class="slider-value">50%</span>
-            </div>
-          </div>
-          <div class="workmusic-seamless-control">
+              <path d="M16 3h5v5" />
+              <path d="M4 20 21 3" />
+              <path d="M21 16v5h-5" />
+              <path d="m15 15 6 6" />
+              <path d="M4 4l5 5" />
+            </svg>
+          </button>
+          <div class="slider-control" title="이어듣기">
             <button
               id="workMusicSeamlessBtn"
-              class="workmusic-icon-btn"
+              class="slider-icon-button"
               title="이어듣기 전환"
               aria-label="이어듣기 전환"
             >
@@ -472,22 +466,33 @@
                 stroke-linejoin="round"
                 aria-hidden="true"
               >
-                <path d="M4 8h4c4 0 4 8 8 8h4" />
-                <path d="M4 16h4c4 0 4-8 8-8h4" />
-                <path d="m18 5 3 3-3 3" />
-                <path d="m18 13 3 3-3 3" />
+                <path d="M19 8 H6" />
+                <path d="M6 8 L11 3" />
+                <path d="M6 8 L11 13" />
+                <path d="M5 18 H18" />
+                <path d="M18 18 L13 13" />
+                <path d="M18 18 L13 23" />
               </svg>
-              <span id="workMusicSeamlessBadge" class="workmusic-seamless-badge" aria-hidden="true">0초</span>
             </button>
-            <div class="workmusic-seamless-popover" aria-label="이어듣기 겹침 시간">
-              <input id="workMusicSeamlessRange" type="range" min="0" max="20" step="1" value="0" />
-              <span id="workMusicSeamlessSeconds" class="workmusic-seamless-seconds">0초</span>
+            <div class="slider-popover" aria-label="이어듣기 겹침 시간">
+              <div class="slider-track-wrap">
+                <input
+                  id="workMusicSeamlessRange"
+                  class="vertical-slider"
+                  type="range"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value="0"
+                />
+              </div>
             </div>
+            <span id="workMusicSeamlessSeconds" class="workmusic-seamless-seconds slider-value">0</span>
           </div>
-          <div class="slider-icon-control workmusic-volume" title="볼륨">
+          <div class="slider-control" title="볼륨">
             <button
               id="workMusicMuteBtn"
-              class="workmusic-volume-btn slider-icon-button"
+              class="slider-icon-button"
               type="button"
               title="음소거"
               aria-label="음소거"
@@ -508,17 +513,19 @@
               </svg>
             </button>
             <div class="slider-popover" aria-label="볼륨 조절">
-              <input
-                id="workMusicVolumeRange"
-                class="vertical-slider"
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value="80"
-              />
-              <span id="workMusicVolumePercent" class="workmusic-volume-percent slider-value">80%</span>
+              <div class="slider-track-wrap">
+                <input
+                  id="workMusicVolumeRange"
+                  class="vertical-slider"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value="80"
+                />
+              </div>
             </div>
+            <span id="workMusicVolumePercent" class="workmusic-volume-percent slider-value">80</span>
           </div>
         </div>
         <div id="workMusicList" class="workmusic-list"></div>

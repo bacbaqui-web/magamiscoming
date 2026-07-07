@@ -29,10 +29,11 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicNextBtn = document.getElementById('workMusicNextBtn');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
-  const workMusicSeamlessBadge = document.getElementById('workMusicSeamlessBadge');
+  const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
   const workMusicSeamlessRange = document.getElementById('workMusicSeamlessRange');
   const workMusicSeamlessSeconds = document.getElementById('workMusicSeamlessSeconds');
   const workMusicMuteBtn = document.getElementById('workMusicMuteBtn');
+  const workMusicVolumeControl = workMusicMuteBtn?.closest('.slider-control');
   const workMusicVolumeRange = document.getElementById('workMusicVolumeRange');
   const workMusicVolumePercent = document.getElementById('workMusicVolumePercent');
   const workMusicList = document.getElementById('workMusicList');
@@ -91,6 +92,40 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       /[&<>"']/g,
       (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
     );
+  }
+
+  function bindSliderControlHoverState(control) {
+    if (!control) return;
+    const popover = control.querySelector('.slider-popover');
+    if (!popover) return;
+
+    let closeTimer = null;
+    const open = () => {
+      if (closeTimer) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+      control.classList.add('is-open');
+    };
+    const close = () => {
+      if (closeTimer) clearTimeout(closeTimer);
+      closeTimer = setTimeout(() => {
+        if (
+          !control.matches(':hover') &&
+          !control.matches(':focus-within') &&
+          !popover.matches(':hover')
+        ) {
+          control.classList.remove('is-open');
+        }
+      }, 50);
+    };
+
+    control.addEventListener('mouseenter', open);
+    control.addEventListener('mouseleave', close);
+    control.addEventListener('focusin', open);
+    control.addEventListener('focusout', close);
+    popover.addEventListener('mouseenter', open);
+    popover.addEventListener('mouseleave', close);
   }
 
   const workMusicPlaySvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>`;
@@ -187,12 +222,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicSeamlessBtn.title = label;
       workMusicSeamlessBtn.setAttribute('aria-label', label);
     }
-    if (workMusicSeamlessBadge) {
-      workMusicSeamlessBadge.textContent = `${seconds}초`;
-      workMusicSeamlessBadge.classList.toggle('show', enabled);
-    }
     if (workMusicSeamlessRange) workMusicSeamlessRange.value = String(seconds);
-    if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = `${seconds}초`;
+    if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = String(seconds);
   }
 
   function updateWorkMusicRemoteUI() {
@@ -827,7 +858,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const muted = !!window.workMusicIsMuted || raw === 0;
     const display = muted ? 0 : raw;
     if (workMusicVolumeRange) workMusicVolumeRange.value = String(display);
-    if (workMusicVolumePercent) workMusicVolumePercent.textContent = `${display}%`;
+    if (workMusicVolumePercent) workMusicVolumePercent.textContent = String(display);
     if (workMusicRemoteVolumeRange) workMusicRemoteVolumeRange.value = String(display);
     if (workMusicRemoteVolumePercent) workMusicRemoteVolumePercent.textContent = `${display}%`;
     if (workMusicMuteBtn) {
@@ -2348,6 +2379,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicRemoteNextBtn?.addEventListener('click', () =>
       playWorkMusicAt(getWorkMusicNextIndex(1))
     );
+    bindSliderControlHoverState(workMusicSeamlessControl);
+    bindSliderControlHoverState(workMusicVolumeControl);
     workMusicRemoteInfo?.addEventListener('click', () => showTab('workmusic'));
     workMusicModeBtn?.addEventListener('click', async () => {
       window.workMusicMode = window.workMusicMode === 'random' ? 'sequential' : 'random';
@@ -2366,6 +2399,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicSeamlessRange?.addEventListener('input', async (e) => {
       await setWorkMusicSeamlessSeconds(Number(e.target.value || 0));
     });
+    const handleSeamlessWheel = async (e) => {
+      if (!workMusicSeamlessRange) return;
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      const next = Number(workMusicSeamlessRange.value || 0) + delta;
+      await setWorkMusicSeamlessSeconds(next);
+    };
+    workMusicSeamlessControl?.addEventListener('wheel', handleSeamlessWheel, { passive: false });
     workMusicSeamlessRange?.addEventListener('keydown', async (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
@@ -2380,6 +2422,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicRemoteVolumeRange?.addEventListener('input', async (e) => {
       await setWorkMusicVolume(Number(e.target.value || 0));
     });
+    const handleWorkMusicVolumeWheel = async (e) => {
+      if (!workMusicVolumeRange) return;
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 5 : -5;
+      const base = Number(workMusicVolumeRange.value || 0);
+      await setWorkMusicVolume(base + delta);
+    };
+    workMusicVolumeControl?.addEventListener('wheel', handleWorkMusicVolumeWheel, { passive: false });
     const handleWorkMusicVolumeKey = async (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
