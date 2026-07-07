@@ -53,9 +53,17 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicRemotePrevBtn = document.getElementById('workMusicRemotePrevBtn');
   const workMusicRemotePlayBtn = document.getElementById('workMusicRemotePlayBtn');
   const workMusicRemoteNextBtn = document.getElementById('workMusicRemoteNextBtn');
+  const workMusicRemoteModeBtn = document.getElementById('workMusicRemoteModeBtn');
+  const workMusicRemoteSeamlessBtn = document.getElementById('workMusicRemoteSeamlessBtn');
+  const workMusicRemoteSeamlessControl = workMusicRemoteSeamlessBtn?.closest('.slider-control');
+  const workMusicRemoteSeamlessRange = document.getElementById('workMusicRemoteSeamlessRange');
+  const workMusicRemoteSeamlessSeconds = document.getElementById('workMusicRemoteSeamlessSeconds');
+  const workMusicRemoteSeamlessBadge = document.getElementById('workMusicRemoteSeamlessBadge');
   const workMusicRemoteMuteBtn = document.getElementById('workMusicRemoteMuteBtn');
+  const workMusicRemoteVolumeControl = workMusicRemoteMuteBtn?.closest('.slider-control');
   const workMusicRemoteVolumeRange = document.getElementById('workMusicRemoteVolumeRange');
   const workMusicRemoteVolumePercent = document.getElementById('workMusicRemoteVolumePercent');
+  const workMusicRemoteVolumeBadge = document.getElementById('workMusicRemoteVolumeBadge');
   let workMusicIframe = null;
   let workMusicPlayer = null;
   let workMusicSyncTimer = null;
@@ -229,6 +237,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (workMusicSeamlessRange) workMusicSeamlessRange.value = String(seconds);
     if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = String(seconds);
     if (workMusicSeamlessBadge) workMusicSeamlessBadge.textContent = String(seconds);
+    if (workMusicRemoteSeamlessBtn) {
+      const label = enabled ? `이어듣기 켜짐, ${seconds}초 겹침` : '이어듣기 꺼짐';
+      workMusicRemoteSeamlessBtn.classList.toggle('enabled', enabled);
+      workMusicRemoteSeamlessBtn.title = label;
+      workMusicRemoteSeamlessBtn.setAttribute('aria-label', label);
+    }
+    if (workMusicRemoteSeamlessRange) workMusicRemoteSeamlessRange.value = String(seconds);
+    if (workMusicRemoteSeamlessSeconds) workMusicRemoteSeamlessSeconds.textContent = String(seconds);
+    if (workMusicRemoteSeamlessBadge) workMusicRemoteSeamlessBadge.textContent = String(seconds);
   }
 
   function updateWorkMusicRemoteUI() {
@@ -888,7 +905,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (workMusicVolumePercent) workMusicVolumePercent.textContent = String(display);
     if (workMusicVolumeBadge) workMusicVolumeBadge.textContent = String(display);
     if (workMusicRemoteVolumeRange) workMusicRemoteVolumeRange.value = String(display);
-    if (workMusicRemoteVolumePercent) workMusicRemoteVolumePercent.textContent = `${display}%`;
+    if (workMusicRemoteVolumePercent) workMusicRemoteVolumePercent.textContent = String(display);
+    if (workMusicRemoteVolumeBadge) workMusicRemoteVolumeBadge.textContent = String(display);
     if (workMusicMuteBtn) {
       workMusicMuteBtn.innerHTML = muted ? workMusicMutedSvg : workMusicVolumeSvg;
       workMusicMuteBtn.title = muted ? '음소거 해제' : '음소거';
@@ -1446,6 +1464,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicModeBtn.classList.toggle('random', window.workMusicMode === 'random');
       workMusicModeBtn.title =
         window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중';
+    }
+    if (workMusicRemoteModeBtn) {
+      workMusicRemoteModeBtn.classList.toggle('random', window.workMusicMode === 'random');
+      workMusicRemoteModeBtn.title =
+        window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중';
+      workMusicRemoteModeBtn.setAttribute(
+        'aria-label',
+        window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중'
+      );
     }
     renderWorkMusicPlayButton();
     renderWorkMusicSeamlessButton();
@@ -2409,22 +2436,33 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     );
     bindSliderControlHoverState(workMusicSeamlessControl);
     bindSliderControlHoverState(workMusicVolumeControl);
+    bindSliderControlHoverState(workMusicRemoteSeamlessControl);
+    bindSliderControlHoverState(workMusicRemoteVolumeControl);
     workMusicRemoteInfo?.addEventListener('click', () => showTab('workmusic'));
-    workMusicModeBtn?.addEventListener('click', async () => {
+    const toggleWorkMusicMode = async () => {
       window.workMusicMode = window.workMusicMode === 'random' ? 'sequential' : 'random';
       resetWorkMusicDisplayShuffle();
       await window.cloudSaveWorkMusic?.();
       renderWorkMusic();
       if (getActiveWorkMusicSongs().length)
         renderWorkMusicIframe(window.workMusicCurrentIndex || 0, window.workMusicIsPlaying);
-    });
+    };
+    workMusicModeBtn?.addEventListener('click', toggleWorkMusicMode);
+    workMusicRemoteModeBtn?.addEventListener('click', toggleWorkMusicMode);
     workMusicSeamlessBtn?.addEventListener('click', async () => {
+      const current = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
+      await setWorkMusicSeamlessSeconds(current > 0 ? 0 : 10);
+    });
+    workMusicRemoteSeamlessBtn?.addEventListener('click', async () => {
       const current = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
       await setWorkMusicSeamlessSeconds(current > 0 ? 0 : 10);
     });
     workMusicMuteBtn?.addEventListener('click', toggleWorkMusicMute);
     workMusicRemoteMuteBtn?.addEventListener('click', toggleWorkMusicMute);
     workMusicSeamlessRange?.addEventListener('input', async (e) => {
+      await setWorkMusicSeamlessSeconds(Number(e.target.value || 0));
+    });
+    workMusicRemoteSeamlessRange?.addEventListener('input', async (e) => {
       await setWorkMusicSeamlessSeconds(Number(e.target.value || 0));
     });
     const handleSeamlessWheel = async (e) => {
@@ -2436,14 +2474,19 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       await setWorkMusicSeamlessSeconds(next);
     };
     workMusicSeamlessControl?.addEventListener('wheel', handleSeamlessWheel, { passive: false });
-    workMusicSeamlessRange?.addEventListener('keydown', async (e) => {
+    workMusicRemoteSeamlessControl?.addEventListener('wheel', handleSeamlessWheel, {
+      passive: false
+    });
+    const handleSeamlessKey = async (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
       const delta = e.key === 'ArrowRight' ? 1 : -1;
       await setWorkMusicSeamlessSeconds(
         normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds) + delta
       );
-    });
+    };
+    workMusicSeamlessRange?.addEventListener('keydown', handleSeamlessKey);
+    workMusicRemoteSeamlessRange?.addEventListener('keydown', handleSeamlessKey);
     workMusicVolumeRange?.addEventListener('input', async (e) => {
       await setWorkMusicVolume(Number(e.target.value || 0));
     });
@@ -2459,6 +2502,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       await setWorkMusicVolume(base + delta);
     };
     workMusicVolumeControl?.addEventListener('wheel', handleWorkMusicVolumeWheel, { passive: false });
+    workMusicRemoteVolumeControl?.addEventListener('wheel', handleWorkMusicVolumeWheel, {
+      passive: false
+    });
     const handleWorkMusicVolumeKey = async (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();

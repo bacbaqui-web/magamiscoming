@@ -977,14 +977,11 @@
             />
           </svg>
         </button>
-      </div>
-      <div class="workmusic-remote-volume" title="볼륨">
         <button
-          id="workMusicRemoteMuteBtn"
-          class="workmusic-volume-btn"
-          type="button"
-          title="음소거"
-          aria-label="음소거"
+          id="workMusicRemoteModeBtn"
+          class="workmusic-remote-btn"
+          title="랜덤 재생 전환"
+          aria-label="랜덤 재생 전환"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -996,13 +993,93 @@
             stroke-linejoin="round"
             aria-hidden="true"
           >
-            <path d="M11 5 6 9H2v6h4l5 4z" />
-            <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-            <path d="M19 5a10 10 0 0 1 0 14" />
+            <path d="M16 3h5v5" />
+            <path d="M4 20 21 3" />
+            <path d="M21 16v5h-5" />
+            <path d="m15 15 6 6" />
+            <path d="M4 4l5 5" />
           </svg>
         </button>
-        <input id="workMusicRemoteVolumeRange" type="range" min="0" max="100" step="5" value="80" />
-        <span id="workMusicRemoteVolumePercent" class="workmusic-remote-percent">80%</span>
+        <div class="slider-control" title="이어듣기">
+          <button
+            id="workMusicRemoteSeamlessBtn"
+            class="slider-icon-button workmusic-remote-btn"
+            title="이어듣기 전환"
+            aria-label="이어듣기 전환"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M19 8 H6" />
+              <path d="M6 8 L11 3" />
+              <path d="M6 8 L11 13" />
+              <path d="M5 18 H18" />
+              <path d="M18 18 L13 13" />
+              <path d="M18 18 L13 23" />
+            </svg>
+          </button>
+          <div class="slider-popover" aria-label="이어듣기 겹침 시간">
+            <div class="slider-track-wrap">
+              <input
+                id="workMusicRemoteSeamlessRange"
+                class="vertical-slider"
+                type="range"
+                min="0"
+                max="20"
+                step="1"
+                value="0"
+              />
+            </div>
+          </div>
+          <span id="workMusicRemoteSeamlessSeconds" class="slider-value">0</span>
+          <span id="workMusicRemoteSeamlessBadge" class="workmusic-slider-badge">0</span>
+        </div>
+        <div class="slider-control" title="볼륨">
+          <button
+            id="workMusicRemoteMuteBtn"
+            class="slider-icon-button workmusic-remote-btn"
+            type="button"
+            title="음소거"
+            aria-label="음소거"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M11 5 6 9H2v6h4l5 4z" />
+              <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+              <path d="M19 5a10 10 0 0 1 0 14" />
+            </svg>
+          </button>
+          <div class="slider-popover" aria-label="볼륨 조절">
+            <div class="slider-track-wrap">
+              <input
+                id="workMusicRemoteVolumeRange"
+                class="vertical-slider"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value="80"
+              />
+            </div>
+          </div>
+          <span id="workMusicRemoteVolumePercent" class="slider-value">80</span>
+          <span id="workMusicRemoteVolumeBadge" class="workmusic-slider-badge">80</span>
+        </div>
       </div>
     </div>
 
