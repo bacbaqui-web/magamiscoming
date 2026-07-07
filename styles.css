@@ -1295,6 +1295,92 @@ textarea#notesArea::-webkit-resizer {
   height: 22px;
   display: block;
 }
+.track-preview-control {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.track-preview-popover {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: max-content;
+  min-width: 190px;
+  max-width: min(360px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #4a4a4a;
+  border-radius: 8px;
+  background: rgba(34, 34, 34, 0.96);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.42);
+  color: #fff;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(-50%, 6px);
+  transition:
+    opacity 0.16s ease,
+    visibility 0.16s ease,
+    transform 0.16s ease;
+  z-index: 1000;
+}
+.track-preview-control:hover .track-preview-popover,
+.track-preview-control:focus-within .track-preview-popover {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+.track-preview-thumb {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #000;
+}
+.track-preview-thumb.is-missing {
+  background: #000;
+}
+.track-preview-text {
+  min-width: 0;
+  max-width: 280px;
+  flex: 0 1 auto;
+  text-align: left;
+}
+.track-preview-label {
+  margin-bottom: 2px;
+  color: #aaa;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.track-preview-title {
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.18;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track-preview-artist {
+  margin-top: 3px;
+  color: #c8c8c8;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 #workMusicModeBtn {
   color: #777;
 }
@@ -2134,6 +2220,11 @@ body {
   height: 18px;
   display: block;
 }
+.workmusic-remote-controls .track-preview-control {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
 .workmusic-remote-controls .slider-control {
   --slider-control-size: 34px;
   --slider-control-expanded-height: 170px;
@@ -2251,6 +2342,11 @@ body {
   .workmusic-remote-btn svg {
     width: 16px;
     height: 16px;
+  }
+  .workmusic-remote-controls .track-preview-control {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
   }
   .workmusic-remote-controls .slider-control {
     --slider-control-size: 30px;

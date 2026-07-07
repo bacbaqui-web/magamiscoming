@@ -27,6 +27,12 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicPrevBtn = document.getElementById('workMusicPrevBtn');
   const workMusicPlayBtn = document.getElementById('workMusicPlayBtn');
   const workMusicNextBtn = document.getElementById('workMusicNextBtn');
+  const workMusicPrevPreviewThumb = document.getElementById('workMusicPrevPreviewThumb');
+  const workMusicPrevPreviewTitle = document.getElementById('workMusicPrevPreviewTitle');
+  const workMusicPrevPreviewArtist = document.getElementById('workMusicPrevPreviewArtist');
+  const workMusicNextPreviewThumb = document.getElementById('workMusicNextPreviewThumb');
+  const workMusicNextPreviewTitle = document.getElementById('workMusicNextPreviewTitle');
+  const workMusicNextPreviewArtist = document.getElementById('workMusicNextPreviewArtist');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
   const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
@@ -53,6 +59,16 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicRemotePrevBtn = document.getElementById('workMusicRemotePrevBtn');
   const workMusicRemotePlayBtn = document.getElementById('workMusicRemotePlayBtn');
   const workMusicRemoteNextBtn = document.getElementById('workMusicRemoteNextBtn');
+  const workMusicRemotePrevPreviewThumb = document.getElementById('workMusicRemotePrevPreviewThumb');
+  const workMusicRemotePrevPreviewTitle = document.getElementById('workMusicRemotePrevPreviewTitle');
+  const workMusicRemotePrevPreviewArtist = document.getElementById(
+    'workMusicRemotePrevPreviewArtist'
+  );
+  const workMusicRemoteNextPreviewThumb = document.getElementById('workMusicRemoteNextPreviewThumb');
+  const workMusicRemoteNextPreviewTitle = document.getElementById('workMusicRemoteNextPreviewTitle');
+  const workMusicRemoteNextPreviewArtist = document.getElementById(
+    'workMusicRemoteNextPreviewArtist'
+  );
   const workMusicRemoteModeBtn = document.getElementById('workMusicRemoteModeBtn');
   const workMusicRemoteSeamlessBtn = document.getElementById('workMusicRemoteSeamlessBtn');
   const workMusicRemoteSeamlessControl = workMusicRemoteSeamlessBtn?.closest('.slider-control');
@@ -251,6 +267,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function updateWorkMusicRemoteUI() {
     if (!workMusicRemote) return;
     workMusicRemote.classList.add('show');
+    renderWorkMusicTrackPreviews();
     const songs = getActiveWorkMusicSongs();
     if (!songs.length) {
       if (workMusicRemoteThumb) {
@@ -571,6 +588,74 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       return next;
     }
     return (cur + step + songs.length) % songs.length;
+  }
+
+  function getWorkMusicPreviewIndex(step = 1, songs = getActiveWorkMusicSongs()) {
+    if (!songs.length) return -1;
+    const cur = Math.max(0, Number(window.workMusicCurrentIndex || 0));
+    if (window.workMusicMode !== 'random') return (cur + step + songs.length) % songs.length;
+    const order = getWorkMusicDisplayOrder(songs);
+    const currentPosition = order.indexOf(cur);
+    if (currentPosition < 0) return (cur + step + songs.length) % songs.length;
+    const nextPosition = (currentPosition + step + order.length) % order.length;
+    return Number.isInteger(order[nextPosition]) ? order[nextPosition] : -1;
+  }
+
+  function renderWorkMusicTrackPreview(step, { thumbEl, titleEl, artistEl, fallbackTitle }) {
+    if (!titleEl) return;
+    const songs = getActiveWorkMusicSongs();
+    const index = getWorkMusicPreviewIndex(step, songs);
+    const song = songs[index];
+    if (!song) {
+      if (thumbEl) {
+        thumbEl.src = WORK_MUSIC_EMPTY_THUMB_SRC;
+        thumbEl.classList.add('is-missing');
+      }
+      titleEl.textContent = fallbackTitle;
+      if (artistEl) artistEl.textContent = '';
+      return;
+    }
+    const thumb =
+      song.thumbnail ||
+      (song.videoId ? `https://img.youtube.com/vi/${song.videoId}/mqdefault.jpg` : '');
+    if (thumbEl) {
+      if (thumb) {
+        thumbEl.classList.remove('is-missing');
+        if (thumbEl.src !== thumb) thumbEl.src = thumb;
+      } else {
+        thumbEl.src = WORK_MUSIC_EMPTY_THUMB_SRC;
+        thumbEl.classList.add('is-missing');
+      }
+    }
+    titleEl.textContent = song.title || `YouTube ${song.videoId || ''}`;
+    if (artistEl) artistEl.textContent = getSongArtist(song) || song.channelTitle || '';
+  }
+
+  function renderWorkMusicTrackPreviews() {
+    renderWorkMusicTrackPreview(-1, {
+      thumbEl: workMusicPrevPreviewThumb,
+      titleEl: workMusicPrevPreviewTitle,
+      artistEl: workMusicPrevPreviewArtist,
+      fallbackTitle: '이전 곡 없음'
+    });
+    renderWorkMusicTrackPreview(-1, {
+      thumbEl: workMusicRemotePrevPreviewThumb,
+      titleEl: workMusicRemotePrevPreviewTitle,
+      artistEl: workMusicRemotePrevPreviewArtist,
+      fallbackTitle: '이전 곡 없음'
+    });
+    renderWorkMusicTrackPreview(1, {
+      thumbEl: workMusicNextPreviewThumb,
+      titleEl: workMusicNextPreviewTitle,
+      artistEl: workMusicNextPreviewArtist,
+      fallbackTitle: '다음 곡 없음'
+    });
+    renderWorkMusicTrackPreview(1, {
+      thumbEl: workMusicRemoteNextPreviewThumb,
+      titleEl: workMusicRemoteNextPreviewTitle,
+      artistEl: workMusicRemoteNextPreviewArtist,
+      fallbackTitle: '다음 곡 없음'
+    });
   }
 
   function shuffledWorkMusicIndexes(startIndex) {
@@ -1508,6 +1593,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       // 단, 재생 중에는 사용자가 듣는 곡이 갑자기 바뀌지 않게 건드리지 않습니다.
       window.workMusicCurrentIndex = displayOrder[0];
     }
+    renderWorkMusicTrackPreviews();
     displayOrder.forEach((idx) => {
       const song = songs[idx];
       if (!song) return;
