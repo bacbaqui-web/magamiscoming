@@ -1629,6 +1629,36 @@ textarea#notesArea::-webkit-resizer {
   opacity: 1;
   visibility: visible;
 }
+.workmusic-controls .slider-control .workmusic-slider-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -4px;
+  transform: none;
+  min-width: 0;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  color: #f4f4f4;
+  padding: 2px 5px;
+  background: #3f3f3f;
+  border: 1px solid #555;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 10000;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1) 0s,
+    visibility 0.22s cubic-bezier(0.22, 1, 0.36, 1) 0s;
+}
+.workmusic-controls .slider-control:hover .workmusic-slider-badge,
+.workmusic-controls .slider-control:focus-within .workmusic-slider-badge,
+.workmusic-controls .slider-control.is-open .workmusic-slider-badge {
+  opacity: 0;
+  visibility: hidden;
+}
 .workmusic-volume-btn {
   width: 24px;
   height: 24px;

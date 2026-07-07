@@ -32,10 +32,12 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
   const workMusicSeamlessRange = document.getElementById('workMusicSeamlessRange');
   const workMusicSeamlessSeconds = document.getElementById('workMusicSeamlessSeconds');
+  const workMusicSeamlessBadge = document.getElementById('workMusicSeamlessBadge');
   const workMusicMuteBtn = document.getElementById('workMusicMuteBtn');
   const workMusicVolumeControl = workMusicMuteBtn?.closest('.slider-control');
   const workMusicVolumeRange = document.getElementById('workMusicVolumeRange');
   const workMusicVolumePercent = document.getElementById('workMusicVolumePercent');
+  const workMusicVolumeBadge = document.getElementById('workMusicVolumeBadge');
   const workMusicList = document.getElementById('workMusicList');
   const workMusicSettingsModal = document.getElementById('workMusicSettingsModal');
   const workMusicTitleInput = document.getElementById('workMusicTitleInput');
@@ -224,6 +226,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     }
     if (workMusicSeamlessRange) workMusicSeamlessRange.value = String(seconds);
     if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = String(seconds);
+    if (workMusicSeamlessBadge) workMusicSeamlessBadge.textContent = String(seconds);
   }
 
   function updateWorkMusicRemoteUI() {
@@ -859,6 +862,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const display = muted ? 0 : raw;
     if (workMusicVolumeRange) workMusicVolumeRange.value = String(display);
     if (workMusicVolumePercent) workMusicVolumePercent.textContent = String(display);
+    if (workMusicVolumeBadge) workMusicVolumeBadge.textContent = String(display);
     if (workMusicRemoteVolumeRange) workMusicRemoteVolumeRange.value = String(display);
     if (workMusicRemoteVolumePercent) workMusicRemoteVolumePercent.textContent = `${display}%`;
     if (workMusicMuteBtn) {
