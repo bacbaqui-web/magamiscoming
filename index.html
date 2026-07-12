@@ -16,7 +16,7 @@
     <link rel="manifest" href="manifest.json" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -168,31 +168,16 @@
     </div>
 
     <div id="calendar-section" class="section-card tab-content active">
-      <div class="flex justify-between items-center mb-4">
-        <button
-          id="prevMonthBtn"
-          class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg"
-        >
-          &lt; 이전 달
-        </button>
-        <h2 id="currentMonthYear" class="text-lg font-bold"></h2>
-        <button
-          id="nextMonthBtn"
-          class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg"
-        >
-          다음 달 &gt;
-        </button>
-      </div>
-      <div class="calendar-header mb-2">
-        <div class="day-label">월</div>
-        <div class="day-label">화</div>
-        <div class="day-label">수</div>
-        <div class="day-label">목</div>
-        <div class="day-label">금</div>
-        <div class="day-label">토</div>
-        <div class="day-label">일</div>
-      </div>
-      <div id="calendarGrid" class="calendar-grid"></div>
+      <section class="undated-task-board" aria-label="날짜 없는 할 일">
+        <button id="addUndatedTaskBtn" class="add-undated-task-btn" type="button">+ 할일</button>
+        <div id="undatedTaskList" class="undated-task-list"></div>
+      </section>
+      <div
+        id="calendarGrid"
+        class="calendar-grid week-timeline"
+        tabindex="0"
+        aria-label="주간 타임라인. 위아래 방향키 또는 마우스 휠로 주 이동"
+      ></div>
 
       <!-- (달력 아래 리스트) : 문구/추가버튼 제거, 항목만 표시 -->
       <div
@@ -507,7 +492,9 @@
                 />
               </div>
             </div>
-            <span id="workMusicSeamlessSeconds" class="workmusic-seamless-seconds slider-value">0</span>
+            <span id="workMusicSeamlessSeconds" class="workmusic-seamless-seconds slider-value"
+              >0</span
+            >
             <span id="workMusicSeamlessBadge" class="workmusic-slider-badge">0</span>
           </div>
           <div class="slider-control" title="볼륨">
@@ -546,7 +533,9 @@
                 />
               </div>
             </div>
-            <span id="workMusicVolumePercent" class="workmusic-volume-percent slider-value">80</span>
+            <span id="workMusicVolumePercent" class="workmusic-volume-percent slider-value"
+              >80</span
+            >
             <span id="workMusicVolumeBadge" class="workmusic-slider-badge">80</span>
           </div>
         </div>
@@ -611,61 +600,130 @@
       </div>
     </div>
 
+    <div id="calendarSettingsModal" class="modal">
+      <div
+        class="modal-content calendar-settings-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="주간 달력 설정"
+      >
+        <div class="calendar-settings-control">
+          <label for="calendarWeekStart">시작 요일</label>
+          <span aria-hidden="true">-</span>
+          <select id="calendarWeekStart" class="calendar-settings-select">
+            <option value="0">일요일</option>
+            <option value="1">월요일</option>
+            <option value="2">화요일</option>
+            <option value="3">수요일</option>
+            <option value="4">목요일</option>
+            <option value="5">금요일</option>
+            <option value="6">토요일</option>
+          </select>
+        </div>
+        <div class="calendar-settings-actions">
+          <button id="saveCalendarSettingsBtn" type="button">저장</button>
+          <button id="cancelCalendarSettingsBtn" type="button">취소</button>
+        </div>
+      </div>
+    </div>
+
     <div id="taskModal" class="modal">
-      <div class="modal-content">
-        <h2 id="modalTitle" class="text-2xl font-bold mb-4">새 작업</h2>
-        <label class="block mb-2">제목:</label>
-        <input
-          type="text"
-          id="taskTitle"
-          class="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 mb-4"
-        />
-        <label class="block mb-2">설명:</label>
+      <div class="modal-content task-modal-content" role="dialog" aria-modal="true">
+        <h2 class="task-modal-title">할일</h2>
+        <input type="text" id="taskTitle" class="task-modal-input" placeholder="제목" />
         <textarea
           id="taskDescription"
-          class="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 mb-4 h-24"
+          class="task-modal-input task-modal-description"
+          placeholder="설명"
         ></textarea>
-        <label class="block mb-2">날짜:</label>
-        <input
-          type="date"
-          id="taskDate"
-          class="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 mb-4"
-        />
+        <div class="task-date-picker">
+          <button id="taskDateDisplay" class="task-modal-input task-date-display" type="button">
+            날짜 선택
+          </button>
+          <div id="taskMiniCalendar" class="task-mini-calendar hidden">
+            <div class="task-mini-calendar-header">
+              <button id="taskCalendarPrevMonth" type="button" aria-label="이전 달">‹</button>
+              <strong id="taskCalendarMonth"></strong>
+              <button id="taskCalendarNextMonth" type="button" aria-label="다음 달">›</button>
+            </div>
+            <div id="taskCalendarWeekdays" class="task-mini-calendar-weekdays"></div>
+            <div id="taskCalendarDays" class="task-mini-calendar-days"></div>
+          </div>
+        </div>
 
-        <label class="block mb-2">분류:</label>
-        <select
-          id="taskCategory"
-          class="w-full p-2 rounded-lg bg-gray-800 border border-gray-700 mb-4"
-        >
-          <option value="">(기본)</option>
-          <option value="important">중요한일 (빨강)</option>
-          <option value="family">가족행사 (파랑)</option>
-          <option value="special">특별한날 (초록)</option>
-        </select>
+        <fieldset class="task-color-picker" aria-label="일정 색상">
+          <label class="task-color-option white" title="흰색">
+            <input type="radio" name="taskColor" value="" checked />
+            <span></span>
+          </label>
+          <label class="task-color-option red" title="빨강">
+            <input type="radio" name="taskColor" value="important" />
+            <span></span>
+          </label>
+          <label class="task-color-option blue" title="파랑">
+            <input type="radio" name="taskColor" value="family" />
+            <span></span>
+          </label>
+          <label class="task-color-option green" title="초록">
+            <input type="radio" name="taskColor" value="special" />
+            <span></span>
+          </label>
+          <label class="task-color-option yellow" title="노랑">
+            <input type="radio" name="taskColor" value="yellow" />
+            <span></span>
+          </label>
+          <label class="task-color-option transparent" title="투명">
+            <input type="radio" name="taskColor" value="transparent" />
+            <span></span>
+          </label>
+          <label class="task-color-option custom" title="직접 색상 선택">
+            <input type="radio" name="taskColor" value="custom" />
+            <input
+              id="taskCustomColor"
+              class="task-custom-color-input"
+              type="color"
+              value="#8b5cf6"
+              aria-label="직접 색상 선택"
+            />
+          </label>
+        </fieldset>
 
-        <label class="flex items-center gap-2 mb-4 text-sm opacity-90" style="user-select: none">
-          <input type="checkbox" id="todoOnly" />
-          달력에는 표시하지 않고 <b>할 일</b>로만 추가
-        </label>
-        <div class="flex justify-end gap-2">
-          <button
-            id="saveTaskBtn"
-            class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg"
-          >
-            저장
-          </button>
-          <button
-            id="cancelBtn"
-            class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg"
-          >
-            취소
-          </button>
-          <button
-            id="deleteTaskBtn"
-            class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg hidden"
-          >
-            삭제
-          </button>
+        <div class="task-repeat-settings">
+          <label class="task-option-toggle">
+            <input id="taskRepeatEnabled" type="checkbox" />
+            <span>반복</span>
+          </label>
+          <div id="taskRepeatPanel" class="task-repeat-panel hidden">
+            <div class="task-repeat-weekdays" aria-label="반복 요일">
+              <label><input type="checkbox" name="taskRepeatDay" value="1" /><span>월</span></label>
+              <label><input type="checkbox" name="taskRepeatDay" value="2" /><span>화</span></label>
+              <label><input type="checkbox" name="taskRepeatDay" value="3" /><span>수</span></label>
+              <label><input type="checkbox" name="taskRepeatDay" value="4" /><span>목</span></label>
+              <label><input type="checkbox" name="taskRepeatDay" value="5" /><span>금</span></label>
+              <label><input type="checkbox" name="taskRepeatDay" value="6" /><span>토</span></label>
+              <label><input type="checkbox" name="taskRepeatDay" value="0" /><span>일</span></label>
+            </div>
+            <div id="taskCountPanel" class="task-count-panel count-disabled">
+              <label class="task-option-toggle task-count-toggle">
+                <input id="taskCountEnabled" type="checkbox" />
+                <span>카운트</span>
+              </label>
+              <input
+                id="taskCountAnchor"
+                type="number"
+                step="1"
+                placeholder="설정일부터 1"
+                aria-label="설정일 카운트"
+              />
+              <input id="taskCountUnit" type="text" placeholder="단위" aria-label="카운트 단위" />
+            </div>
+          </div>
+        </div>
+
+        <div class="task-modal-actions">
+          <button id="saveTaskBtn" type="button">저장</button>
+          <button id="cancelBtn" type="button">취소</button>
+          <button id="deleteTaskBtn" type="button" class="hidden">삭제</button>
         </div>
       </div>
     </div>

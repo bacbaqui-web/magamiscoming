@@ -161,6 +161,15 @@ At the end of every task provide:
 - Remaining issues
 - Recommended next steps
 
+In addition to the chat response, create a Markdown report that can be shown directly to GPT.
+
+- Save the latest report as `current_task.md` in the project root.
+- Overwrite `current_task.md` at the end of every task so it always describes the latest task.
+- Write the entire report in Korean.
+- Include the original request, implementation details, changed files, validation results, Git status, risks, and recommended next plan.
+- Clearly distinguish completed work from unverified or remaining work.
+- Include `current_task.md` in the final changed-files list.
+
 ---
 
 ## Special Instruction
