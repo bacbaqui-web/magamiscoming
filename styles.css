@@ -1590,6 +1590,11 @@ textarea#notesArea::-webkit-resizer {
   margin-bottom: 16px;
   padding-top: 2px;
 }
+.task-dday-setting {
+  margin: 0 0 16px;
+  padding-top: 2px;
+  text-align: left;
+}
 .task-option-toggle {
   display: inline-flex;
   align-items: center;

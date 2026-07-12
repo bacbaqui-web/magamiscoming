@@ -71,6 +71,7 @@ export function initCalendar() {
   const taskCountPanel = document.getElementById('taskCountPanel');
   const taskCountAnchorInput = document.getElementById('taskCountAnchor');
   const taskCountUnitInput = document.getElementById('taskCountUnit');
+  const taskExcludeFromDdayInput = document.getElementById('taskExcludeFromDday');
   const taskRepeatSettings = document.querySelector('.task-repeat-settings');
   const calendarSettingsModal = document.getElementById('calendarSettingsModal');
   const calendarWeekStartSelect = document.getElementById('calendarWeekStart');
@@ -646,7 +647,7 @@ export function initCalendar() {
     };
 
     const dated = tasks
-      .filter((t) => !!t.date && formatDday(t.date))
+      .filter((t) => !!t.date && !t.excludeFromDday && formatDday(t.date))
       .sort((a, b) => {
         const ca = !!a.complete,
           cb = !!b.complete;
@@ -907,6 +908,9 @@ export function initCalendar() {
       if (taskCustomColorInput) taskCustomColorInput.value = task.customColor || '#8b5cf6';
       updateCustomColorOption(task.customColor || '#8b5cf6', task.category === 'custom');
       setTaskRepeatValues(task);
+      if (taskExcludeFromDdayInput) {
+        taskExcludeFromDdayInput.checked = !!task.excludeFromDday;
+      }
       deleteTaskBtn.classList.remove('hidden');
     } else if (task && 'date' in task) {
       taskTitleInput.value = '';
@@ -917,6 +921,9 @@ export function initCalendar() {
       if (taskCustomColorInput) taskCustomColorInput.value = task.customColor || '#8b5cf6';
       updateCustomColorOption(task.customColor || '#8b5cf6', task.category === 'custom');
       setTaskRepeatValues(task);
+      if (taskExcludeFromDdayInput) {
+        taskExcludeFromDdayInput.checked = !!task.excludeFromDday;
+      }
       deleteTaskBtn.classList.add('hidden');
     } else {
       taskTitleInput.value = '';
@@ -927,6 +934,7 @@ export function initCalendar() {
       if (taskCustomColorInput) taskCustomColorInput.value = '#8b5cf6';
       updateCustomColorOption('#8b5cf6', false);
       setTaskRepeatValues();
+      if (taskExcludeFromDdayInput) taskExcludeFromDdayInput.checked = false;
       deleteTaskBtn.classList.add('hidden');
     }
     isSelectingRangeEnd = false;
@@ -1014,6 +1022,7 @@ export function initCalendar() {
       countEnabled,
       countAnchor,
       countUnit,
+      excludeFromDday: !!taskExcludeFromDdayInput?.checked,
       occurrenceStatus: window.currentTask?.occurrenceStatus || {},
       todoOnly: !date,
       complete: window.currentTask?.complete ?? false
