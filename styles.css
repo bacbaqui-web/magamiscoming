@@ -938,18 +938,18 @@ textarea#notesArea::-webkit-resizer {
   background: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.3) 36%,
-    rgba(0, 0, 0, 0.74) 72%,
-    rgba(0, 0, 0, 0.96) 100%
+    rgba(0, 0, 0, 0.16) 36%,
+    rgba(0, 0, 0, 0.39) 72%,
+    rgba(0, 0, 0, 0.5) 100%
   );
 }
 .week-navigation-zone.down {
   top: 100%;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.96) 0%,
-    rgba(0, 0, 0, 0.74) 28%,
-    rgba(0, 0, 0, 0.3) 64%,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.39) 28%,
+    rgba(0, 0, 0, 0.16) 64%,
     rgba(0, 0, 0, 0) 100%
   );
 }
@@ -1123,7 +1123,7 @@ textarea#notesArea::-webkit-resizer {
 .timeline-direction-cue path {
   fill: none;
   stroke: #fff;
-  stroke-width: 4.5;
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -3208,7 +3208,7 @@ body {
     width: min(132px, 34%);
   }
   .timeline-direction-cue path {
-    stroke-width: 4;
+    stroke-width: 2.67;
   }
   .week-navigation-zone.up .timeline-direction-cue {
     bottom: 24px;
