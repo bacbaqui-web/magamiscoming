@@ -525,6 +525,10 @@ export function initCalendar() {
       row.classList.add('actual-current-week');
       if (weekOffset < 0) row.classList.add('actual-week-before');
       if (weekOffset > 0) row.classList.add('actual-week-after');
+      const currentWeekFrame = document.createElement('span');
+      currentWeekFrame.className = 'actual-current-week-frame';
+      currentWeekFrame.setAttribute('aria-hidden', 'true');
+      row.appendChild(currentWeekFrame);
     }
     row.dataset.weekOffset = weekOffset;
     row.dataset.weekStart = ymdKST(weekStart);
@@ -547,7 +551,10 @@ export function initCalendar() {
       row.appendChild(createWeekNavigationZone('down'));
     }
     for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
-      row.appendChild(createDayCell(addDays(weekStart, dayOffset), weekOffset, weekTasks));
+      const dayCell = createDayCell(addDays(weekStart, dayOffset), weekOffset, weekTasks);
+      if (dayOffset === 0) dayCell.classList.add('week-edge-start');
+      if (dayOffset === 6) dayCell.classList.add('week-edge-end');
+      row.appendChild(dayCell);
     }
     return row;
   };
