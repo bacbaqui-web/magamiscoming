@@ -1,3 +1,5 @@
+import { getKoreanHolidayNames } from '../data/koreanHolidays.js';
+
 const WEEK_OFFSETS = [-2, -1, 0, 1, 2];
 const WEEK_TRANSITION_MS = 300;
 const WHEEL_DELTA_THRESHOLD = 0;
@@ -339,6 +341,8 @@ export function initCalendar() {
     if (date.getDay() === 6) day.classList.add('weekend-saturday');
     if (date.getDay() === 0) day.classList.add('weekend-sunday');
     const fullDate = ymdKST(date);
+    const holidayNames = getKoreanHolidayNames(fullDate);
+    if (holidayNames.length) day.classList.add('holiday');
     if (fullDate === ymdKST(new Date())) day.classList.add('today');
 
     const dayTop = document.createElement('div');
@@ -351,6 +355,15 @@ export function initCalendar() {
     dayNumber.textContent = date.getDate();
     dayTop.appendChild(weekday);
     dayTop.appendChild(dayNumber);
+    if (holidayNames.length) {
+      const holidayName = document.createElement('span');
+      const holidayLabel = holidayNames.join(' · ');
+      holidayName.className = 'day-holiday-name';
+      holidayName.textContent = holidayLabel;
+      holidayName.title = holidayLabel;
+      dayTop.appendChild(holidayName);
+      day.setAttribute('aria-label', `${fullDate}, ${holidayLabel}`);
+    }
     day.appendChild(dayTop);
 
     const divider = document.createElement('div');

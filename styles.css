@@ -1198,7 +1198,8 @@ textarea#notesArea::-webkit-resizer {
 .calendar-day.weekend-saturday {
   background: rgba(72, 116, 170, 0.1);
 }
-.calendar-day.weekend-sunday {
+.calendar-day.weekend-sunday,
+.calendar-day.holiday {
   background: rgba(170, 72, 72, 0.1);
 }
 .calendar-day.weekend-saturday .day-weekday {
@@ -1207,10 +1208,13 @@ textarea#notesArea::-webkit-resizer {
 .calendar-day.weekend-saturday .day-number {
   color: #788ba5;
 }
-.calendar-day.weekend-sunday .day-weekday {
+.calendar-day.weekend-sunday .day-weekday,
+.calendar-day.holiday .day-weekday,
+.calendar-day.holiday .day-holiday-name {
   color: #d3aaaa;
 }
-.calendar-day.weekend-sunday .day-number {
+.calendar-day.weekend-sunday .day-number,
+.calendar-day.holiday .day-number {
   color: #a07979;
 }
 .calendar-day.today {
@@ -1246,6 +1250,19 @@ textarea#notesArea::-webkit-resizer {
   z-index: 10;
   line-height: 1;
   cursor: pointer;
+}
+.day-holiday-name {
+  display: block;
+  max-width: calc(100% - 8px);
+  margin-top: 3px;
+  overflow: hidden;
+  color: #d3aaaa;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .day-divider {
   height: 1px;
