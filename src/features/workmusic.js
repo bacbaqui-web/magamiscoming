@@ -59,13 +59,21 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicRemotePrevBtn = document.getElementById('workMusicRemotePrevBtn');
   const workMusicRemotePlayBtn = document.getElementById('workMusicRemotePlayBtn');
   const workMusicRemoteNextBtn = document.getElementById('workMusicRemoteNextBtn');
-  const workMusicRemotePrevPreviewThumb = document.getElementById('workMusicRemotePrevPreviewThumb');
-  const workMusicRemotePrevPreviewTitle = document.getElementById('workMusicRemotePrevPreviewTitle');
+  const workMusicRemotePrevPreviewThumb = document.getElementById(
+    'workMusicRemotePrevPreviewThumb'
+  );
+  const workMusicRemotePrevPreviewTitle = document.getElementById(
+    'workMusicRemotePrevPreviewTitle'
+  );
   const workMusicRemotePrevPreviewArtist = document.getElementById(
     'workMusicRemotePrevPreviewArtist'
   );
-  const workMusicRemoteNextPreviewThumb = document.getElementById('workMusicRemoteNextPreviewThumb');
-  const workMusicRemoteNextPreviewTitle = document.getElementById('workMusicRemoteNextPreviewTitle');
+  const workMusicRemoteNextPreviewThumb = document.getElementById(
+    'workMusicRemoteNextPreviewThumb'
+  );
+  const workMusicRemoteNextPreviewTitle = document.getElementById(
+    'workMusicRemoteNextPreviewTitle'
+  );
   const workMusicRemoteNextPreviewArtist = document.getElementById(
     'workMusicRemoteNextPreviewArtist'
   );
@@ -260,7 +268,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicRemoteSeamlessBtn.setAttribute('aria-label', label);
     }
     if (workMusicRemoteSeamlessRange) workMusicRemoteSeamlessRange.value = String(seconds);
-    if (workMusicRemoteSeamlessSeconds) workMusicRemoteSeamlessSeconds.textContent = String(seconds);
+    if (workMusicRemoteSeamlessSeconds)
+      workMusicRemoteSeamlessSeconds.textContent = String(seconds);
     if (workMusicRemoteSeamlessBadge) workMusicRemoteSeamlessBadge.textContent = String(seconds);
   }
 
@@ -955,6 +964,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (workMusicSeamless) {
       workMusicSeamless.transitioning = false;
       workMusicSeamless.transitionStarted = false;
+      workMusicSeamless.fadeStarted = false;
+      workMusicSeamless.transitionContext = null;
     }
   }
 
@@ -1116,6 +1127,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicSeamless.standbyIndex = nextIndex;
     workMusicSeamless.transitioning = false;
     workMusicSeamless.transitionStarted = false;
+    workMusicSeamless.fadeStarted = false;
+    workMusicSeamless.transitionContext = null;
     const standbyPlayer = workMusicSeamless.players[workMusicSeamless.standbySlot];
     const nextSong = songs[nextIndex];
     if (!standbyPlayer || !nextSong?.videoId) return;
@@ -1152,6 +1165,38 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     cueWorkMusicSeamlessStandby(nextIndex);
   }
 
+  function beginWorkMusicSeamlessFade(slot) {
+    if (!workMusicSeamless?.players || workMusicSeamless.fadeStarted) return;
+    const transition = workMusicSeamless.transitionContext;
+    if (!transition || slot !== transition.nextSlot) return;
+    const { previousSlot, nextSlot, nextIndex, crossfadeSeconds } = transition;
+    const previousPlayer = workMusicSeamless.players[previousSlot];
+    const nextPlayer = workMusicSeamless.players[nextSlot];
+    if (!previousPlayer || !nextPlayer) return;
+
+    workMusicSeamless.fadeStarted = true;
+    clearInterval(workMusicSeamlessFadeTimer);
+    const startedAt = Date.now();
+    const updateVolumes = () => {
+      if (!workMusicSeamless?.transitioning) return;
+      const elapsed = (Date.now() - startedAt) / 1000;
+      const progress = Math.min(1, elapsed / crossfadeSeconds);
+      const easedProgress = progress * progress * (3 - 2 * progress);
+      const volume = getWorkMusicPlayerVolume();
+      setWorkMusicPlayerVolume(previousPlayer, volume * (1 - easedProgress));
+      setWorkMusicPlayerVolume(nextPlayer, volume * easedProgress);
+      if (progress >= 1) {
+        clearInterval(workMusicSeamlessFadeTimer);
+        workMusicSeamlessFadeTimer = null;
+        completeWorkMusicSeamlessTransition(previousSlot, nextSlot, nextIndex);
+      }
+    };
+    updateVolumes();
+    workMusicSeamlessFadeTimer = setInterval(() => {
+      updateVolumes();
+    }, 50);
+  }
+
   function startWorkMusicSeamlessTransition() {
     if (!workMusicSeamless?.players || workMusicSeamless.transitionStarted) return;
     const crossfadeSeconds = normalizeWorkMusicSeamlessSeconds(
@@ -1164,32 +1209,28 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (!nextSong?.videoId) return;
     const previousSlot = workMusicSeamless.activeSlot;
     const nextSlot = workMusicSeamless.standbySlot;
-    const previousPlayer = workMusicSeamless.players[previousSlot];
     const nextPlayer = workMusicSeamless.players[nextSlot];
-    if (!previousPlayer || !nextPlayer) return;
+    if (!workMusicSeamless.players[previousSlot] || !nextPlayer) return;
     workMusicSeamless.transitionStarted = true;
     workMusicSeamless.transitioning = true;
+    workMusicSeamless.fadeStarted = false;
+    workMusicSeamless.transitionContext = {
+      previousSlot,
+      nextSlot,
+      nextIndex,
+      crossfadeSeconds
+    };
     setWorkMusicPlayerVolume(nextPlayer, 0);
     try {
       nextPlayer.playVideo();
+      // 일부 YouTube 플레이어는 playVideo() 직후 음소거 상태를 바꾸므로 다시 0으로 고정합니다.
+      setWorkMusicPlayerVolume(nextPlayer, 0);
     } catch (err) {
+      workMusicSeamless.transitionStarted = false;
+      workMusicSeamless.transitioning = false;
+      workMusicSeamless.transitionContext = null;
       console.warn('work music seamless play failed', err);
-      return;
     }
-    clearInterval(workMusicSeamlessFadeTimer);
-    const startedAt = Date.now();
-    workMusicSeamlessFadeTimer = setInterval(() => {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      const ratio = Math.min(1, elapsed / crossfadeSeconds);
-      const volume = getWorkMusicPlayerVolume();
-      setWorkMusicPlayerVolume(previousPlayer, volume * (1 - ratio));
-      setWorkMusicPlayerVolume(nextPlayer, volume * ratio);
-      if (ratio >= 1) {
-        clearInterval(workMusicSeamlessFadeTimer);
-        workMusicSeamlessFadeTimer = null;
-        completeWorkMusicSeamlessTransition(previousSlot, nextSlot, nextIndex);
-      }
-    }, 250);
   }
 
   function monitorWorkMusicSeamlessPlayback() {
@@ -1219,8 +1260,18 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   }
 
   function onWorkMusicSeamlessStateChange(slot, event) {
-    if (!workMusicSeamless || slot !== workMusicSeamless.activeSlot) return;
+    if (!workMusicSeamless) return;
     const state = event?.data;
+    if (
+      window.YT &&
+      slot === workMusicSeamless.standbySlot &&
+      state === window.YT.PlayerState.PLAYING &&
+      workMusicSeamless.transitioning
+    ) {
+      beginWorkMusicSeamlessFade(slot);
+      return;
+    }
+    if (slot !== workMusicSeamless.activeSlot) return;
     if (window.YT && state === window.YT.PlayerState.PLAYING) {
       clearWorkMusicPlaybackWatch();
       resetWorkMusicAutoSkipSession();
@@ -1371,7 +1422,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       standbySlot: 'b',
       standbyIndex: nextIndex,
       transitionStarted: false,
-      transitioning: false
+      transitioning: false,
+      fadeStarted: false,
+      transitionContext: null
     };
 
     workMusicSeamless.players.a = new YT.Player('workMusicSeamlessA', {
@@ -2593,7 +2646,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       const base = Number(workMusicVolumeRange.value || 0);
       await setWorkMusicVolume(base + delta);
     };
-    workMusicVolumeControl?.addEventListener('wheel', handleWorkMusicVolumeWheel, { passive: false });
+    workMusicVolumeControl?.addEventListener('wheel', handleWorkMusicVolumeWheel, {
+      passive: false
+    });
     workMusicRemoteVolumeControl?.addEventListener('wheel', handleWorkMusicVolumeWheel, {
       passive: false
     });
