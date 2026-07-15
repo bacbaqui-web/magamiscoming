@@ -1181,7 +1181,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       if (!workMusicSeamless?.transitioning) return;
       const elapsed = (Date.now() - startedAt) / 1000;
       const progress = Math.min(1, elapsed / crossfadeSeconds);
-      const easedProgress = progress * progress * (3 - 2 * progress);
+      const easedProgress = progress * progress;
       const volume = getWorkMusicPlayerVolume();
       setWorkMusicPlayerVolume(previousPlayer, volume * (1 - easedProgress));
       setWorkMusicPlayerVolume(nextPlayer, volume * easedProgress);
