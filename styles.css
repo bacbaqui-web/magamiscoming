@@ -2273,40 +2273,11 @@ textarea#notesArea::-webkit-resizer {
   text-align: right;
 }
 .workmusic-seek-wrap {
-  --timeline-start: 0%;
-  --timeline-fade-in: 0%;
-  --timeline-fade-out: 100%;
-  --timeline-end: 100%;
   position: relative;
   min-width: 0;
 }
-.workmusic-seek-wrap::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 0;
-  left: 0;
-  height: 5px;
-  border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    #3d3d43 0,
-    #3d3d43 var(--timeline-start),
-    rgba(239, 68, 68, 0.55) var(--timeline-start),
-    rgba(239, 68, 68, 0.55) var(--timeline-fade-in),
-    #5d5d64 var(--timeline-fade-in),
-    #5d5d64 var(--timeline-fade-out),
-    rgba(239, 68, 68, 0.55) var(--timeline-fade-out),
-    rgba(239, 68, 68, 0.55) var(--timeline-end),
-    #3d3d43 var(--timeline-end),
-    #3d3d43 100%
-  );
-  transform: translateY(-50%);
-}
 .workmusic-seek-range {
   --seek-progress: 0%;
-  position: relative;
-  z-index: 2;
   width: 100%;
   height: 18px;
   margin: 0;
@@ -2318,7 +2289,7 @@ textarea#notesArea::-webkit-resizer {
 .workmusic-seek-hover {
   --seek-hover: 0%;
   position: absolute;
-  z-index: 5;
+  z-index: 2;
   top: 50%;
   left: var(--seek-hover);
   width: 9px;
@@ -2356,10 +2327,10 @@ textarea#notesArea::-webkit-resizer {
   border-radius: 999px;
   background: linear-gradient(
     to right,
-    #ef4444 0,
-    #ef4444 var(--seek-progress),
-    transparent var(--seek-progress),
-    transparent 100%
+    #f0f0f2 0,
+    #f0f0f2 var(--seek-progress),
+    #3d3d43 var(--seek-progress),
+    #3d3d43 100%
   );
 }
 .workmusic-seek-range::-webkit-slider-thumb {
@@ -2370,26 +2341,26 @@ textarea#notesArea::-webkit-resizer {
   -webkit-appearance: none;
   border: 0;
   border-radius: 50%;
-  background: #ef4444;
+  background: #fff;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.48);
 }
 .workmusic-seek-range::-moz-range-track {
   height: 5px;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: #3d3d43;
 }
 .workmusic-seek-range::-moz-range-progress {
   height: 5px;
   border-radius: 999px;
-  background: #ef4444;
+  background: #f0f0f2;
 }
 .workmusic-seek-range::-moz-range-thumb {
   width: 13px;
   height: 13px;
   border: 0;
   border-radius: 50%;
-  background: #ef4444;
+  background: #fff;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.48);
 }
 .workmusic-seek-range:focus-visible {
@@ -2398,65 +2369,6 @@ textarea#notesArea::-webkit-resizer {
   border-radius: 999px;
 }
 .workmusic-seek-range:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
-.workmusic-timeline-handle {
-  position: absolute;
-  z-index: 4;
-  top: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  cursor: ew-resize;
-  touch-action: none;
-  transform: translate(-50%, -50%);
-}
-.workmusic-timeline-handle[data-timeline-handle='start'] {
-  left: var(--timeline-start);
-}
-.workmusic-timeline-handle[data-timeline-handle='fadeIn'] {
-  left: var(--timeline-fade-in);
-}
-.workmusic-timeline-handle[data-timeline-handle='fadeOut'] {
-  left: var(--timeline-fade-out);
-}
-.workmusic-timeline-handle[data-timeline-handle='end'] {
-  left: var(--timeline-end);
-}
-.workmusic-timeline-boundary {
-  width: 13px;
-  height: 13px;
-  border: 2px solid #202023;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55);
-}
-.workmusic-timeline-fade {
-  top: calc(50% - 14px);
-  width: 18px;
-  height: 20px;
-  border-radius: 5px;
-  background: #1d1d20;
-  color: #f5f5f5;
-  font-size: 1rem;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 1px 2px #000;
-}
-.workmusic-timeline-handle:hover:not(:disabled),
-.workmusic-timeline-handle.is-dragging {
-  color: #ef4444;
-  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.55));
-}
-.workmusic-timeline-boundary:hover:not(:disabled),
-.workmusic-timeline-boundary.is-dragging {
-  border-color: #ef4444;
-}
-.workmusic-timeline-handle:disabled {
   cursor: default;
   opacity: 0.45;
 }
