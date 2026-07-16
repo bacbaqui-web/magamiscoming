@@ -46,6 +46,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicElapsedTime = document.getElementById('workMusicElapsedTime');
   const workMusicDurationTime = document.getElementById('workMusicDurationTime');
   const workMusicSeekRange = document.getElementById('workMusicSeekRange');
+  const workMusicSeekHover = document.getElementById('workMusicSeekHover');
+  const workMusicSeekHoverTime = document.getElementById('workMusicSeekHoverTime');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
   const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
@@ -828,6 +830,40 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicSeekRange.style.setProperty('--seek-progress', `${percent}%`);
       workMusicSeekRange.disabled = !workMusicPlayer || duration <= 0;
     }
+    if ((!workMusicPlayer || duration <= 0) && workMusicSeekHover) {
+      workMusicSeekHover.hidden = true;
+    }
+  }
+
+  function updateWorkMusicSeekHover(event) {
+    if (!workMusicSeekRange || !workMusicSeekHover || !workMusicSeekHoverTime) return;
+    if (workMusicSeekRange.disabled) {
+      workMusicSeekHover.hidden = true;
+      return;
+    }
+    const rect = workMusicSeekRange.getBoundingClientRect();
+    if (!rect.width) return;
+    const percent = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+    const songs = getActiveWorkMusicSongs();
+    const song = songs[Number(window.workMusicCurrentIndex || 0)];
+    let duration = 0;
+    try {
+      duration = Number(workMusicPlayer?.getDuration?.() || song?.durationSeconds || 0);
+    } catch (_) {
+      duration = Number(song?.durationSeconds || 0);
+    }
+    if (duration <= 0) {
+      workMusicSeekHover.hidden = true;
+      return;
+    }
+    workMusicSeekHover.style.setProperty('--seek-hover', `${percent}%`);
+    workMusicSeekHoverTime.textContent =
+      formatWorkMusicDuration((duration * percent) / 100) || '0:00';
+    workMusicSeekHover.hidden = false;
+  }
+
+  function hideWorkMusicSeekHover() {
+    if (workMusicSeekHover) workMusicSeekHover.hidden = true;
   }
 
   function seekWorkMusicFromRange() {
@@ -2778,6 +2814,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       await addWorkMusicFromText(text);
     });
     workMusicSeekRange?.addEventListener('input', seekWorkMusicFromRange);
+    workMusicSeekRange?.addEventListener('pointerenter', updateWorkMusicSeekHover);
+    workMusicSeekRange?.addEventListener('pointermove', updateWorkMusicSeekHover);
+    workMusicSeekRange?.addEventListener('pointerleave', hideWorkMusicSeekHover);
     workMusicPlayBtn?.addEventListener('click', toggleWorkMusicPlay);
     workMusicPrevBtn?.addEventListener('click', () => playWorkMusicAdjacent(-1));
     workMusicNextBtn?.addEventListener('click', () => playWorkMusicAdjacent(1));

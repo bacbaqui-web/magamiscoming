@@ -2257,10 +2257,10 @@ textarea#notesArea::-webkit-resizer {
 }
 .workmusic-progress-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;
-  gap: 12px;
-  width: min(100%, 700px);
+  gap: 6px;
+  width: 100%;
   margin: 0 auto;
 }
 .workmusic-progress-time {
@@ -2272,6 +2272,10 @@ textarea#notesArea::-webkit-resizer {
 .workmusic-progress-time:last-child {
   text-align: right;
 }
+.workmusic-seek-wrap {
+  position: relative;
+  min-width: 0;
+}
 .workmusic-seek-range {
   --seek-progress: 0%;
   width: 100%;
@@ -2281,6 +2285,42 @@ textarea#notesArea::-webkit-resizer {
   -webkit-appearance: none;
   background: transparent;
   cursor: pointer;
+}
+.workmusic-seek-hover {
+  --seek-hover: 0%;
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: var(--seek-hover);
+  width: 9px;
+  height: 9px;
+  border: 2px solid #171719;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.workmusic-seek-hover[hidden] {
+  display: none;
+}
+.workmusic-seek-hover span {
+  position: absolute;
+  bottom: 13px;
+  left: 50%;
+  min-width: 42px;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: #252528;
+  color: #f5f5f5;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%);
 }
 .workmusic-seek-range::-webkit-slider-runnable-track {
   height: 5px;
@@ -3229,8 +3269,7 @@ textarea#notesArea::-webkit-resizer {
     margin: 8px 10px 15px;
   }
   .workmusic-progress-row {
-    grid-template-columns: 38px minmax(0, 1fr) 38px;
-    gap: 8px;
+    gap: 5px;
   }
   .workmusic-list {
     column-count: 2;
