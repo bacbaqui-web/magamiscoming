@@ -262,6 +262,27 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     }
   }
 
+  function renderWorkMusicListPlaybackState() {
+    if (!workMusicList) return;
+    const currentIndex = Number(window.workMusicCurrentIndex || 0);
+    workMusicList.querySelectorAll('.workmusic-item[data-index]').forEach((row) => {
+      const isActive = Number(row.dataset.index) === currentIndex;
+      row.classList.toggle('active', isActive);
+      const overlay = row.querySelector('.workmusic-play-overlay');
+      if (overlay) {
+        overlay.innerHTML =
+          isActive && window.workMusicIsPlaying ? workMusicPauseSvg : workMusicPlaySvg;
+      }
+    });
+  }
+
+  function renderWorkMusicPlaybackState() {
+    renderWorkMusicPlayButton();
+    updateWorkMusicRemoteUI();
+    renderWorkMusicPlayerView();
+    renderWorkMusicListPlaybackState();
+  }
+
   function renderWorkMusicSeamlessButton() {
     const seconds = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
     window.workMusicSeamlessOverlapSeconds = seconds;
@@ -1437,16 +1458,17 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       resetWorkMusicAutoSkipSession();
       window.workMusicIsPlaying = true;
       workMusicPlayer = workMusicSeamless.players[slot];
-      clearWorkMusicPlaybackError(Number(window.workMusicCurrentIndex || 0));
-      renderWorkMusicPlayButton();
-      renderWorkMusic();
+      const clearedPlaybackError = clearWorkMusicPlaybackError(
+        Number(window.workMusicCurrentIndex || 0)
+      );
+      if (clearedPlaybackError) renderWorkMusic();
+      else renderWorkMusicPlaybackState();
       startWorkMusicSeamlessMonitor();
     } else if (window.YT && state === window.YT.PlayerState.PAUSED) {
       if (workMusicSeamless.transitioning) return;
       clearWorkMusicPlaybackWatch();
       window.workMusicIsPlaying = false;
-      renderWorkMusicPlayButton();
-      renderWorkMusic();
+      renderWorkMusicPlaybackState();
       clearWorkMusicSeamlessTimers();
     } else if (window.YT && state === window.YT.PlayerState.ENDED) {
       if (workMusicSeamless.transitioning) return;
@@ -1454,8 +1476,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       if (nextIndex >= 0) playWorkMusicAt(nextIndex, { resetSkipSession: false });
       else {
         window.workMusicIsPlaying = false;
-        renderWorkMusicPlayButton();
-        renderWorkMusic();
+        renderWorkMusicPlaybackState();
       }
     }
   }
@@ -1519,9 +1540,11 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       resetWorkMusicAutoSkipSession();
       window.workMusicIsPlaying = true;
       syncWorkMusicFromPlayer();
-      clearWorkMusicPlaybackError(Number(window.workMusicCurrentIndex || 0));
-      renderWorkMusicPlayButton();
-      renderWorkMusic();
+      const clearedPlaybackError = clearWorkMusicPlaybackError(
+        Number(window.workMusicCurrentIndex || 0)
+      );
+      if (clearedPlaybackError) renderWorkMusic();
+      else renderWorkMusicPlaybackState();
       startWorkMusicSyncTimer();
     } else if (
       window.YT &&
@@ -1529,8 +1552,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     ) {
       clearWorkMusicPlaybackWatch();
       window.workMusicIsPlaying = false;
-      renderWorkMusicPlayButton();
-      renderWorkMusic();
+      renderWorkMusicPlaybackState();
       if (state === window.YT.PlayerState.PAUSED) stopWorkMusicSyncTimer();
     }
   }
@@ -1756,9 +1778,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       scheduleWorkMusicPlaybackWatch(Number(window.workMusicCurrentIndex || 0));
       if (workMusicSeamless?.players) startWorkMusicSeamlessMonitor();
     }
-    renderWorkMusicPlayButton();
-    updateWorkMusicRemoteUI();
-    renderWorkMusic();
+    renderWorkMusicPlaybackState();
   }
 
   function renderWorkMusic() {
@@ -1824,6 +1844,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       ]
         .filter(Boolean)
         .join(' ');
+      row.dataset.index = String(idx);
       const title = song.title || `YouTube ${song.videoId}`;
       const artist = getSongArtist(song);
       const durationText = song.durationText || formatWorkMusicDuration(song.durationSeconds);
