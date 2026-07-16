@@ -8,7 +8,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     { id: 'default', name: '기본', order: 0 }
   ];
   window.__workMusicActiveTabId = window.__workMusicActiveTabId || 'default';
-  window.workMusicMode = window.workMusicMode || 'sequential';
+  // 셔플은 현재 접속 중인 목록에만 적용하고, 새로 접속하면 항상 원래 순서로 시작합니다.
+  window.workMusicMode = 'sequential';
+  window.__workMusicDisplayShuffle = {};
   window.workMusicCurrentIndex = window.workMusicCurrentIndex || 0;
   window.workMusicVolume = window.workMusicVolume ?? 80;
   window.workMusicLastVolume =
@@ -114,7 +116,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicSeamless = null;
   let workMusicSeamlessMonitorTimer = null;
   let workMusicSeamlessFadeTimer = null;
-  window.workMusicCurrentPlayOrder = window.workMusicCurrentPlayOrder || [];
+  let workMusicPendingStartSeconds = null;
+  window.workMusicCurrentPlayOrder = [];
 
   const showFeedbackMessage = (message) => window.showFeedbackMessage?.(message);
   const showAlert = (message) => window.showAlert?.(message);
@@ -626,7 +629,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function getWorkMusicAdjacentIndex(step = 1, songs = getActiveWorkMusicSongs()) {
     if (!songs.length) return -1;
     const cur = Math.max(0, Number(window.workMusicCurrentIndex || 0));
-    return (cur + step + songs.length) % songs.length;
+    const order = getWorkMusicDisplayOrder(songs);
+    const currentPosition = Math.max(0, order.indexOf(cur));
+    return order[(currentPosition + step + order.length) % order.length];
   }
 
   function getWorkMusicNextIndex(step = 1) {
@@ -871,10 +876,21 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function getWorkMusicPlayOrder(startIndex) {
     const songs = getActiveWorkMusicSongs();
     if (!songs.length) return [];
-    const baseOrder = songs.map((_, index) => index);
+    const baseOrder = getWorkMusicDisplayOrder(songs);
     const startPosition = baseOrder.indexOf(startIndex);
     if (startPosition < 0) return baseOrder;
     return [...baseOrder.slice(startPosition), ...baseOrder.slice(0, startPosition)];
+  }
+
+  function applyWorkMusicPendingStartSeconds(player) {
+    const seconds = Number(workMusicPendingStartSeconds);
+    workMusicPendingStartSeconds = null;
+    if (!player || !Number.isFinite(seconds) || seconds <= 0) return;
+    try {
+      player.seekTo(seconds, true);
+    } catch (err) {
+      console.warn('work music shuffle seek restore failed', err);
+    }
   }
 
   function getNextWorkMusicIndexFromOrder(currentIndex) {
@@ -1085,11 +1101,22 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     ) {
       return cached.order.filter((i) => i >= 0 && i < count);
     }
-    const order = songs.map((_, i) => i);
-    for (let i = order.length - 1; i > 0; i--) {
+    const pinnedIndex = window.workMusicIsPlaying ? Number(window.workMusicCurrentIndex || 0) : -1;
+    return createWorkMusicDisplayShuffle(songs, pinnedIndex);
+  }
+
+  function createWorkMusicDisplayShuffle(songs, pinnedIndex = -1) {
+    const indexes = songs.map((_, index) => index);
+    const hasPinnedIndex = Number.isInteger(pinnedIndex) && indexes.includes(pinnedIndex);
+    const shuffled = hasPinnedIndex ? indexes.filter((index) => index !== pinnedIndex) : indexes;
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
-      [order[i], order[j]] = [order[j], order[i]];
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
+    const order = hasPinnedIndex ? [pinnedIndex, ...shuffled] : shuffled;
+    const activeTabId = getActiveWorkMusicTabId();
+    const idsKey = songs.map((song) => song.id || song.videoId || '').join('|');
+    const cache = window.__workMusicDisplayShuffle || {};
     window.__workMusicDisplayShuffle = { ...cache, [activeTabId]: { idsKey, order } };
     return order;
   }
@@ -1624,6 +1651,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
           workMusicPlayer = event.target;
           workMusicIframe = document.getElementById(getWorkMusicSeamlessPlayerId('a'));
           setWorkMusicPlayerVolume(event.target, getWorkMusicPlayerVolume());
+          applyWorkMusicPendingStartSeconds(event.target);
           if (autoplay) event.target.playVideo();
           if (autoplay) {
             scheduleWorkMusicPlaybackWatch(index);
@@ -1725,6 +1753,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         onReady: (event) => {
           workMusicIframe = document.getElementById('workMusicYoutubeIframe');
           applyWorkMusicVolume();
+          applyWorkMusicPendingStartSeconds(event.target);
           if (autoplay) event.target.playVideo();
           setTimeout(syncWorkMusicFromPlayer, 500);
           if (autoplay) {
@@ -2761,12 +2790,27 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     bindSliderControlHoverState(workMusicRemoteVolumeControl);
     workMusicRemoteInfo?.addEventListener('click', () => showTab('workmusic'));
     const toggleWorkMusicMode = async () => {
-      window.workMusicMode = window.workMusicMode === 'random' ? 'sequential' : 'random';
-      resetWorkMusicDisplayShuffle();
-      await window.cloudSaveWorkMusic?.();
+      const songs = getActiveWorkMusicSongs();
+      const isEnablingShuffle = window.workMusicMode !== 'random';
+      const wasPlaying = !!window.workMusicIsPlaying;
+      try {
+        workMusicPendingStartSeconds = Number(workMusicPlayer?.getCurrentTime?.() || 0);
+      } catch (_) {
+        workMusicPendingStartSeconds = null;
+      }
+      if (isEnablingShuffle) {
+        window.workMusicMode = 'random';
+        const pinnedIndex = wasPlaying ? Number(window.workMusicCurrentIndex || 0) : -1;
+        const order = createWorkMusicDisplayShuffle(songs, pinnedIndex);
+        if (!wasPlaying && order.length) window.workMusicCurrentIndex = order[0];
+      } else {
+        window.workMusicMode = 'sequential';
+        resetWorkMusicDisplayShuffle();
+      }
       renderWorkMusic();
-      if (getActiveWorkMusicSongs().length)
-        renderWorkMusicIframe(window.workMusicCurrentIndex || 0, window.workMusicIsPlaying);
+      if (songs.length) renderWorkMusicIframe(window.workMusicCurrentIndex || 0, wasPlaying);
+      else workMusicPendingStartSeconds = null;
+      await window.cloudSaveWorkMusic?.();
     };
     workMusicModeBtn?.addEventListener('click', toggleWorkMusicMode);
     workMusicRemoteModeBtn?.addEventListener('click', toggleWorkMusicMode);

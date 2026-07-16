@@ -178,7 +178,10 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
       ? st.workMusicTabList
       : [{ id: 'default', name: '기본', order: 0 }];
   window.__workMusicActiveTabId = st.workMusicActiveTabId || 'default';
-  window.workMusicMode = st.workMusicMode || 'sequential';
+  // 셔플 순서는 세션 상태이며, 새로 접속하거나 저장 데이터를 불러오면 원래 순서로 시작합니다.
+  window.workMusicMode = 'sequential';
+  window.__workMusicDisplayShuffle = {};
+  window.workMusicCurrentPlayOrder = [];
   window.workMusicCurrentIndex = Number(st.workMusicCurrentIndex || 0);
   window.workMusicVolume = Number(st.workMusicVolume ?? 80);
   window.workMusicLastVolume = Number(st.workMusicLastVolume ?? 80);
