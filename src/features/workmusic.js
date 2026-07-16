@@ -111,7 +111,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicPlaybackWatchToken = 0;
   let workMusicFailureSkipTimer = null;
   let workMusicAutoSkipSession = null;
-  let workMusicAutoSkipPending = false;
   let workMusicSeamless = null;
   let workMusicSeamlessMonitorTimer = null;
   let workMusicSeamlessFadeTimer = null;
@@ -606,21 +605,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function getWorkMusicAdjacentIndex(step = 1, songs = getActiveWorkMusicSongs()) {
     if (!songs.length) return -1;
     const cur = Math.max(0, Number(window.workMusicCurrentIndex || 0));
-    if (window.workMusicMode !== 'random') return (cur + step + songs.length) % songs.length;
-    const currentOrder = Array.isArray(window.workMusicCurrentPlayOrder)
-      ? window.workMusicCurrentPlayOrder
-      : [];
-    const validCurrentOrder = currentOrder.filter(
-      (idx) => Number.isInteger(idx) && idx >= 0 && idx < songs.length
-    );
-    const order =
-      validCurrentOrder.includes(cur) && validCurrentOrder.length
-        ? validCurrentOrder
-        : getWorkMusicDisplayOrder(songs);
-    const currentPosition = order.indexOf(cur);
-    if (currentPosition < 0) return (cur + step + songs.length) % songs.length;
-    const nextPosition = (currentPosition + step + order.length) % order.length;
-    return Number.isInteger(order[nextPosition]) ? order[nextPosition] : -1;
+    return (cur + step + songs.length) % songs.length;
   }
 
   function getWorkMusicNextIndex(step = 1) {
@@ -862,21 +847,13 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     renderWorkMusicProgress();
   }
 
-  function shuffledWorkMusicIndexes(startIndex) {
-    const songs = getActiveWorkMusicSongs();
-    const indexes = songs.map((_, i) => i).filter((i) => i !== startIndex);
-    for (let i = indexes.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
-    }
-    return [startIndex, ...indexes];
-  }
-
   function getWorkMusicPlayOrder(startIndex) {
     const songs = getActiveWorkMusicSongs();
     if (!songs.length) return [];
-    if (window.workMusicMode === 'random') return shuffledWorkMusicIndexes(startIndex);
-    return songs.map((_, offset) => (startIndex + offset) % songs.length);
+    const baseOrder = songs.map((_, index) => index);
+    const startPosition = baseOrder.indexOf(startIndex);
+    if (startPosition < 0) return baseOrder;
+    return [...baseOrder.slice(startPosition), ...baseOrder.slice(0, startPosition)];
   }
 
   function getNextWorkMusicIndexFromOrder(currentIndex) {
@@ -916,7 +893,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function clearWorkMusicFailureSkipTimer() {
     clearTimeout(workMusicFailureSkipTimer);
     workMusicFailureSkipTimer = null;
-    workMusicAutoSkipPending = false;
   }
 
   function resetWorkMusicAutoSkipSession() {
@@ -1043,14 +1019,12 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicIsPlaying = false;
     markWorkMusicPlaybackError(failedIndex, code);
     const nextIndex = getNextWorkMusicIndexAfterFailure(failedIndex);
-    workMusicAutoSkipPending = nextIndex >= 0;
     renderWorkMusicPlayButton();
     updateWorkMusicRemoteUI();
     renderWorkMusic();
 
     if (nextIndex < 0) {
       resetWorkMusicAutoSkipSession();
-      workMusicAutoSkipPending = false;
       showFeedbackMessage('재생 가능한 다음 곡을 찾지 못했습니다.');
       return;
     }
@@ -1061,7 +1035,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const expectedSongKey = getWorkMusicSongKey(failedSong, failedIndex);
     workMusicFailureSkipTimer = setTimeout(() => {
       workMusicFailureSkipTimer = null;
-      workMusicAutoSkipPending = false;
       if (getActiveWorkMusicTabId() !== expectedTabId) return;
       const currentSongs = getActiveWorkMusicSongs();
       const currentSong = currentSongs[failedIndex];
@@ -1100,11 +1073,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     return order;
   }
 
-  function getWorkMusicInitialDisplayIndex(songs = getActiveWorkMusicSongs()) {
+  function getWorkMusicInitialIndex(songs = getActiveWorkMusicSongs()) {
     if (!songs.length) return 0;
-    if (window.workMusicMode !== 'random') return 0;
-    const order = getWorkMusicDisplayOrder(songs);
-    return Number.isInteger(order[0]) ? order[0] : 0;
+    return normalizeWorkMusicCurrentIndex(songs);
   }
 
   function resetWorkMusicDisplayShuffle(tabId = getActiveWorkMusicTabId()) {
@@ -1796,15 +1767,15 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (workMusicModeBtn) {
       workMusicModeBtn.classList.toggle('random', window.workMusicMode === 'random');
       workMusicModeBtn.title =
-        window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중';
+        window.workMusicMode === 'random' ? '목록 셔플 켜짐' : '기본 순서로 표시 중';
     }
     if (workMusicRemoteModeBtn) {
       workMusicRemoteModeBtn.classList.toggle('random', window.workMusicMode === 'random');
       workMusicRemoteModeBtn.title =
-        window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중';
+        window.workMusicMode === 'random' ? '목록 셔플 켜짐' : '기본 순서로 표시 중';
       workMusicRemoteModeBtn.setAttribute(
         'aria-label',
-        window.workMusicMode === 'random' ? '랜덤 재생 켜짐' : '순서대로 재생 중'
+        window.workMusicMode === 'random' ? '목록 셔플 켜짐' : '기본 순서로 표시 중'
       );
     }
     renderWorkMusicPlayButton();
@@ -1813,7 +1784,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     updateWorkMusicRemoteUI();
     if (!songs.length) {
       renderWorkMusicPlayerView();
-      renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
+      renderWorkMusicIframe(getWorkMusicInitialIndex(), false);
     }
     if (!workMusicList) {
       renderWorkMusicPlayerView();
@@ -1836,17 +1807,6 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const allAudioCards = songs.length > 0 && songs.every(isWorkMusicAudioCard);
     workMusicList.classList.toggle('music-compact-list', allAudioCards);
     const displayOrder = getWorkMusicDisplayOrder(songs);
-    if (
-      window.workMusicMode === 'random' &&
-      !window.workMusicIsPlaying &&
-      !workMusicAutoSkipPending &&
-      Number.isInteger(displayOrder[0]) &&
-      displayOrder[0] !== Number(window.workMusicCurrentIndex || 0)
-    ) {
-      // 랜덤 모드에서는 화면에 보이는 첫 번째 카드가 선택된 곡이 되도록 맞춥니다.
-      // 단, 재생 중에는 사용자가 듣는 곡이 갑자기 바뀌지 않게 건드리지 않습니다.
-      window.workMusicCurrentIndex = displayOrder[0];
-    }
     renderWorkMusicPlayerView();
     renderWorkMusicTrackPreviews();
     displayOrder.forEach((idx) => {
@@ -2415,7 +2375,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicCurrentIndex = 0;
     window.workMusicIsPlaying = false;
     renderWorkMusicAll();
-    renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
+    renderWorkMusicIframe(getWorkMusicInitialIndex(), false);
     await window.cloudSaveWorkMusic?.();
     showFeedbackMessage(`${tabName} 탭에 ${newSongs.length}개를 추가했습니다.`);
   }
@@ -2522,7 +2482,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicIsPlaying = false;
     await window.cloudSetActiveWorkMusicTab?.(window.__workMusicActiveTabId);
     renderWorkMusicAll();
-    renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
+    renderWorkMusicIframe(getWorkMusicInitialIndex(), false);
   }
 
   function backupWorkMusicTab(tabId) {
@@ -2649,7 +2609,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     window.workMusicCurrentIndex = 0;
     window.workMusicIsPlaying = false;
     renderWorkMusicAll();
-    renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
+    renderWorkMusicIframe(getWorkMusicInitialIndex(), false);
     await window.cloudSaveWorkMusic?.();
     showFeedbackMessage(
       `${tab?.name || data.title || '재생목록'} 새로고침 완료: ${nextSongsForTab.length}개`
