@@ -48,6 +48,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicSeekRange = document.getElementById('workMusicSeekRange');
   const workMusicSeekHover = document.getElementById('workMusicSeekHover');
   const workMusicSeekHoverTime = document.getElementById('workMusicSeekHoverTime');
+  const workMusicTimelineHandles = Array.from(document.querySelectorAll('[data-timeline-handle]'));
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
   const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
@@ -107,6 +108,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicPlayer = null;
   let workMusicSyncTimer = null;
   let workMusicProgressDisplayTimer = null;
+  let workMusicTimelineMonitorTimer = null;
+  let workMusicTimelineDrag = null;
+  let workMusicTimelineAdvanceKey = '';
   let workMusicFlowAnimationTimer = null;
   let workMusicFlowRenderedKeys = [];
   let workMusicFlowPendingSongs = null;
@@ -800,6 +804,181 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicFlowAnimationTimer = setTimeout(finishWorkMusicFlowAnimation, 440);
   }
 
+  function getWorkMusicTimeline(song, durationValue) {
+    const duration = Math.max(0, Number(durationValue || song?.durationSeconds || 0));
+    const start = Math.max(0, Math.min(duration, Number(song?.playbackStartSeconds || 0)));
+    const storedEnd = Number(song?.playbackEndSeconds);
+    const end = Math.max(
+      start,
+      Math.min(duration, Number.isFinite(storedEnd) && storedEnd > 0 ? storedEnd : duration)
+    );
+    const defaultFade = Math.min(
+      normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds),
+      Math.max(0, (end - start) / 2)
+    );
+    const storedFadeIn = Number(song?.fadeInEndSeconds);
+    const fadeInEnd = Math.max(
+      start,
+      Math.min(
+        end,
+        Number.isFinite(storedFadeIn) ? storedFadeIn : Math.min(end, start + defaultFade)
+      )
+    );
+    const storedFadeOut = Number(song?.fadeOutStartSeconds);
+    const fadeOutStart = Math.max(
+      fadeInEnd,
+      Math.min(
+        end,
+        Number.isFinite(storedFadeOut) ? storedFadeOut : Math.max(fadeInEnd, end - defaultFade)
+      )
+    );
+    return { duration, start, fadeInEnd, fadeOutStart, end };
+  }
+
+  function isWorkMusicPlayerForSong(player, song) {
+    if (!player || !song) return false;
+    try {
+      const playerVideoId = String(player.getVideoData?.()?.video_id || '');
+      return !!playerVideoId && playerVideoId === String(song.videoId || '');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function setWorkMusicTimelinePosition(name, seconds, duration) {
+    const percent = duration > 0 ? Math.max(0, Math.min(100, (seconds / duration) * 100)) : 0;
+    workMusicSeekRange?.parentElement?.style.setProperty(`--timeline-${name}`, `${percent}%`);
+  }
+
+  function renderWorkMusicTimeline(song, duration, enabled) {
+    const timeline = getWorkMusicTimeline(song, duration);
+    setWorkMusicTimelinePosition('start', timeline.start, timeline.duration);
+    setWorkMusicTimelinePosition('fade-in', timeline.fadeInEnd, timeline.duration);
+    setWorkMusicTimelinePosition('fade-out', timeline.fadeOutStart, timeline.duration);
+    setWorkMusicTimelinePosition('end', timeline.end, timeline.duration);
+    const valueByHandle = {
+      start: timeline.start,
+      fadeIn: timeline.fadeInEnd,
+      fadeOut: timeline.fadeOutStart,
+      end: timeline.end
+    };
+    workMusicTimelineHandles.forEach((handle) => {
+      const value = valueByHandle[handle.dataset.timelineHandle];
+      handle.disabled = !enabled;
+      if (Number.isFinite(value)) {
+        const label = handle.getAttribute('aria-label') || '';
+        handle.title = `${label}: ${formatWorkMusicDuration(value) || '0:00'}`;
+      }
+    });
+    return timeline;
+  }
+
+  function seekWorkMusicToSeconds(seconds) {
+    if (!workMusicPlayer) return;
+    const nextSeconds = Math.max(0, Number(seconds || 0));
+    if (workMusicElapsedTime) {
+      workMusicElapsedTime.textContent = formatWorkMusicDuration(nextSeconds) || '0:00';
+    }
+    try {
+      workMusicPlayer.seekTo(nextSeconds, true);
+    } catch (err) {
+      console.warn('work music seek failed', err);
+    }
+  }
+
+  function updateWorkMusicTimelineHandle(event) {
+    if (!workMusicTimelineDrag || !workMusicSeekRange) return;
+    const song = getActiveWorkMusicSongs()[Number(window.workMusicCurrentIndex || 0)];
+    if (
+      !song ||
+      song !== workMusicTimelineDrag.song ||
+      !isWorkMusicPlayerForSong(workMusicPlayer, song)
+    ) {
+      return;
+    }
+    const duration = Number(
+      workMusicPlayer?.getDuration?.() ||
+        song.durationSeconds ||
+        workMusicTimelineDrag.duration ||
+        0
+    );
+    const rect = workMusicSeekRange.getBoundingClientRect();
+    if (!duration || !rect.width) return;
+    const seconds = Math.max(
+      0,
+      Math.min(duration, ((event.clientX - rect.left) / rect.width) * duration)
+    );
+    const timeline = getWorkMusicTimeline(song, duration);
+    const handleName = workMusicTimelineDrag.name;
+    if (handleName === 'start') {
+      const fadeDuration = Math.max(0, timeline.fadeInEnd - timeline.start);
+      song.playbackStartSeconds = Math.min(seconds, timeline.fadeOutStart);
+      song.fadeInEndSeconds = Math.min(
+        timeline.fadeOutStart,
+        song.playbackStartSeconds + fadeDuration
+      );
+    } else if (handleName === 'end') {
+      const fadeDuration = Math.max(0, timeline.end - timeline.fadeOutStart);
+      song.playbackEndSeconds = Math.max(seconds, timeline.fadeInEnd);
+      song.fadeOutStartSeconds = Math.max(
+        timeline.fadeInEnd,
+        song.playbackEndSeconds - fadeDuration
+      );
+    } else if (handleName === 'fadeIn') {
+      song.fadeInEndSeconds = Math.max(timeline.start, Math.min(seconds, timeline.fadeOutStart));
+    } else if (handleName === 'fadeOut') {
+      song.fadeOutStartSeconds = Math.max(timeline.fadeInEnd, Math.min(seconds, timeline.end));
+    }
+    workMusicTimelineDrag.changed = true;
+    const updated = renderWorkMusicTimeline(song, duration, true);
+    const seekSeconds = {
+      start: updated.start,
+      fadeIn: updated.fadeInEnd,
+      fadeOut: updated.fadeOutStart,
+      end: updated.end
+    }[handleName];
+    if (Number.isFinite(seekSeconds)) {
+      const percent = duration > 0 ? (seekSeconds / duration) * 100 : 0;
+      workMusicSeekRange.value = String(percent);
+      workMusicSeekRange.style.setProperty('--seek-progress', `${percent}%`);
+      seekWorkMusicToSeconds(seekSeconds);
+    }
+  }
+
+  function finishWorkMusicTimelineHandle(event) {
+    if (!workMusicTimelineDrag) return;
+    const { handle, changed } = workMusicTimelineDrag;
+    handle.classList.remove('is-dragging');
+    try {
+      if (event?.pointerId !== undefined && handle.hasPointerCapture?.(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    workMusicTimelineDrag = null;
+    if (changed) window.cloudSaveWorkMusic?.();
+  }
+
+  function beginWorkMusicTimelineHandle(event) {
+    const handle = event.currentTarget;
+    if (handle.disabled || !window.workMusicIsPlaying || !workMusicPlayer) return;
+    const song = getActiveWorkMusicSongs()[Number(window.workMusicCurrentIndex || 0)];
+    if (!song || !isWorkMusicPlayerForSong(workMusicPlayer, song)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    handle.setPointerCapture?.(event.pointerId);
+    handle.classList.add('is-dragging');
+    workMusicTimelineDrag = {
+      handle,
+      name: handle.dataset.timelineHandle,
+      song,
+      duration: Number(workMusicPlayer.getDuration?.() || song.durationSeconds || 0),
+      changed: false
+    };
+    updateWorkMusicTimelineHandle(event);
+  }
+
   function renderWorkMusicProgress() {
     const songs = getActiveWorkMusicSongs();
     const song = songs[Number(window.workMusicCurrentIndex || 0)];
@@ -830,6 +1009,11 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicSeekRange.style.setProperty('--seek-progress', `${percent}%`);
       workMusicSeekRange.disabled = !workMusicPlayer || duration <= 0;
     }
+    renderWorkMusicTimeline(
+      song,
+      duration,
+      !!workMusicPlayer && duration > 0 && window.workMusicIsPlaying
+    );
     if ((!workMusicPlayer || duration <= 0) && workMusicSeekHover) {
       workMusicSeekHover.hidden = true;
     }
@@ -882,13 +1066,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const percent = Math.max(0, Math.min(100, Number(workMusicSeekRange.value || 0)));
     const seconds = (duration * percent) / 100;
     workMusicSeekRange.style.setProperty('--seek-progress', `${percent}%`);
-    if (workMusicElapsedTime)
-      workMusicElapsedTime.textContent = formatWorkMusicDuration(seconds) || '0:00';
-    try {
-      workMusicPlayer.seekTo(seconds, true);
-    } catch (err) {
-      console.warn('work music seek failed', err);
-    }
+    seekWorkMusicToSeconds(seconds);
   }
 
   function renderWorkMusicPlayerView() {
@@ -921,11 +1099,28 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function applyWorkMusicPendingStartSeconds(player) {
     const seconds = Number(workMusicPendingStartSeconds);
     workMusicPendingStartSeconds = null;
-    if (!player || !Number.isFinite(seconds) || seconds <= 0) return;
+    if (!player || !Number.isFinite(seconds) || seconds <= 0) return false;
     try {
       player.seekTo(seconds, true);
+      return true;
     } catch (err) {
       console.warn('work music shuffle seek restore failed', err);
+      return false;
+    }
+  }
+
+  function applyWorkMusicSongStart(player, song) {
+    if (!player || !song) return;
+    const timeline = getWorkMusicTimeline(
+      song,
+      Number(player.getDuration?.() || song.durationSeconds || 0)
+    );
+    if (timeline.fadeInEnd > timeline.start) setWorkMusicPlayerVolume(player, 0);
+    if (timeline.start <= 0) return;
+    try {
+      player.seekTo(timeline.start, true);
+    } catch (err) {
+      console.warn('work music start position apply failed', err);
     }
   }
 
@@ -1200,6 +1395,60 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     }
   }
 
+  function monitorWorkMusicTimelinePlayback() {
+    if (!window.workMusicIsPlaying || !workMusicPlayer || workMusicTimelineDrag) return;
+    const songs = getActiveWorkMusicSongs();
+    const index = Number(window.workMusicCurrentIndex || 0);
+    const song = songs[index];
+    if (!song || !isWorkMusicPlayerForSong(workMusicPlayer, song)) return;
+    try {
+      const duration = Number(workMusicPlayer.getDuration?.() || song.durationSeconds || 0);
+      const current = Number(workMusicPlayer.getCurrentTime?.() || 0);
+      if (!duration || !Number.isFinite(current)) return;
+      const timeline = getWorkMusicTimeline(song, duration);
+      const songKey = getWorkMusicSongKey(song, index);
+      if (workMusicTimelineAdvanceKey && workMusicTimelineAdvanceKey !== songKey) {
+        workMusicTimelineAdvanceKey = '';
+      }
+      if (current < timeline.start - 0.25) {
+        seekWorkMusicToSeconds(timeline.start);
+        return;
+      }
+      if (workMusicSeamless?.transitioning) return;
+      if (current >= timeline.end - 0.05) {
+        if (workMusicTimelineAdvanceKey === songKey) return;
+        workMusicTimelineAdvanceKey = songKey;
+        const nextIndex = getNextWorkMusicIndexFromOrder(index);
+        if (nextIndex >= 0) playWorkMusicAt(nextIndex, { resetSkipSession: false });
+        else {
+          window.workMusicIsPlaying = false;
+          renderWorkMusicPlaybackState();
+        }
+        return;
+      }
+      let volumeFactor = 1;
+      if (timeline.fadeInEnd > timeline.start && current < timeline.fadeInEnd) {
+        volumeFactor = Math.max(
+          0,
+          Math.min(1, (current - timeline.start) / (timeline.fadeInEnd - timeline.start))
+        );
+      } else if (timeline.end > timeline.fadeOutStart && current > timeline.fadeOutStart) {
+        volumeFactor = Math.max(
+          0,
+          Math.min(1, (timeline.end - current) / (timeline.end - timeline.fadeOutStart))
+        );
+      }
+      setWorkMusicPlayerVolume(workMusicPlayer, getWorkMusicPlayerVolume() * volumeFactor);
+    } catch (err) {
+      console.warn('work music timeline monitor failed', err);
+    }
+  }
+
+  function startWorkMusicTimelineMonitor() {
+    clearInterval(workMusicTimelineMonitorTimer);
+    workMusicTimelineMonitorTimer = setInterval(monitorWorkMusicTimelinePlayback, 100);
+  }
+
   function clearWorkMusicSeamlessTimers() {
     clearInterval(workMusicSeamlessMonitorTimer);
     clearInterval(workMusicSeamlessFadeTimer);
@@ -1378,7 +1627,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (!standbyPlayer || !nextSong?.videoId) return;
     try {
       standbyPlayer.stopVideo?.();
-      standbyPlayer.cueVideoById(nextSong.videoId);
+      const nextTimeline = getWorkMusicTimeline(nextSong, nextSong.durationSeconds);
+      standbyPlayer.cueVideoById(nextSong.videoId, nextTimeline.start);
       setWorkMusicPlayerVolume(standbyPlayer, 0);
     } catch (err) {
       console.warn('work music standby cue failed', err);
@@ -1394,6 +1644,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicSeamless.transitioning = false;
     workMusicSeamless.transitionStarted = false;
     window.workMusicCurrentIndex = nextIndex;
+    workMusicTimelineAdvanceKey = '';
     workMusicPlayer = nextPlayer;
     workMusicIframe = document.getElementById(getWorkMusicSeamlessPlayerId(nextSlot));
     try {
@@ -1413,7 +1664,14 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     if (!workMusicSeamless?.players || workMusicSeamless.fadeStarted) return;
     const transition = workMusicSeamless.transitionContext;
     if (!transition || slot !== transition.nextSlot) return;
-    const { previousSlot, nextSlot, nextIndex, crossfadeSeconds } = transition;
+    const {
+      previousSlot,
+      nextSlot,
+      nextIndex,
+      crossfadeSeconds,
+      previousFadeSeconds,
+      nextFadeSeconds
+    } = transition;
     const previousPlayer = workMusicSeamless.players[previousSlot];
     const nextPlayer = workMusicSeamless.players[nextSlot];
     if (!previousPlayer || !nextPlayer) return;
@@ -1425,10 +1683,11 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       if (!workMusicSeamless?.transitioning) return;
       const elapsed = (Date.now() - startedAt) / 1000;
       const progress = Math.min(1, elapsed / crossfadeSeconds);
-      const easedProgress = progress * progress;
+      const previousProgress = Math.min(1, elapsed / Math.max(0.1, previousFadeSeconds));
+      const nextProgress = Math.min(1, elapsed / Math.max(0.1, nextFadeSeconds));
       const volume = getWorkMusicPlayerVolume();
-      setWorkMusicPlayerVolume(previousPlayer, volume * (1 - easedProgress));
-      setWorkMusicPlayerVolume(nextPlayer, volume * easedProgress);
+      setWorkMusicPlayerVolume(previousPlayer, volume * (1 - previousProgress));
+      setWorkMusicPlayerVolume(nextPlayer, volume * nextProgress);
       if (progress >= 1) {
         clearInterval(workMusicSeamlessFadeTimer);
         workMusicSeamlessFadeTimer = null;
@@ -1443,18 +1702,25 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
 
   function startWorkMusicSeamlessTransition() {
     if (!workMusicSeamless?.players || workMusicSeamless.transitionStarted) return;
-    const crossfadeSeconds = normalizeWorkMusicSeamlessSeconds(
-      window.workMusicSeamlessOverlapSeconds
-    );
-    if (crossfadeSeconds <= 0) return;
     const songs = getActiveWorkMusicSongs();
+    const currentIndex = Number(window.workMusicCurrentIndex || 0);
+    const currentSong = songs[currentIndex];
     const nextIndex = Number(workMusicSeamless.standbyIndex);
     const nextSong = songs[nextIndex];
-    if (!nextSong?.videoId) return;
+    if (!currentSong || !nextSong?.videoId) return;
     const previousSlot = workMusicSeamless.activeSlot;
     const nextSlot = workMusicSeamless.standbySlot;
+    const previousPlayer = workMusicSeamless.players[previousSlot];
     const nextPlayer = workMusicSeamless.players[nextSlot];
-    if (!workMusicSeamless.players[previousSlot] || !nextPlayer) return;
+    if (!previousPlayer || !nextPlayer) return;
+    const previousTimeline = getWorkMusicTimeline(
+      currentSong,
+      Number(previousPlayer.getDuration?.() || currentSong.durationSeconds || 0)
+    );
+    const nextTimeline = getWorkMusicTimeline(nextSong, nextSong.durationSeconds);
+    const previousFadeSeconds = Math.max(0.1, previousTimeline.end - previousTimeline.fadeOutStart);
+    const nextFadeSeconds = Math.max(0.1, nextTimeline.fadeInEnd - nextTimeline.start);
+    const crossfadeSeconds = Math.max(previousFadeSeconds, nextFadeSeconds);
     workMusicSeamless.transitionStarted = true;
     workMusicSeamless.transitioning = true;
     workMusicSeamless.fadeStarted = false;
@@ -1462,7 +1728,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       previousSlot,
       nextSlot,
       nextIndex,
-      crossfadeSeconds
+      crossfadeSeconds,
+      previousFadeSeconds,
+      nextFadeSeconds
     };
     setWorkMusicPlayerVolume(nextPlayer, 0);
     try {
@@ -1482,15 +1750,12 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     const activePlayer = workMusicSeamless.players[workMusicSeamless.activeSlot];
     if (!activePlayer || workMusicSeamless.transitionStarted) return;
     try {
-      const crossfadeSeconds = normalizeWorkMusicSeamlessSeconds(
-        window.workMusicSeamlessOverlapSeconds
-      );
-      if (crossfadeSeconds <= 0) return;
       const duration = Number(activePlayer.getDuration?.() || 0);
       const current = Number(activePlayer.getCurrentTime?.() || 0);
-      if (!duration || !current || duration <= crossfadeSeconds + 1) return;
-      const remaining = duration - current;
-      if (remaining <= crossfadeSeconds) {
+      const currentSong = getActiveWorkMusicSongs()[Number(window.workMusicCurrentIndex || 0)];
+      if (!duration || !current || !currentSong) return;
+      const timeline = getWorkMusicTimeline(currentSong, duration);
+      if (current >= timeline.fadeOutStart) {
         startWorkMusicSeamlessTransition();
       }
     } catch (err) {
@@ -1572,6 +1837,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         mapped !== Number(window.workMusicCurrentIndex || 0)
       ) {
         window.workMusicCurrentIndex = mapped;
+        workMusicTimelineAdvanceKey = '';
+        applyWorkMusicSongStart(workMusicPlayer, songs[mapped]);
         renderWorkMusic();
       }
       if (
@@ -1687,7 +1954,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
           workMusicPlayer = event.target;
           workMusicIframe = document.getElementById(getWorkMusicSeamlessPlayerId('a'));
           setWorkMusicPlayerVolume(event.target, getWorkMusicPlayerVolume());
-          applyWorkMusicPendingStartSeconds(event.target);
+          if (!applyWorkMusicPendingStartSeconds(event.target)) {
+            applyWorkMusicSongStart(event.target, song);
+          }
           if (autoplay) event.target.playVideo();
           if (autoplay) {
             scheduleWorkMusicPlaybackWatch(index);
@@ -1712,6 +1981,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       events: {
         onReady: (event) => {
           setWorkMusicPlayerVolume(event.target, 0);
+          applyWorkMusicSongStart(event.target, nextSong);
           if (!nextSong?.videoId) event.target.stopVideo();
         },
         onStateChange: (event) => onWorkMusicSeamlessStateChange('b', event),
@@ -1789,7 +2059,9 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         onReady: (event) => {
           workMusicIframe = document.getElementById('workMusicYoutubeIframe');
           applyWorkMusicVolume();
-          applyWorkMusicPendingStartSeconds(event.target);
+          if (!applyWorkMusicPendingStartSeconds(event.target)) {
+            applyWorkMusicSongStart(event.target, song);
+          }
           if (autoplay) event.target.playVideo();
           setTimeout(syncWorkMusicFromPlayer, 500);
           if (autoplay) {
@@ -1813,6 +2085,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       return;
     }
     if (index < 0 || index >= songs.length) index = 0;
+    workMusicTimelineAdvanceKey = '';
     window.workMusicCurrentIndex = index;
     window.workMusicIsPlaying = true;
     renderWorkMusic();
@@ -2707,6 +2980,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     renderWorkMusicAll();
     clearInterval(workMusicProgressDisplayTimer);
     workMusicProgressDisplayTimer = setInterval(renderWorkMusicProgress, 500);
+    startWorkMusicTimelineMonitor();
     setTimeout(persistWorkMusicDefaultTabsIfNeeded, 300);
     setTimeout(fillMissingWorkMusicTitles, 600);
     setTimeout(fillMissingWorkMusicDurations, 1200);
@@ -2817,6 +3091,12 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicSeekRange?.addEventListener('pointerenter', updateWorkMusicSeekHover);
     workMusicSeekRange?.addEventListener('pointermove', updateWorkMusicSeekHover);
     workMusicSeekRange?.addEventListener('pointerleave', hideWorkMusicSeekHover);
+    workMusicTimelineHandles.forEach((handle) => {
+      handle.addEventListener('pointerdown', beginWorkMusicTimelineHandle);
+      handle.addEventListener('pointermove', updateWorkMusicTimelineHandle);
+      handle.addEventListener('pointerup', finishWorkMusicTimelineHandle);
+      handle.addEventListener('pointercancel', finishWorkMusicTimelineHandle);
+    });
     workMusicPlayBtn?.addEventListener('click', toggleWorkMusicPlay);
     workMusicPrevBtn?.addEventListener('click', () => playWorkMusicAdjacent(-1));
     workMusicNextBtn?.addEventListener('click', () => playWorkMusicAdjacent(1));
