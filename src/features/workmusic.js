@@ -33,6 +33,16 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicNextPreviewThumb = document.getElementById('workMusicNextPreviewThumb');
   const workMusicNextPreviewTitle = document.getElementById('workMusicNextPreviewTitle');
   const workMusicNextPreviewArtist = document.getElementById('workMusicNextPreviewArtist');
+  const workMusicFlowPrev = document.getElementById('workMusicFlowPrev');
+  const workMusicFlowCurrent = document.getElementById('workMusicFlowCurrent');
+  const workMusicFlowNext = document.getElementById('workMusicFlowNext');
+  const workMusicNowTitle = document.getElementById('workMusicNowTitle');
+  const workMusicNowArtist = document.getElementById('workMusicNowArtist');
+  const workMusicNowAlbum = document.getElementById('workMusicNowAlbum');
+  const workMusicElapsedTime = document.getElementById('workMusicElapsedTime');
+  const workMusicDurationTime = document.getElementById('workMusicDurationTime');
+  const workMusicProgressTrack = document.getElementById('workMusicProgressTrack');
+  const workMusicProgressFill = document.getElementById('workMusicProgressFill');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
   const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
@@ -91,6 +101,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicIframe = null;
   let workMusicPlayer = null;
   let workMusicSyncTimer = null;
+  let workMusicProgressDisplayTimer = null;
   let workMusicPlaybackWatchTimer = null;
   let workMusicPlaybackWatchToken = 0;
   let workMusicFailureSkipTimer = null;
@@ -671,6 +682,82 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       artistEl: workMusicRemoteNextPreviewArtist,
       fallbackTitle: '다음 곡 없음'
     });
+  }
+
+  function getWorkMusicFlowCover(song) {
+    return (
+      song?.thumbnail ||
+      (song?.videoId ? `https://img.youtube.com/vi/${song.videoId}/hqdefault.jpg` : '')
+    );
+  }
+
+  function renderWorkMusicFlowCover(image, song) {
+    if (!image) return;
+    const source = getWorkMusicFlowCover(song);
+    const cover = image.closest('.workmusic-flow-cover');
+    cover?.classList.toggle('is-empty', !source);
+    if (source) {
+      if (image.src !== source) image.src = source;
+    } else {
+      image.removeAttribute('src');
+    }
+  }
+
+  function renderWorkMusicProgress() {
+    const songs = getActiveWorkMusicSongs();
+    const song = songs[Number(window.workMusicCurrentIndex || 0)];
+    let elapsed = 0;
+    let playerDuration = 0;
+    let playerVideoId = '';
+    try {
+      elapsed = Number(workMusicPlayer?.getCurrentTime?.() || 0);
+      playerDuration = Number(workMusicPlayer?.getDuration?.() || 0);
+      playerVideoId = String(workMusicPlayer?.getVideoData?.()?.video_id || '');
+    } catch (_) {
+      elapsed = 0;
+      playerDuration = 0;
+    }
+    if (playerVideoId && song?.videoId && playerVideoId !== song.videoId) {
+      elapsed = 0;
+      playerDuration = 0;
+    }
+    const duration = Math.max(0, playerDuration || Number(song?.durationSeconds || 0));
+    const current = Math.max(0, Math.min(elapsed, duration || elapsed));
+    const percent = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
+    if (workMusicElapsedTime)
+      workMusicElapsedTime.textContent = formatWorkMusicDuration(current) || '0:00';
+    if (workMusicDurationTime)
+      workMusicDurationTime.textContent = formatWorkMusicDuration(duration) || '0:00';
+    if (workMusicProgressFill) workMusicProgressFill.style.width = `${percent}%`;
+    if (workMusicProgressTrack)
+      workMusicProgressTrack.setAttribute('aria-valuenow', String(Math.round(percent)));
+  }
+
+  function renderWorkMusicPlayerView() {
+    const songs = getActiveWorkMusicSongs();
+    const currentIndex = normalizeWorkMusicCurrentIndex(songs);
+    const song = songs[currentIndex];
+    const previousSong = songs.length > 1 ? songs[getWorkMusicPreviewIndex(-1, songs)] : null;
+    const nextSong = songs.length > 1 ? songs[getWorkMusicPreviewIndex(1, songs)] : null;
+    renderWorkMusicFlowCover(workMusicFlowPrev, previousSong);
+    renderWorkMusicFlowCover(workMusicFlowCurrent, song);
+    renderWorkMusicFlowCover(workMusicFlowNext, nextSong);
+    if (workMusicNowTitle) {
+      workMusicNowTitle.textContent = song
+        ? song.title || `YouTube ${song.videoId || ''}`
+        : '재생할 곡 없음';
+    }
+    const artist = song ? getSongArtist(song) || song.channelTitle || '' : '';
+    const album = song?.album || song?.albumTitle || '';
+    if (workMusicNowArtist) {
+      workMusicNowArtist.textContent = artist;
+      workMusicNowArtist.hidden = !artist;
+    }
+    if (workMusicNowAlbum) {
+      workMusicNowAlbum.textContent = album;
+      workMusicNowAlbum.hidden = !album;
+    }
+    renderWorkMusicProgress();
   }
 
   function shuffledWorkMusicIndexes(startIndex) {
@@ -1622,8 +1709,14 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     renderWorkMusicSeamlessButton();
     renderWorkMusicVolumeUI();
     updateWorkMusicRemoteUI();
-    if (!songs.length) renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
-    if (!workMusicList) return;
+    if (!songs.length) {
+      renderWorkMusicPlayerView();
+      renderWorkMusicIframe(getWorkMusicInitialDisplayIndex(), false);
+    }
+    if (!workMusicList) {
+      renderWorkMusicPlayerView();
+      return;
+    }
     workMusicList.innerHTML = '';
     const activeTabForList = getWorkMusicTabs().find((t) => t.id === getActiveWorkMusicTabId());
     function isWorkMusicAudioCard(song) {
@@ -1652,6 +1745,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       // 단, 재생 중에는 사용자가 듣는 곡이 갑자기 바뀌지 않게 건드리지 않습니다.
       window.workMusicCurrentIndex = displayOrder[0];
     }
+    renderWorkMusicPlayerView();
     renderWorkMusicTrackPreviews();
     displayOrder.forEach((idx) => {
       const song = songs[idx];
@@ -2463,6 +2557,8 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   function initializeWorkMusic() {
     ensureWorkMusicDefaultTabs();
     renderWorkMusicAll();
+    clearInterval(workMusicProgressDisplayTimer);
+    workMusicProgressDisplayTimer = setInterval(renderWorkMusicProgress, 500);
     setTimeout(persistWorkMusicDefaultTabsIfNeeded, 300);
     setTimeout(fillMissingWorkMusicTitles, 600);
     setTimeout(fillMissingWorkMusicDurations, 1200);
