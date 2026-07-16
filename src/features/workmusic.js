@@ -33,16 +33,17 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   const workMusicNextPreviewThumb = document.getElementById('workMusicNextPreviewThumb');
   const workMusicNextPreviewTitle = document.getElementById('workMusicNextPreviewTitle');
   const workMusicNextPreviewArtist = document.getElementById('workMusicNextPreviewArtist');
+  const workMusicCoverFlow = document.querySelector('.workmusic-cover-flow');
+  const workMusicFlowPrevTwo = document.getElementById('workMusicFlowPrevTwo');
   const workMusicFlowPrev = document.getElementById('workMusicFlowPrev');
   const workMusicFlowCurrent = document.getElementById('workMusicFlowCurrent');
   const workMusicFlowNext = document.getElementById('workMusicFlowNext');
+  const workMusicFlowNextTwo = document.getElementById('workMusicFlowNextTwo');
   const workMusicNowTitle = document.getElementById('workMusicNowTitle');
   const workMusicNowArtist = document.getElementById('workMusicNowArtist');
-  const workMusicNowAlbum = document.getElementById('workMusicNowAlbum');
   const workMusicElapsedTime = document.getElementById('workMusicElapsedTime');
   const workMusicDurationTime = document.getElementById('workMusicDurationTime');
-  const workMusicProgressTrack = document.getElementById('workMusicProgressTrack');
-  const workMusicProgressFill = document.getElementById('workMusicProgressFill');
+  const workMusicSeekRange = document.getElementById('workMusicSeekRange');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
   const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
@@ -102,6 +103,10 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicPlayer = null;
   let workMusicSyncTimer = null;
   let workMusicProgressDisplayTimer = null;
+  let workMusicFlowAnimationTimer = null;
+  let workMusicFlowRenderedKeys = [];
+  let workMusicFlowPendingSongs = null;
+  let workMusicFlowDirectionHint = '';
   let workMusicPlaybackWatchTimer = null;
   let workMusicPlaybackWatchToken = 0;
   let workMusicFailureSkipTimer = null;
@@ -623,6 +628,12 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     return getWorkMusicAdjacentIndex(step, songs);
   }
 
+  function playWorkMusicAdjacent(step) {
+    const index = getWorkMusicNextIndex(step);
+    if (index >= 0) workMusicFlowDirectionHint = step < 0 ? 'previous' : 'next';
+    playWorkMusicAt(index);
+  }
+
   function getWorkMusicPreviewIndex(step = 1, songs = getActiveWorkMusicSongs()) {
     return getWorkMusicAdjacentIndex(step, songs);
   }
@@ -703,6 +714,79 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     }
   }
 
+  function getWorkMusicFlowSongKey(song) {
+    return String(song?.id || song?.videoId || '');
+  }
+
+  function getWorkMusicFlowSongs(songs) {
+    if (!songs.length) return [null, null, null, null, null];
+    const atOffset = (offset) => {
+      if (offset === 0) return songs[Number(window.workMusicCurrentIndex || 0)] || null;
+      return songs.length > Math.abs(offset)
+        ? songs[getWorkMusicPreviewIndex(offset, songs)] || null
+        : null;
+    };
+    return [-2, -1, 0, 1, 2].map(atOffset);
+  }
+
+  function applyWorkMusicFlowSongs(flowSongs) {
+    [
+      workMusicFlowPrevTwo,
+      workMusicFlowPrev,
+      workMusicFlowCurrent,
+      workMusicFlowNext,
+      workMusicFlowNextTwo
+    ].forEach((image, index) => renderWorkMusicFlowCover(image, flowSongs[index]));
+  }
+
+  function finishWorkMusicFlowAnimation() {
+    if (!workMusicCoverFlow || !workMusicFlowPendingSongs) return;
+    clearTimeout(workMusicFlowAnimationTimer);
+    workMusicFlowAnimationTimer = null;
+    workMusicCoverFlow.classList.add('is-resetting');
+    applyWorkMusicFlowSongs(workMusicFlowPendingSongs);
+    workMusicFlowPendingSongs = null;
+    workMusicCoverFlow.classList.remove('is-sliding-next', 'is-sliding-previous');
+    void workMusicCoverFlow.offsetWidth;
+    workMusicCoverFlow.classList.remove('is-resetting');
+  }
+
+  function renderWorkMusicFlow(flowSongs) {
+    const nextKeys = flowSongs.map(getWorkMusicFlowSongKey);
+    if (!workMusicFlowRenderedKeys.length || !workMusicCoverFlow) {
+      applyWorkMusicFlowSongs(flowSongs);
+      workMusicFlowRenderedKeys = nextKeys;
+      return;
+    }
+    if (nextKeys.every((key, index) => key === workMusicFlowRenderedKeys[index])) return;
+    if (nextKeys[2] === workMusicFlowRenderedKeys[2]) {
+      applyWorkMusicFlowSongs(flowSongs);
+      workMusicFlowRenderedKeys = nextKeys;
+      return;
+    }
+    if (workMusicFlowAnimationTimer) finishWorkMusicFlowAnimation();
+    const direction =
+      workMusicFlowDirectionHint ||
+      (nextKeys[2] && nextKeys[2] === workMusicFlowRenderedKeys[3]
+        ? 'next'
+        : nextKeys[2] && nextKeys[2] === workMusicFlowRenderedKeys[1]
+          ? 'previous'
+          : '');
+    workMusicFlowDirectionHint = '';
+    workMusicFlowRenderedKeys = nextKeys;
+    if (!direction) {
+      applyWorkMusicFlowSongs(flowSongs);
+      return;
+    }
+    workMusicFlowPendingSongs = flowSongs;
+    workMusicCoverFlow.classList.remove('is-sliding-next', 'is-sliding-previous');
+    void workMusicCoverFlow.offsetWidth;
+    workMusicCoverFlow.classList.add(
+      direction === 'next' ? 'is-sliding-next' : 'is-sliding-previous'
+    );
+    workMusicFlowAnimationTimer = setTimeout(finishWorkMusicFlowAnimation, 440);
+  }
+
   function renderWorkMusicProgress() {
     const songs = getActiveWorkMusicSongs();
     const song = songs[Number(window.workMusicCurrentIndex || 0)];
@@ -728,34 +812,52 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       workMusicElapsedTime.textContent = formatWorkMusicDuration(current) || '0:00';
     if (workMusicDurationTime)
       workMusicDurationTime.textContent = formatWorkMusicDuration(duration) || '0:00';
-    if (workMusicProgressFill) workMusicProgressFill.style.width = `${percent}%`;
-    if (workMusicProgressTrack)
-      workMusicProgressTrack.setAttribute('aria-valuenow', String(Math.round(percent)));
+    if (workMusicSeekRange) {
+      workMusicSeekRange.value = String(percent);
+      workMusicSeekRange.style.setProperty('--seek-progress', `${percent}%`);
+      workMusicSeekRange.disabled = !workMusicPlayer || duration <= 0;
+    }
+  }
+
+  function seekWorkMusicFromRange() {
+    if (!workMusicSeekRange || !workMusicPlayer) return;
+    const songs = getActiveWorkMusicSongs();
+    const song = songs[Number(window.workMusicCurrentIndex || 0)];
+    let duration = 0;
+    let playerVideoId = '';
+    try {
+      duration = Number(workMusicPlayer.getDuration?.() || song?.durationSeconds || 0);
+      playerVideoId = String(workMusicPlayer.getVideoData?.()?.video_id || '');
+    } catch (_) {
+      return;
+    }
+    if (duration <= 0 || (playerVideoId && song?.videoId && playerVideoId !== song.videoId)) return;
+    const percent = Math.max(0, Math.min(100, Number(workMusicSeekRange.value || 0)));
+    const seconds = (duration * percent) / 100;
+    workMusicSeekRange.style.setProperty('--seek-progress', `${percent}%`);
+    if (workMusicElapsedTime)
+      workMusicElapsedTime.textContent = formatWorkMusicDuration(seconds) || '0:00';
+    try {
+      workMusicPlayer.seekTo(seconds, true);
+    } catch (err) {
+      console.warn('work music seek failed', err);
+    }
   }
 
   function renderWorkMusicPlayerView() {
     const songs = getActiveWorkMusicSongs();
     const currentIndex = normalizeWorkMusicCurrentIndex(songs);
     const song = songs[currentIndex];
-    const previousSong = songs.length > 1 ? songs[getWorkMusicPreviewIndex(-1, songs)] : null;
-    const nextSong = songs.length > 1 ? songs[getWorkMusicPreviewIndex(1, songs)] : null;
-    renderWorkMusicFlowCover(workMusicFlowPrev, previousSong);
-    renderWorkMusicFlowCover(workMusicFlowCurrent, song);
-    renderWorkMusicFlowCover(workMusicFlowNext, nextSong);
+    renderWorkMusicFlow(getWorkMusicFlowSongs(songs));
     if (workMusicNowTitle) {
       workMusicNowTitle.textContent = song
         ? song.title || `YouTube ${song.videoId || ''}`
         : '재생할 곡 없음';
     }
     const artist = song ? getSongArtist(song) || song.channelTitle || '' : '';
-    const album = song?.album || song?.albumTitle || '';
     if (workMusicNowArtist) {
       workMusicNowArtist.textContent = artist;
       workMusicNowArtist.hidden = !artist;
-    }
-    if (workMusicNowAlbum) {
-      workMusicNowAlbum.textContent = album;
-      workMusicNowAlbum.hidden = !album;
     }
     renderWorkMusicProgress();
   }
@@ -2665,16 +2767,13 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
         e.dataTransfer?.getData('text/plain') || e.dataTransfer?.getData('text/uri-list') || '';
       await addWorkMusicFromText(text);
     });
+    workMusicSeekRange?.addEventListener('input', seekWorkMusicFromRange);
     workMusicPlayBtn?.addEventListener('click', toggleWorkMusicPlay);
-    workMusicPrevBtn?.addEventListener('click', () => playWorkMusicAt(getWorkMusicNextIndex(-1)));
-    workMusicNextBtn?.addEventListener('click', () => playWorkMusicAt(getWorkMusicNextIndex(1)));
+    workMusicPrevBtn?.addEventListener('click', () => playWorkMusicAdjacent(-1));
+    workMusicNextBtn?.addEventListener('click', () => playWorkMusicAdjacent(1));
     workMusicRemotePlayBtn?.addEventListener('click', toggleWorkMusicPlay);
-    workMusicRemotePrevBtn?.addEventListener('click', () =>
-      playWorkMusicAt(getWorkMusicNextIndex(-1))
-    );
-    workMusicRemoteNextBtn?.addEventListener('click', () =>
-      playWorkMusicAt(getWorkMusicNextIndex(1))
-    );
+    workMusicRemotePrevBtn?.addEventListener('click', () => playWorkMusicAdjacent(-1));
+    workMusicRemoteNextBtn?.addEventListener('click', () => playWorkMusicAdjacent(1));
     bindSliderControlHoverState(workMusicSeamlessControl);
     bindSliderControlHoverState(workMusicVolumeControl);
     bindSliderControlHoverState(workMusicRemoteSeamlessControl);
