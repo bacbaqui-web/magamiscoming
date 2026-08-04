@@ -191,6 +191,16 @@
               <span class="profile-toggle-switch" aria-hidden="true"></span>
             </label>
           </div>
+          <button id="profileAddCustomTabBtn" class="profile-action-btn" type="button">
+            + 커스텀 탭 추가
+          </button>
+        </div>
+        <div class="profile-custom-tabs-card">
+          <div class="profile-backup-title">커스텀 탭</div>
+          <div class="profile-backup-desc">
+            자주 사용하는 웹사이트를 상단 탭에 추가합니다. 선택하면 새 창에서 열립니다.
+          </div>
+          <div id="mainCustomTabSettingsList" class="profile-custom-tab-list"></div>
         </div>
         <div class="profile-backup-card">
           <div class="profile-backup-title">백업</div>
@@ -1294,6 +1304,48 @@
       </div>
     </div>
 
+    <div
+      id="mainCustomTabModal"
+      class="main-custom-tab-modal hidden"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="main-custom-tab-dialog">
+        <div class="main-custom-tab-dialog-header">
+          <h2 id="mainCustomTabModalTitle">커스텀 탭 추가</h2>
+          <button id="closeMainCustomTabModalBtn" type="button" aria-label="닫기">×</button>
+        </div>
+        <label class="main-custom-tab-field">
+          <span>이름</span>
+          <input
+            id="mainCustomTabNameInput"
+            type="text"
+            maxlength="30"
+            placeholder="예: 작업 자료"
+          />
+        </label>
+        <label class="main-custom-tab-field">
+          <span>URL</span>
+          <input
+            id="mainCustomTabUrlInput"
+            type="url"
+            inputmode="url"
+            placeholder="https://example.com"
+          />
+        </label>
+        <fieldset class="main-custom-tab-icon-field">
+          <legend>아이콘</legend>
+          <div id="mainCustomTabIconPicker" class="main-custom-tab-icon-picker"></div>
+        </fieldset>
+        <div class="main-custom-tab-dialog-actions">
+          <button id="cancelMainCustomTabBtn" class="profile-action-btn" type="button">취소</button>
+          <button id="saveMainCustomTabBtn" class="profile-action-btn primary" type="button">
+            저장
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div id="driveSaveIndicator" class="drive-save-indicator">대기 중</div>
 
     <div
@@ -1337,6 +1389,9 @@
       window.__bookmarkActiveTabId = window.__bookmarkActiveTabId || 'default';
       window.__hiddenMainTabs = Array.isArray(window.__hiddenMainTabs)
         ? window.__hiddenMainTabs
+        : [];
+      window.__mainCustomTabs = Array.isArray(window.__mainCustomTabs)
+        ? window.__mainCustomTabs
         : [];
       window.currentTask = null;
       window.currentEditingBookmark = null; // 현재 편집 중인 북마크 항목
@@ -1440,6 +1495,7 @@
       import { initWorkMusic } from './src/features/workmusic.js';
       import { initClipViewer } from './src/features/clipviewer.js';
       import { initPomodoro } from './src/features/pomodoro.js';
+      import { initMainTabs } from './src/features/mainTabs.js';
 
       import { initCloudSyncBackend } from './src/services/cloudSyncBackend.js';
 
@@ -1451,6 +1507,7 @@
         initClipViewer,
         initPomodoro
       });
+      initMainTabs();
     </script>
   </body>
 </html>

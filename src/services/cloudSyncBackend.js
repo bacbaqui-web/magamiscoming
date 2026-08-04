@@ -621,11 +621,16 @@ export function initCloudSyncBackend({
       window.__hiddenMainTabs = Array.isArray(firebaseCalendar.hiddenMainTabs)
         ? firebaseCalendar.hiddenMainTabs
         : [];
+      window.__mainCustomTabs = Array.isArray(firebaseCalendar.mainCustomTabs)
+        ? firebaseCalendar.mainCustomTabs
+        : [];
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
       currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
+      currentAppData.state.mainCustomTabs = window.__mainCustomTabs;
       window.renderMainTabVisibility?.();
+      window.renderMainCustomTabs?.();
       return { firebase: true, calendar: firebaseCalendar };
     }
     if (FIREBASE_ENABLED) {
@@ -641,11 +646,16 @@ export function initCloudSyncBackend({
       window.__hiddenMainTabs = Array.isArray(calendar.hiddenMainTabs)
         ? calendar.hiddenMainTabs
         : [];
+      window.__mainCustomTabs = Array.isArray(calendar.mainCustomTabs)
+        ? calendar.mainCustomTabs
+        : [];
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
       currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
+      currentAppData.state.mainCustomTabs = window.__mainCustomTabs;
       window.renderMainTabVisibility?.();
+      window.renderMainCustomTabs?.();
     }
     return { folders, legacyCalendar, calendar };
   }
@@ -660,6 +670,7 @@ export function initCloudSyncBackend({
         customTasks: window.customTasks || [],
         taskStatus: window.taskStatus || {},
         hiddenMainTabs: window.__hiddenMainTabs || [],
+        mainCustomTabs: window.__mainCustomTabs || [],
         updatedAt: new Date().toISOString()
       };
       applyAppData(mergeDriveParts(firebaseParts));
@@ -699,6 +710,7 @@ export function initCloudSyncBackend({
       customTasks: window.customTasks || [],
       taskStatus: window.taskStatus || {},
       hiddenMainTabs: window.__hiddenMainTabs || [],
+      mainCustomTabs: window.__mainCustomTabs || [],
       updatedAt: new Date().toISOString()
     };
     applyAppData(mergeDriveParts(parts));
@@ -777,7 +789,9 @@ export function initCloudSyncBackend({
     window.customTasks = [];
     window.taskStatus = {};
     window.__hiddenMainTabs = [];
+    window.__mainCustomTabs = [];
     window.renderMainTabVisibility?.();
+    window.renderMainCustomTabs?.();
     window.imageBookmarks = [];
     window.__notesTabs = {};
     window.__notesTabList = [{ id: 'memo', name: '메모', order: 0 }];

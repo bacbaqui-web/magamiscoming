@@ -84,6 +84,7 @@ export function getDefaultAppData() {
     state: {
       taskStatus: {},
       hiddenMainTabs: [],
+      mainCustomTabs: [],
       notesTabList: [{ id: 'memo', name: '메모', order: 0 }],
       notesTabs: {},
       notesActiveTabId: 'memo',
@@ -109,6 +110,7 @@ export function collectState(currentAppData = getDefaultAppData()) {
   return {
     taskStatus: window.taskStatus || {},
     hiddenMainTabs: Array.isArray(window.__hiddenMainTabs) ? window.__hiddenMainTabs : [],
+    mainCustomTabs: Array.isArray(window.__mainCustomTabs) ? window.__mainCustomTabs : [],
     notesTabList: normalizeTabList(window.__notesTabList, { id: 'memo', name: '메모', order: 0 }),
     notesTabs: window.__notesTabs || {},
     notesActiveTabId: window.__notesActiveTabId || 'memo',
@@ -164,6 +166,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
   window.customTasks = Array.isArray(currentAppData.customTasks) ? currentAppData.customTasks : [];
   window.taskStatus = st.taskStatus || {};
   window.__hiddenMainTabs = Array.isArray(st.hiddenMainTabs) ? st.hiddenMainTabs : [];
+  window.__mainCustomTabs = Array.isArray(st.mainCustomTabs) ? st.mainCustomTabs : [];
   window.__notesTabList =
     Array.isArray(st.notesTabList) && st.notesTabList.length
       ? normalizeTabList(st.notesTabList, { id: 'memo', name: '메모', order: 0 })
@@ -202,6 +205,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
     timestamp: driveTimestamp(b.timestampMs || Date.parse(b.timestamp || '') || 0)
   }));
   window.renderMainTabVisibility?.();
+  window.renderMainCustomTabs?.();
   return currentAppData;
 }
 
@@ -213,6 +217,7 @@ export function splitAppDataForDrive(data) {
       customTasks: data.customTasks || [],
       taskStatus: st.taskStatus || {},
       hiddenMainTabs: st.hiddenMainTabs || [],
+      mainCustomTabs: st.mainCustomTabs || [],
       updatedAt: data.updatedAt || new Date().toISOString()
     },
     notes: {
@@ -258,6 +263,9 @@ export function mergeDriveParts(parts) {
     base.state.taskStatus = parts.calendar.taskStatus || {};
     base.state.hiddenMainTabs = Array.isArray(parts.calendar.hiddenMainTabs)
       ? parts.calendar.hiddenMainTabs
+      : [];
+    base.state.mainCustomTabs = Array.isArray(parts.calendar.mainCustomTabs)
+      ? parts.calendar.mainCustomTabs
       : [];
   }
   if (parts.notes) {
