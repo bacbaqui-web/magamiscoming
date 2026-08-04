@@ -592,14 +592,19 @@ export function initCalendar() {
     renderCalendar();
   };
 
-  const createMonthNavigationButton = (direction) => {
+  const createMonthNavigationZone = (direction) => {
     const button = document.createElement('button');
-    const isPrevious = direction === 'previous';
+    const isUp = direction === 'up';
     button.type = 'button';
-    button.className = 'month-navigation-button';
-    button.setAttribute('aria-label', isPrevious ? '이전 달로 이동' : '다음 달로 이동');
-    button.textContent = isPrevious ? '‹' : '›';
-    button.addEventListener('click', () => changeMonth(isPrevious ? -1 : 1));
+    button.className = `month-navigation-zone ${direction}`;
+    button.setAttribute('aria-label', isUp ? '이전 달로 이동' : '다음 달로 이동');
+    button.innerHTML = `
+      <span class="timeline-direction-cue" aria-hidden="true">
+        <svg viewBox="0 0 220 72" focusable="false">
+          <path d="M10 60 L110 10 L210 60" />
+        </svg>
+      </span>`;
+    button.addEventListener('click', () => changeMonth(isUp ? -1 : 1));
     return button;
   };
 
@@ -631,13 +636,7 @@ export function initCalendar() {
     const title = document.createElement('h2');
     setWeekTitleContent(title, `${year}년 ${month + 1}월`);
     title.setAttribute('aria-live', 'polite');
-    const headerCenter = document.createElement('div');
-    headerCenter.append(title, createCalendarSettingsButton());
-    header.append(
-      createMonthNavigationButton('previous'),
-      headerCenter,
-      createMonthNavigationButton('next')
-    );
+    header.append(title, createCalendarSettingsButton());
 
     const weekdayRow = document.createElement('div');
     weekdayRow.className = 'month-calendar-weekdays';
@@ -664,7 +663,13 @@ export function initCalendar() {
       }
       days.appendChild(week);
     }
-    monthCalendar.append(header, weekdayRow, days);
+    monthCalendar.append(
+      createMonthNavigationZone('up'),
+      header,
+      weekdayRow,
+      days,
+      createMonthNavigationZone('down')
+    );
     calendarGrid.replaceChildren(monthCalendar);
   };
 
