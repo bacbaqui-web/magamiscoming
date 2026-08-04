@@ -629,7 +629,7 @@ export function initCalendar() {
     const header = document.createElement('div');
     header.className = 'month-calendar-header';
     const title = document.createElement('h2');
-    title.textContent = `${year}년 ${month + 1}월`;
+    setWeekTitleContent(title, `${year}년 ${month + 1}월`);
     title.setAttribute('aria-live', 'polite');
     const headerCenter = document.createElement('div');
     headerCenter.append(title, createCalendarSettingsButton());
@@ -652,12 +652,17 @@ export function initCalendar() {
 
     const days = document.createElement('div');
     days.className = 'month-calendar-days';
-    for (let index = 0; index < 42; index += 1) {
-      const date = addDays(visibleStart, index);
-      const day = createDayCell(date, 0, monthTasks);
-      day.classList.add('month-calendar-day');
-      if (date.getMonth() !== month) day.classList.add('outside-month');
-      days.appendChild(day);
+    for (let weekIndex = 0; weekIndex < 6; weekIndex += 1) {
+      const week = document.createElement('div');
+      week.className = 'month-calendar-week';
+      for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+        const date = addDays(visibleStart, weekIndex * 7 + dayIndex);
+        const day = createDayCell(date, 0, monthTasks);
+        day.classList.add('month-calendar-day');
+        if (date.getMonth() !== month) day.classList.add('outside-month');
+        week.appendChild(day);
+      }
+      days.appendChild(week);
     }
     monthCalendar.append(header, weekdayRow, days);
     calendarGrid.replaceChildren(monthCalendar);
