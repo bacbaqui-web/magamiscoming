@@ -51,10 +51,16 @@ export function initMainTabs() {
   const nameInput = document.getElementById('mainCustomTabNameInput');
   const urlInput = document.getElementById('mainCustomTabUrlInput');
   const iconPicker = document.getElementById('mainCustomTabIconPicker');
+  const customSection = document.getElementById('main-custom-tab-section');
+  const frame = document.getElementById('mainCustomTabFrame');
+  const viewTitle = document.getElementById('mainCustomTabViewTitle');
+  const viewUrl = document.getElementById('mainCustomTabViewUrl');
+  const reloadButton = document.getElementById('reloadMainCustomTabBtn');
   const saveButton = document.getElementById('saveMainCustomTabBtn');
   const closeButton = document.getElementById('closeMainCustomTabModalBtn');
   const cancelButton = document.getElementById('cancelMainCustomTabBtn');
-  if (!mainTabs || !profileButton || !profileAddButton || !modal) return;
+  if (!mainTabs || !profileButton || !profileAddButton || !modal || !customSection || !frame)
+    return;
 
   let editingId = null;
   let selectedIcon = 'link';
@@ -98,6 +104,21 @@ export function initMainTabs() {
     editingId = null;
   }
 
+  function showCustomTab(tab, button) {
+    document
+      .querySelectorAll('.tab-content')
+      .forEach((content) => content.classList.remove('active'));
+    document
+      .querySelectorAll('#main-tabs .notepad-tab')
+      .forEach((tabButton) => tabButton.classList.remove('active'));
+    customSection.classList.add('active');
+    customSection.dataset.customTabId = tab.id;
+    button.classList.add('active');
+    viewTitle.textContent = tab.name;
+    viewUrl.textContent = tab.url;
+    if (frame.src !== tab.url) frame.src = tab.url;
+  }
+
   function render() {
     mainTabs.querySelectorAll('[data-custom-main-tab]').forEach((button) => button.remove());
     const tabs = getTabs();
@@ -109,7 +130,7 @@ export function initMainTabs() {
       button.title = tab.name;
       button.setAttribute('aria-label', `${tab.name} 열기`);
       button.innerHTML = iconSvg(tab.icon);
-      button.addEventListener('click', () => window.open(tab.url, '_blank', 'noopener,noreferrer'));
+      button.addEventListener('click', () => showCustomTab(tab, button));
       mainTabs.insertBefore(button, profileButton);
     });
 
@@ -144,7 +165,13 @@ export function initMainTabs() {
       deleteButton.type = 'button';
       deleteButton.textContent = '삭제';
       deleteButton.addEventListener('click', () => {
+        const deletingActiveTab = customSection.dataset.customTabId === tab.id;
         window.__mainCustomTabs = getTabs().filter((item) => item.id !== tab.id);
+        if (deletingActiveTab) {
+          frame.removeAttribute('src');
+          delete customSection.dataset.customTabId;
+          window.showTab?.('profile');
+        }
         render();
         window.cloudSaveMainCustomTabs?.();
       });
@@ -184,6 +211,14 @@ export function initMainTabs() {
   cancelButton?.addEventListener('click', closeModal);
   modal.addEventListener('click', (event) => {
     if (event.target === modal) closeModal();
+  });
+  reloadButton?.addEventListener('click', () => {
+    if (!frame.src) return;
+    const currentUrl = frame.src;
+    frame.removeAttribute('src');
+    requestAnimationFrame(() => {
+      frame.src = currentUrl;
+    });
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();

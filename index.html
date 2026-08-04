@@ -198,7 +198,7 @@
         <div class="profile-custom-tabs-card">
           <div class="profile-backup-title">커스텀 탭</div>
           <div class="profile-backup-desc">
-            자주 사용하는 웹사이트를 상단 탭에 추가합니다. 선택하면 새 창에서 열립니다.
+            자주 사용하는 웹사이트를 상단 탭에 추가하고 앱 안에서 바로 확인합니다.
           </div>
           <div id="mainCustomTabSettingsList" class="profile-custom-tab-list"></div>
         </div>
@@ -213,6 +213,34 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div id="main-custom-tab-section" class="section-card tab-content main-custom-tab-section">
+      <div class="main-custom-tab-view-header">
+        <div>
+          <strong id="mainCustomTabViewTitle">커스텀 탭</strong>
+          <span id="mainCustomTabViewUrl"></span>
+        </div>
+        <button id="reloadMainCustomTabBtn" type="button" title="새로고침" aria-label="새로고침">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 11a8 8 0 1 0 2 5.3" />
+            <path d="M20 4v7h-7" />
+          </svg>
+        </button>
+      </div>
+      <iframe
+        id="mainCustomTabFrame"
+        title="커스텀 웹페이지"
+        referrerpolicy="strict-origin-when-cross-origin"
+      ></iframe>
     </div>
 
     <div id="calendar-section" class="section-card tab-content active">
@@ -1445,7 +1473,9 @@
           }
         }
         tabContents.forEach((c) => c.classList.remove('active'));
-        tabButtons.forEach((b) => b.classList.remove('active'));
+        document
+          .querySelectorAll('#main-tabs .notepad-tab')
+          .forEach((b) => b.classList.remove('active'));
         document.getElementById(`${tabId}-section`).classList.add('active');
         const btn = document.querySelector(`#main-tabs .notepad-tab[data-tab="${tabId}"]`);
         if (btn) btn.classList.add('active');
