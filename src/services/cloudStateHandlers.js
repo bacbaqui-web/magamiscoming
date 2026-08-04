@@ -58,6 +58,11 @@ export function installCloudStateHandlers({
     scheduleSaveNonNotesData();
   };
 
+  window.cloudSaveCalendarSettings = () => {
+    if (!ensureLogin()) return;
+    scheduleSaveNonNotesData();
+  };
+
   window.cloudSaveNotes = async (tabIdArg, valueArg) => {
     if (!ensureLogin()) return;
     writeNoteToState(tabIdArg, valueArg);

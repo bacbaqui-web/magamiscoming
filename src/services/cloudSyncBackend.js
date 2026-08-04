@@ -618,6 +618,7 @@ export function initCloudSyncBackend({
     if (firebaseCalendar) {
       window.customTasks = firebaseCalendar.customTasks || [];
       window.taskStatus = firebaseCalendar.taskStatus || {};
+      window.__calendarViewMode = firebaseCalendar.calendarViewMode === 'month' ? 'month' : 'week';
       window.__hiddenMainTabs = Array.isArray(firebaseCalendar.hiddenMainTabs)
         ? firebaseCalendar.hiddenMainTabs
         : [];
@@ -627,6 +628,7 @@ export function initCloudSyncBackend({
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
+      currentAppData.state.calendarViewMode = window.__calendarViewMode;
       currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
       currentAppData.state.mainCustomTabs = window.__mainCustomTabs;
       window.renderMainTabVisibility?.();
@@ -643,6 +645,7 @@ export function initCloudSyncBackend({
     if (calendar) {
       window.customTasks = calendar.customTasks || [];
       window.taskStatus = calendar.taskStatus || {};
+      window.__calendarViewMode = calendar.calendarViewMode === 'month' ? 'month' : 'week';
       window.__hiddenMainTabs = Array.isArray(calendar.hiddenMainTabs)
         ? calendar.hiddenMainTabs
         : [];
@@ -652,6 +655,7 @@ export function initCloudSyncBackend({
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
+      currentAppData.state.calendarViewMode = window.__calendarViewMode;
       currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
       currentAppData.state.mainCustomTabs = window.__mainCustomTabs;
       window.renderMainTabVisibility?.();
@@ -669,6 +673,7 @@ export function initCloudSyncBackend({
       firebaseParts.calendar = {
         customTasks: window.customTasks || [],
         taskStatus: window.taskStatus || {},
+        calendarViewMode: window.__calendarViewMode === 'month' ? 'month' : 'week',
         hiddenMainTabs: window.__hiddenMainTabs || [],
         mainCustomTabs: window.__mainCustomTabs || [],
         updatedAt: new Date().toISOString()
@@ -709,6 +714,7 @@ export function initCloudSyncBackend({
     parts.calendar = {
       customTasks: window.customTasks || [],
       taskStatus: window.taskStatus || {},
+      calendarViewMode: window.__calendarViewMode === 'month' ? 'month' : 'week',
       hiddenMainTabs: window.__hiddenMainTabs || [],
       mainCustomTabs: window.__mainCustomTabs || [],
       updatedAt: new Date().toISOString()
@@ -788,6 +794,7 @@ export function initCloudSyncBackend({
     window.isAuthReady = true;
     window.customTasks = [];
     window.taskStatus = {};
+    window.__calendarViewMode = 'week';
     window.__hiddenMainTabs = [];
     window.__mainCustomTabs = [];
     window.renderMainTabVisibility?.();

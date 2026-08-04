@@ -83,6 +83,7 @@ export function getDefaultAppData() {
     imageBookmarks: [],
     state: {
       taskStatus: {},
+      calendarViewMode: 'week',
       hiddenMainTabs: [],
       mainCustomTabs: [],
       notesTabList: [{ id: 'memo', name: '메모', order: 0 }],
@@ -109,6 +110,7 @@ export function getDefaultAppData() {
 export function collectState(currentAppData = getDefaultAppData()) {
   return {
     taskStatus: window.taskStatus || {},
+    calendarViewMode: window.__calendarViewMode === 'month' ? 'month' : 'week',
     hiddenMainTabs: Array.isArray(window.__hiddenMainTabs) ? window.__hiddenMainTabs : [],
     mainCustomTabs: Array.isArray(window.__mainCustomTabs) ? window.__mainCustomTabs : [],
     notesTabList: normalizeTabList(window.__notesTabList, { id: 'memo', name: '메모', order: 0 }),
@@ -165,6 +167,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
   const st = currentAppData.state || {};
   window.customTasks = Array.isArray(currentAppData.customTasks) ? currentAppData.customTasks : [];
   window.taskStatus = st.taskStatus || {};
+  window.__calendarViewMode = st.calendarViewMode === 'month' ? 'month' : 'week';
   window.__hiddenMainTabs = Array.isArray(st.hiddenMainTabs) ? st.hiddenMainTabs : [];
   window.__mainCustomTabs = Array.isArray(st.mainCustomTabs) ? st.mainCustomTabs : [];
   window.__notesTabList =
@@ -216,6 +219,7 @@ export function splitAppDataForDrive(data) {
     calendar: {
       customTasks: data.customTasks || [],
       taskStatus: st.taskStatus || {},
+      calendarViewMode: st.calendarViewMode === 'month' ? 'month' : 'week',
       hiddenMainTabs: st.hiddenMainTabs || [],
       mainCustomTabs: st.mainCustomTabs || [],
       updatedAt: data.updatedAt || new Date().toISOString()
@@ -261,6 +265,7 @@ export function mergeDriveParts(parts) {
   if (parts.calendar) {
     base.customTasks = parts.calendar.customTasks || [];
     base.state.taskStatus = parts.calendar.taskStatus || {};
+    base.state.calendarViewMode = parts.calendar.calendarViewMode === 'month' ? 'month' : 'week';
     base.state.hiddenMainTabs = Array.isArray(parts.calendar.hiddenMainTabs)
       ? parts.calendar.hiddenMainTabs
       : [];

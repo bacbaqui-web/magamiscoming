@@ -160,36 +160,54 @@
             상단에 표시할 탭을 선택합니다. 탭을 꺼도 저장된 내용은 지워지지 않습니다.
           </div>
           <div id="mainTabVisibilitySettings" class="profile-tab-toggle-list">
-            <label class="profile-tab-toggle">
-              <span>달력</span>
-              <input type="checkbox" data-main-tab-toggle="calendar" checked />
-              <span class="profile-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="profile-tab-toggle">
-              <span>뽀모도로</span>
-              <input type="checkbox" data-main-tab-toggle="pomodoro" checked />
-              <span class="profile-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="profile-tab-toggle">
-              <span>메모</span>
-              <input type="checkbox" data-main-tab-toggle="notes" checked />
-              <span class="profile-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="profile-tab-toggle">
-              <span>북마크</span>
-              <input type="checkbox" data-main-tab-toggle="bookmarks" checked />
-              <span class="profile-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="profile-tab-toggle">
-              <span>노동요</span>
-              <input type="checkbox" data-main-tab-toggle="workmusic" checked />
-              <span class="profile-toggle-switch" aria-hidden="true"></span>
-            </label>
-            <label class="profile-tab-toggle">
-              <span>클립뷰어</span>
-              <input type="checkbox" data-main-tab-toggle="clipviewer" checked />
-              <span class="profile-toggle-switch" aria-hidden="true"></span>
-            </label>
+            <div class="profile-tab-setting-row">
+              <span class="profile-tab-setting-name">달력</span>
+              <button type="button" data-main-tab-settings="calendar">설정</button>
+              <label class="profile-tab-toggle" aria-label="달력 탭 표시">
+                <input type="checkbox" data-main-tab-toggle="calendar" checked />
+                <span class="profile-toggle-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+            <div class="profile-tab-setting-row">
+              <span class="profile-tab-setting-name">뽀모도로</span>
+              <button type="button" data-main-tab-settings="pomodoro">설정</button>
+              <label class="profile-tab-toggle" aria-label="뽀모도로 탭 표시">
+                <input type="checkbox" data-main-tab-toggle="pomodoro" checked />
+                <span class="profile-toggle-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+            <div class="profile-tab-setting-row">
+              <span class="profile-tab-setting-name">메모</span>
+              <button type="button" data-main-tab-settings="notes">설정</button>
+              <label class="profile-tab-toggle" aria-label="메모 탭 표시">
+                <input type="checkbox" data-main-tab-toggle="notes" checked />
+                <span class="profile-toggle-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+            <div class="profile-tab-setting-row">
+              <span class="profile-tab-setting-name">북마크</span>
+              <button type="button" data-main-tab-settings="bookmarks">설정</button>
+              <label class="profile-tab-toggle" aria-label="북마크 탭 표시">
+                <input type="checkbox" data-main-tab-toggle="bookmarks" checked />
+                <span class="profile-toggle-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+            <div class="profile-tab-setting-row">
+              <span class="profile-tab-setting-name">노동요</span>
+              <button type="button" data-main-tab-settings="workmusic">설정</button>
+              <label class="profile-tab-toggle" aria-label="노동요 탭 표시">
+                <input type="checkbox" data-main-tab-toggle="workmusic" checked />
+                <span class="profile-toggle-switch" aria-hidden="true"></span>
+              </label>
+            </div>
+            <div class="profile-tab-setting-row">
+              <span class="profile-tab-setting-name">클립뷰어</span>
+              <button type="button" data-main-tab-settings="clipviewer">설정</button>
+              <label class="profile-tab-toggle" aria-label="클립뷰어 탭 표시">
+                <input type="checkbox" data-main-tab-toggle="clipviewer" checked />
+                <span class="profile-toggle-switch" aria-hidden="true"></span>
+              </label>
+            </div>
           </div>
           <button id="profileAddCustomTabBtn" class="profile-action-btn" type="button">
             + 커스텀 탭 추가
@@ -728,8 +746,16 @@
         class="modal-content calendar-settings-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="주간 달력 설정"
+        aria-label="달력 설정"
       >
+        <div class="calendar-settings-control">
+          <label for="calendarViewMode">보기 방식</label>
+          <span aria-hidden="true">-</span>
+          <select id="calendarViewMode" class="calendar-settings-select">
+            <option value="week">주간 보기</option>
+            <option value="month">월간 보기</option>
+          </select>
+        </div>
         <div class="calendar-settings-control">
           <label for="calendarWeekStart">시작 요일</label>
           <span aria-hidden="true">-</span>
@@ -1409,6 +1435,7 @@
       // 전역 상태
       window.customTasks = window.customTasks || [];
       window.taskStatus = window.taskStatus || {};
+      window.__calendarViewMode = window.__calendarViewMode === 'month' ? 'month' : 'week';
       window.__notesTabs = window.__notesTabs || {};
       window.imageBookmarks = window.imageBookmarks || []; // 북마크는 이미지와 동영상, 일반 링크 모두 포함
       window.__bookmarkTabList = window.__bookmarkTabList || [
@@ -1509,6 +1536,15 @@
           window.__hiddenMainTabs = [...hiddenTabs];
           renderMainTabVisibility();
           window.cloudSaveMainTabVisibility?.();
+        });
+      });
+      document.querySelectorAll('[data-main-tab-settings]').forEach((button) => {
+        button.addEventListener('click', () => {
+          if (button.dataset.mainTabSettings === 'calendar') {
+            window.openCalendarSettings?.();
+            return;
+          }
+          window.showFeedbackMessage?.('이 탭은 아직 별도 설정 항목이 없습니다.');
         });
       });
       showTab('calendar');

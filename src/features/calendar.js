@@ -76,6 +76,7 @@ export function initCalendar() {
   const taskExcludeFromDdayInput = document.getElementById('taskExcludeFromDday');
   const taskRepeatSettings = document.querySelector('.task-repeat-settings');
   const calendarSettingsModal = document.getElementById('calendarSettingsModal');
+  const calendarViewModeSelect = document.getElementById('calendarViewMode');
   const calendarWeekStartSelect = document.getElementById('calendarWeekStart');
   const saveCalendarSettingsBtn = document.getElementById('saveCalendarSettingsBtn');
   const cancelCalendarSettingsBtn = document.getElementById('cancelCalendarSettingsBtn');
@@ -96,6 +97,13 @@ export function initCalendar() {
   let taskRangeEnd = '';
   let isSelectingRangeEnd = false;
   let taskCalendarViewDate = toKST(new Date());
+  let currentMonthDate = new Date(
+    taskCalendarViewDate.getFullYear(),
+    taskCalendarViewDate.getMonth(),
+    1
+  );
+
+  const getCalendarViewMode = () => (window.__calendarViewMode === 'month' ? 'month' : 'week');
 
   const attachCalendarEventListeners = () => {
     cancelBtn?.addEventListener('click', closeModal);
@@ -147,14 +155,16 @@ export function initCalendar() {
         )
           return;
         isWheelGestureLocked = true;
-        changeWeek(event.deltaY > 0 ? 1 : -1);
+        if (getCalendarViewMode() === 'month') changeMonth(event.deltaY > 0 ? 1 : -1);
+        else changeWeek(event.deltaY > 0 ? 1 : -1);
       },
       { passive: false }
     );
     calendarGridEl?.addEventListener('keydown', (event) => {
       if (event.repeat || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
       event.preventDefault();
-      changeWeek(event.key === 'ArrowDown' ? 1 : -1);
+      if (getCalendarViewMode() === 'month') changeMonth(event.key === 'ArrowDown' ? 1 : -1);
+      else changeWeek(event.key === 'ArrowDown' ? 1 : -1);
     });
   };
 
@@ -499,8 +509,8 @@ export function initCalendar() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'calendar-settings-button';
-    button.title = '주간 달력 설정';
-    button.setAttribute('aria-label', '주간 달력 설정 열기');
+    button.title = '달력 설정';
+    button.setAttribute('aria-label', '달력 설정 열기');
     button.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z" />
@@ -572,12 +582,103 @@ export function initCalendar() {
     return row;
   };
 
+  const changeMonth = (offset) => {
+    if (!offset) return;
+    currentMonthDate = new Date(
+      currentMonthDate.getFullYear(),
+      currentMonthDate.getMonth() + offset,
+      1
+    );
+    renderCalendar();
+  };
+
+  const createMonthNavigationButton = (direction) => {
+    const button = document.createElement('button');
+    const isPrevious = direction === 'previous';
+    button.type = 'button';
+    button.className = 'month-navigation-button';
+    button.setAttribute('aria-label', isPrevious ? '이전 달로 이동' : '다음 달로 이동');
+    button.textContent = isPrevious ? '‹' : '›';
+    button.addEventListener('click', () => changeMonth(isPrevious ? -1 : 1));
+    return button;
+  };
+
+  const renderMonthCalendar = (calendarGrid) => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const firstDate = new Date(year, month, 1);
+    const visibleStart = startOfWeek(firstDate);
+    const visibleEnd = addDays(visibleStart, 41);
+    const visibleStartYmd = ymdKST(visibleStart);
+    const visibleEndYmd = ymdKST(visibleEnd);
+    const monthTasks = (window.customTasks || [])
+      .filter((task) => {
+        if (isRecurringTask(task)) return true;
+        if (!task.date) return false;
+        const taskEndDate = task.endDate || task.date;
+        return task.date <= visibleEndYmd && taskEndDate >= visibleStartYmd;
+      })
+      .sort((a, b) => {
+        const startComparison = a.date.localeCompare(b.date);
+        if (startComparison !== 0) return startComparison;
+        return Number(a.id || 0) - Number(b.id || 0);
+      });
+
+    const monthCalendar = document.createElement('div');
+    monthCalendar.className = 'month-calendar';
+    const header = document.createElement('div');
+    header.className = 'month-calendar-header';
+    const title = document.createElement('h2');
+    title.textContent = `${year}년 ${month + 1}월`;
+    title.setAttribute('aria-live', 'polite');
+    const headerCenter = document.createElement('div');
+    headerCenter.append(title, createCalendarSettingsButton());
+    header.append(
+      createMonthNavigationButton('previous'),
+      headerCenter,
+      createMonthNavigationButton('next')
+    );
+
+    const weekdayRow = document.createElement('div');
+    weekdayRow.className = 'month-calendar-weekdays';
+    for (let index = 0; index < 7; index += 1) {
+      const weekday = document.createElement('span');
+      const weekdayIndex = (weekStartDay + index) % 7;
+      weekday.textContent = WEEKDAY_LABELS[weekdayIndex];
+      if (weekdayIndex === 0) weekday.classList.add('sunday');
+      if (weekdayIndex === 6) weekday.classList.add('saturday');
+      weekdayRow.appendChild(weekday);
+    }
+
+    const days = document.createElement('div');
+    days.className = 'month-calendar-days';
+    for (let index = 0; index < 42; index += 1) {
+      const date = addDays(visibleStart, index);
+      const day = createDayCell(date, 0, monthTasks);
+      day.classList.add('month-calendar-day');
+      if (date.getMonth() !== month) day.classList.add('outside-month');
+      days.appendChild(day);
+    }
+    monthCalendar.append(header, weekdayRow, days);
+    calendarGrid.replaceChildren(monthCalendar);
+  };
+
   // 선택된 주를 중심으로 앞뒤 2주씩 작업보드 타임라인으로 렌더링
   const renderCalendar = () => {
     const calendarGrid = document.getElementById('calendarGrid');
     if (!calendarGrid) return;
     hideTaskTooltip();
-    calendarGrid.replaceChildren(...WEEK_OFFSETS.map(createWeekRow));
+    const viewMode = getCalendarViewMode();
+    calendarGrid.classList.toggle('month-mode', viewMode === 'month');
+    calendarGrid.classList.toggle('week-mode', viewMode === 'week');
+    calendarGrid.setAttribute(
+      'aria-label',
+      viewMode === 'month'
+        ? '월간 달력. 위아래 방향키 또는 마우스 휠로 월 이동'
+        : '주간 타임라인. 위아래 방향키 또는 마우스 휠로 주 이동'
+    );
+    if (viewMode === 'month') renderMonthCalendar(calendarGrid);
+    else calendarGrid.replaceChildren(...WEEK_OFFSETS.map(createWeekRow));
 
     renderUndatedTasks();
     renderAgendaList();
@@ -970,7 +1071,8 @@ export function initCalendar() {
   };
 
   const openCalendarSettings = () => {
-    if (!calendarSettingsModal || !calendarWeekStartSelect) return;
+    if (!calendarSettingsModal || !calendarWeekStartSelect || !calendarViewModeSelect) return;
+    calendarViewModeSelect.value = getCalendarViewMode();
     calendarWeekStartSelect.value = String(weekStartDay);
     calendarSettingsModal.style.display = 'flex';
     calendarWeekStartSelect.focus();
@@ -981,9 +1083,10 @@ export function initCalendar() {
   };
 
   const saveCalendarSettings = () => {
-    if (!calendarWeekStartSelect) return;
+    if (!calendarWeekStartSelect || !calendarViewModeSelect) return;
     const nextWeekStartDay = Number(calendarWeekStartSelect.value);
     if (!Number.isInteger(nextWeekStartDay) || nextWeekStartDay < 0 || nextWeekStartDay > 6) return;
+    const nextViewMode = calendarViewModeSelect.value === 'month' ? 'month' : 'week';
 
     const selectedWeekAnchor = addDays(currentWeekStart, 3);
     weekStartDay = nextWeekStartDay;
@@ -993,8 +1096,14 @@ export function initCalendar() {
       // 저장이 제한된 환경에서도 현재 세션에는 설정을 적용한다.
     }
     currentWeekStart = startOfWeek(selectedWeekAnchor);
+    if (nextViewMode === 'month' && getCalendarViewMode() !== 'month') {
+      const monthAnchor = addDays(currentWeekStart, 3);
+      currentMonthDate = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), 1);
+    }
+    window.__calendarViewMode = nextViewMode;
     closeCalendarSettings();
     renderCalendar();
+    window.cloudSaveCalendarSettings?.();
   };
 
   const saveTask = async () => {
@@ -1057,6 +1166,7 @@ export function initCalendar() {
 
   attachCalendarEventListeners();
   window.renderCalendar = renderCalendar;
+  window.openCalendarSettings = openCalendarSettings;
   window.openTaskModal = openModal;
   window.closeTaskModal = closeModal;
   renderCalendar();
