@@ -48,6 +48,11 @@ export function installCloudStateHandlers({
     await saveNonNotesDataNow();
   };
 
+  window.cloudSaveMainTabVisibility = () => {
+    if (!ensureLogin()) return;
+    scheduleSaveNonNotesData();
+  };
+
   window.cloudSaveNotes = async (tabIdArg, valueArg) => {
     if (!ensureLogin()) return;
     writeNoteToState(tabIdArg, valueArg);

@@ -154,6 +154,44 @@
           <button id="signInBtn" class="profile-action-btn primary">Google 로그인</button>
           <button id="signOutBtn" class="profile-action-btn hidden">로그아웃</button>
         </div>
+        <div class="profile-tab-settings-card">
+          <div class="profile-backup-title">탭 표시 설정</div>
+          <div class="profile-backup-desc">
+            상단에 표시할 탭을 선택합니다. 탭을 꺼도 저장된 내용은 지워지지 않습니다.
+          </div>
+          <div id="mainTabVisibilitySettings" class="profile-tab-toggle-list">
+            <label class="profile-tab-toggle">
+              <span>달력</span>
+              <input type="checkbox" data-main-tab-toggle="calendar" checked />
+              <span class="profile-toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="profile-tab-toggle">
+              <span>뽀모도로</span>
+              <input type="checkbox" data-main-tab-toggle="pomodoro" checked />
+              <span class="profile-toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="profile-tab-toggle">
+              <span>메모</span>
+              <input type="checkbox" data-main-tab-toggle="notes" checked />
+              <span class="profile-toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="profile-tab-toggle">
+              <span>북마크</span>
+              <input type="checkbox" data-main-tab-toggle="bookmarks" checked />
+              <span class="profile-toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="profile-tab-toggle">
+              <span>노동요</span>
+              <input type="checkbox" data-main-tab-toggle="workmusic" checked />
+              <span class="profile-toggle-switch" aria-hidden="true"></span>
+            </label>
+            <label class="profile-tab-toggle">
+              <span>클립뷰어</span>
+              <input type="checkbox" data-main-tab-toggle="clipviewer" checked />
+              <span class="profile-toggle-switch" aria-hidden="true"></span>
+            </label>
+          </div>
+        </div>
         <div class="profile-backup-card">
           <div class="profile-backup-title">백업</div>
           <div class="profile-backup-desc">
@@ -1297,6 +1335,9 @@
         { id: 'default', name: '기본', order: 0 }
       ];
       window.__bookmarkActiveTabId = window.__bookmarkActiveTabId || 'default';
+      window.__hiddenMainTabs = Array.isArray(window.__hiddenMainTabs)
+        ? window.__hiddenMainTabs
+        : [];
       window.currentTask = null;
       window.currentEditingBookmark = null; // 현재 편집 중인 북마크 항목
       window.isAuthReady = false;
@@ -1362,7 +1403,31 @@
         }
       }
       window.showTab = showTab;
+      function renderMainTabVisibility() {
+        const hiddenTabs = new Set(window.__hiddenMainTabs || []);
+        tabButtons.forEach((button) => {
+          if (button.dataset.tab === 'profile') return;
+          button.classList.toggle('main-tab-hidden', hiddenTabs.has(button.dataset.tab));
+        });
+        document.querySelectorAll('[data-main-tab-toggle]').forEach((input) => {
+          input.checked = !hiddenTabs.has(input.dataset.mainTabToggle);
+        });
+        const activeButton = document.querySelector('#main-tabs .notepad-tab.active');
+        if (activeButton?.classList.contains('main-tab-hidden')) showTab('profile');
+      }
+      window.renderMainTabVisibility = renderMainTabVisibility;
+      document.querySelectorAll('[data-main-tab-toggle]').forEach((input) => {
+        input.addEventListener('change', () => {
+          const hiddenTabs = new Set(window.__hiddenMainTabs || []);
+          if (input.checked) hiddenTabs.delete(input.dataset.mainTabToggle);
+          else hiddenTabs.add(input.dataset.mainTabToggle);
+          window.__hiddenMainTabs = [...hiddenTabs];
+          renderMainTabVisibility();
+          window.cloudSaveMainTabVisibility?.();
+        });
+      });
       showTab('calendar');
+      renderMainTabVisibility();
       tabButtons.forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
       // (주의) 과거 메모 탭 선택 로직은 제거됨. notes.js가 담당.
     </script>

@@ -618,9 +618,14 @@ export function initCloudSyncBackend({
     if (firebaseCalendar) {
       window.customTasks = firebaseCalendar.customTasks || [];
       window.taskStatus = firebaseCalendar.taskStatus || {};
+      window.__hiddenMainTabs = Array.isArray(firebaseCalendar.hiddenMainTabs)
+        ? firebaseCalendar.hiddenMainTabs
+        : [];
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
+      currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
+      window.renderMainTabVisibility?.();
       return { firebase: true, calendar: firebaseCalendar };
     }
     if (FIREBASE_ENABLED) {
@@ -633,9 +638,14 @@ export function initCloudSyncBackend({
     if (calendar) {
       window.customTasks = calendar.customTasks || [];
       window.taskStatus = calendar.taskStatus || {};
+      window.__hiddenMainTabs = Array.isArray(calendar.hiddenMainTabs)
+        ? calendar.hiddenMainTabs
+        : [];
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
+      currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
+      window.renderMainTabVisibility?.();
     }
     return { folders, legacyCalendar, calendar };
   }
@@ -649,6 +659,7 @@ export function initCloudSyncBackend({
       firebaseParts.calendar = {
         customTasks: window.customTasks || [],
         taskStatus: window.taskStatus || {},
+        hiddenMainTabs: window.__hiddenMainTabs || [],
         updatedAt: new Date().toISOString()
       };
       applyAppData(mergeDriveParts(firebaseParts));
@@ -687,6 +698,7 @@ export function initCloudSyncBackend({
     parts.calendar = {
       customTasks: window.customTasks || [],
       taskStatus: window.taskStatus || {},
+      hiddenMainTabs: window.__hiddenMainTabs || [],
       updatedAt: new Date().toISOString()
     };
     applyAppData(mergeDriveParts(parts));
@@ -764,6 +776,8 @@ export function initCloudSyncBackend({
     window.isAuthReady = true;
     window.customTasks = [];
     window.taskStatus = {};
+    window.__hiddenMainTabs = [];
+    window.renderMainTabVisibility?.();
     window.imageBookmarks = [];
     window.__notesTabs = {};
     window.__notesTabList = [{ id: 'memo', name: '메모', order: 0 }];

@@ -83,6 +83,7 @@ export function getDefaultAppData() {
     imageBookmarks: [],
     state: {
       taskStatus: {},
+      hiddenMainTabs: [],
       notesTabList: [{ id: 'memo', name: '메모', order: 0 }],
       notesTabs: {},
       notesActiveTabId: 'memo',
@@ -107,6 +108,7 @@ export function getDefaultAppData() {
 export function collectState(currentAppData = getDefaultAppData()) {
   return {
     taskStatus: window.taskStatus || {},
+    hiddenMainTabs: Array.isArray(window.__hiddenMainTabs) ? window.__hiddenMainTabs : [],
     notesTabList: normalizeTabList(window.__notesTabList, { id: 'memo', name: '메모', order: 0 }),
     notesTabs: window.__notesTabs || {},
     notesActiveTabId: window.__notesActiveTabId || 'memo',
@@ -161,6 +163,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
   const st = currentAppData.state || {};
   window.customTasks = Array.isArray(currentAppData.customTasks) ? currentAppData.customTasks : [];
   window.taskStatus = st.taskStatus || {};
+  window.__hiddenMainTabs = Array.isArray(st.hiddenMainTabs) ? st.hiddenMainTabs : [];
   window.__notesTabList =
     Array.isArray(st.notesTabList) && st.notesTabList.length
       ? normalizeTabList(st.notesTabList, { id: 'memo', name: '메모', order: 0 })
@@ -198,6 +201,7 @@ export function applyStoredAppData(data, { revokeAllDriveImageUrls = () => {} } 
     ...b,
     timestamp: driveTimestamp(b.timestampMs || Date.parse(b.timestamp || '') || 0)
   }));
+  window.renderMainTabVisibility?.();
   return currentAppData;
 }
 
@@ -208,6 +212,7 @@ export function splitAppDataForDrive(data) {
     calendar: {
       customTasks: data.customTasks || [],
       taskStatus: st.taskStatus || {},
+      hiddenMainTabs: st.hiddenMainTabs || [],
       updatedAt: data.updatedAt || new Date().toISOString()
     },
     notes: {
@@ -251,6 +256,9 @@ export function mergeDriveParts(parts) {
   if (parts.calendar) {
     base.customTasks = parts.calendar.customTasks || [];
     base.state.taskStatus = parts.calendar.taskStatus || {};
+    base.state.hiddenMainTabs = Array.isArray(parts.calendar.hiddenMainTabs)
+      ? parts.calendar.hiddenMainTabs
+      : [];
   }
   if (parts.notes) {
     base.state.notesTabList = parts.notes.notesTabList || base.state.notesTabList;
