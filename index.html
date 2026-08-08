@@ -1491,6 +1491,7 @@
 
       async function showTab(tabId) {
         document.body.classList.remove('custom-tab-view-active');
+        document.body.classList.toggle('workmusic-tab-view-active', tabId === 'workmusic');
         if (window.waitForFeatureData) {
           const waiting = window.waitForFeatureData(tabId);
           if (waiting) {

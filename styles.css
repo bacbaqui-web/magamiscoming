@@ -491,6 +491,43 @@ body.custom-tab-view-active .main-custom-tab-section.active {
   max-height: none;
   transform: translateX(-50%);
 }
+body.workmusic-tab-view-active {
+  height: 100dvh;
+  overflow-y: hidden;
+}
+body.workmusic-tab-view-active .site-footer {
+  display: none;
+}
+body.workmusic-tab-view-active #workmusic-section.active {
+  position: fixed;
+  top: 55px;
+  bottom: 78px;
+  left: 50%;
+  width: calc(100% - 32px);
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transform: translateX(-50%);
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  scrollbar-width: thin;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar-track {
+  background: transparent;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: content-box;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.48);
+  background-clip: content-box;
+}
 .main-custom-tab-view-header {
   display: flex;
   align-items: center;
