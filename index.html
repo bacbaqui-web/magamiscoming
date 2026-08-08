@@ -1483,6 +1483,7 @@
         ?.addEventListener('click', () => window.downloadAppDataBackup?.());
 
       async function showTab(tabId) {
+        document.body.classList.remove('custom-tab-view-active');
         if (window.waitForFeatureData) {
           const waiting = window.waitForFeatureData(tabId);
           if (waiting) {

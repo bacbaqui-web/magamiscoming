@@ -61,8 +61,13 @@ body {
   z-index: 2;
 }
 #main-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   justify-content: safe center;
   overflow-x: auto;
+  background: #000;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.45);
 }
 .notepad-tabs {
   scrollbar-width: none;
@@ -465,8 +470,26 @@ body {
   margin-top: 18px;
 }
 .main-custom-tab-section.active {
+  min-height: 0;
   padding: 0;
   overflow: hidden;
+}
+body.custom-tab-view-active {
+  height: 100dvh;
+  overflow-y: hidden;
+}
+body.custom-tab-view-active .site-footer {
+  display: none;
+}
+body.custom-tab-view-active .main-custom-tab-section.active {
+  position: fixed;
+  top: 55px;
+  bottom: 16px;
+  left: 50%;
+  z-index: 1;
+  width: calc(100% - 32px);
+  max-height: none;
+  transform: translateX(-50%);
 }
 .main-custom-tab-view-header {
   display: flex;
@@ -519,8 +542,10 @@ body {
 }
 #mainCustomTabFrame {
   display: block;
+  flex: 1 1 auto;
   width: 100%;
-  height: max(640px, calc(100vh - 160px));
+  height: auto;
+  min-height: 0;
   border: 0;
   background: #fff;
 }

@@ -105,6 +105,7 @@ export function initMainTabs() {
   }
 
   function showCustomTab(tab, button) {
+    document.body.classList.add('custom-tab-view-active');
     document
       .querySelectorAll('.tab-content')
       .forEach((content) => content.classList.remove('active'));
