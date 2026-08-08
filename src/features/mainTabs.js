@@ -9,6 +9,32 @@ const ICONS = {
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5z"/><path d="M4 6.5v13"/>'
 };
 
+const CUSTOM_TAB_SCROLLBAR_STYLE_ID = 'magamiscoming-custom-tab-scrollbar';
+const CUSTOM_TAB_SCROLLBAR_CSS = `
+  html {
+    color-scheme: dark;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  }
+  html::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  html::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+    background-clip: content-box;
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.48);
+    background-clip: content-box;
+  }
+`;
+
 function iconSvg(icon, label = '') {
   const path = ICONS[icon] || ICONS.link;
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>${label ? `<span>${label}</span>` : ''}`;
@@ -64,6 +90,20 @@ export function initMainTabs() {
 
   let editingId = null;
   let selectedIcon = 'link';
+
+  function applyCustomTabScrollbarTheme() {
+    try {
+      const frameDocument = frame.contentDocument;
+      if (!frameDocument?.head || frameDocument.getElementById(CUSTOM_TAB_SCROLLBAR_STYLE_ID))
+        return;
+      const style = frameDocument.createElement('style');
+      style.id = CUSTOM_TAB_SCROLLBAR_STYLE_ID;
+      style.textContent = CUSTOM_TAB_SCROLLBAR_CSS;
+      frameDocument.head.appendChild(style);
+    } catch (_) {
+      // 외부 사이트는 동일 출처 정책상 내부 CSS를 변경할 수 없다.
+    }
+  }
 
   function getTabs() {
     window.__mainCustomTabs = normalizeCustomTabs(window.__mainCustomTabs);
@@ -221,6 +261,7 @@ export function initMainTabs() {
       frame.src = currentUrl;
     });
   });
+  frame.addEventListener('load', applyCustomTabScrollbarTheme);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
   });
