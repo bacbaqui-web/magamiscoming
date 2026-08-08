@@ -10,9 +10,24 @@ export function createDriveStatusStore(indicatorEl) {
     label: 'Drive 업로드'
   };
 
-  function setStatus(text, autoHide = true) {
+  function renderIndicator(text, isBusy) {
+    indicatorEl.setAttribute('aria-label', text);
+    indicatorEl.title = text;
+    indicatorEl.classList.toggle('busy', isBusy);
+    indicatorEl.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 11a8 8 0 1 0 2 5.3" />
+        <path d="M20 4v7h-7" />
+      </svg>`;
+    const accessibleText = document.createElement('span');
+    accessibleText.className = 'sr-only';
+    accessibleText.textContent = text;
+    indicatorEl.appendChild(accessibleText);
+  }
+
+  function setStatus(text, autoHide = true, isBusy = false) {
     if (!indicatorEl) return;
-    indicatorEl.textContent = text;
+    renderIndicator(text, isBusy);
     indicatorEl.classList.add('show');
     clearTimeout(statusTimer);
     if (autoHide) {
@@ -21,7 +36,7 @@ export function createDriveStatusStore(indicatorEl) {
   }
 
   function setBusy(text) {
-    setStatus(text, false);
+    setStatus(text, false, true);
   }
 
   function hide() {
@@ -36,7 +51,7 @@ export function createDriveStatusStore(indicatorEl) {
     const total = Math.max(1, Number(uploadProgress.total || 0));
     const completed = Math.min(total, Number(uploadProgress.completed || 0));
     const percent = Math.floor((completed / total) * 100);
-    setStatus(`${uploadProgress.label} ${completed}/${total} (${percent}%)`, autoHide);
+    setStatus(`${uploadProgress.label} ${completed}/${total} (${percent}%)`, autoHide, !autoHide);
   }
 
   function beginUploadBatch(total, label = 'Drive 업로드') {

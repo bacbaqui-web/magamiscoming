@@ -1400,7 +1400,14 @@
       </div>
     </div>
 
-    <div id="driveSaveIndicator" class="drive-save-indicator">대기 중</div>
+    <div
+      id="driveSaveIndicator"
+      class="drive-save-indicator"
+      role="status"
+      aria-live="polite"
+      aria-label="동기화 대기 중"
+      title="동기화 대기 중"
+    ></div>
 
     <div
       id="loading-overlay"
@@ -1511,8 +1518,9 @@
       }
       function syncDriveSaveIndicatorPlacement() {
         if (!driveSaveIndicator) return;
-        if (driveSaveIndicator.parentElement !== document.body) {
-          document.body.appendChild(driveSaveIndicator);
+        const mainTabs = document.getElementById('main-tabs');
+        if (mainTabs && driveSaveIndicator.parentElement !== mainTabs) {
+          mainTabs.appendChild(driveSaveIndicator);
         }
       }
       window.showTab = showTab;
