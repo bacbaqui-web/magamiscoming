@@ -647,6 +647,27 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     playWorkMusicAt(index);
   }
 
+  function playNextWorkMusicWithSeamless() {
+    const index = getWorkMusicNextIndex(1);
+    if (index < 0) {
+      playWorkMusicAt(index);
+      return;
+    }
+    workMusicFlowDirectionHint = 'next';
+    if (workMusicSeamless?.transitionStarted || workMusicSeamless?.transitioning) return;
+
+    const canUseSeamlessTransition =
+      window.workMusicSeamlessEnabled &&
+      normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds) > 0 &&
+      workMusicSeamless?.players &&
+      Number(workMusicSeamless.standbyIndex) === index;
+    if (canUseSeamlessTransition) {
+      startWorkMusicSeamlessTransition();
+      return;
+    }
+    playWorkMusicAt(index);
+  }
+
   function getWorkMusicPreviewIndex(step = 1, songs = getActiveWorkMusicSongs()) {
     return getWorkMusicAdjacentIndex(step, songs);
   }
@@ -2819,10 +2840,10 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     workMusicSeekRange?.addEventListener('pointerleave', hideWorkMusicSeekHover);
     workMusicPlayBtn?.addEventListener('click', toggleWorkMusicPlay);
     workMusicPrevBtn?.addEventListener('click', () => playWorkMusicAdjacent(-1));
-    workMusicNextBtn?.addEventListener('click', () => playWorkMusicAdjacent(1));
+    workMusicNextBtn?.addEventListener('click', playNextWorkMusicWithSeamless);
     workMusicRemotePlayBtn?.addEventListener('click', toggleWorkMusicPlay);
     workMusicRemotePrevBtn?.addEventListener('click', () => playWorkMusicAdjacent(-1));
-    workMusicRemoteNextBtn?.addEventListener('click', () => playWorkMusicAdjacent(1));
+    workMusicRemoteNextBtn?.addEventListener('click', playNextWorkMusicWithSeamless);
     bindSliderControlHoverState(workMusicSeamlessControl);
     bindSliderControlHoverState(workMusicVolumeControl);
     bindSliderControlHoverState(workMusicRemoteSeamlessControl);
