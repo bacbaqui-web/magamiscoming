@@ -119,6 +119,7 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   let workMusicSeamlessMonitorTimer = null;
   let workMusicSeamlessFadeTimer = null;
   let workMusicPendingStartSeconds = null;
+  let workMusicManualNextPending = false;
   window.workMusicCurrentPlayOrder = [];
 
   const showFeedbackMessage = (message) => window.showFeedbackMessage?.(message);
@@ -647,23 +648,47 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
     playWorkMusicAt(index);
   }
 
-  function playNextWorkMusicWithSeamless() {
+  async function waitForWorkMusicSeamlessNext(index, timeoutMs = 2000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (workMusicSeamless?.transitionStarted || workMusicSeamless?.transitioning) return true;
+      const activePlayer = workMusicSeamless?.players?.[workMusicSeamless.activeSlot];
+      const standbyPlayer = workMusicSeamless?.players?.[workMusicSeamless.standbySlot];
+      if (activePlayer && standbyPlayer && Number(workMusicSeamless.standbyIndex) === index) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+    return false;
+  }
+
+  async function playNextWorkMusicWithSeamless() {
     const index = getWorkMusicNextIndex(1);
     if (index < 0) {
       playWorkMusicAt(index);
       return;
     }
     workMusicFlowDirectionHint = 'next';
-    if (workMusicSeamless?.transitionStarted || workMusicSeamless?.transitioning) return;
+    if (
+      workMusicManualNextPending ||
+      workMusicSeamless?.transitionStarted ||
+      workMusicSeamless?.transitioning
+    )
+      return;
 
-    const canUseSeamlessTransition =
+    const shouldUseSeamlessTransition =
       window.workMusicSeamlessEnabled &&
       normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds) > 0 &&
-      workMusicSeamless?.players &&
-      Number(workMusicSeamless.standbyIndex) === index;
-    if (canUseSeamlessTransition) {
-      startWorkMusicSeamlessTransition();
-      return;
+      workMusicSeamless?.players;
+    if (shouldUseSeamlessTransition) {
+      workMusicManualNextPending = true;
+      try {
+        const ready = await waitForWorkMusicSeamlessNext(index);
+        if (workMusicSeamless?.transitionStarted || workMusicSeamless?.transitioning) return;
+        if (ready && startWorkMusicSeamlessTransition()) return;
+      } finally {
+        workMusicManualNextPending = false;
+      }
     }
     playWorkMusicAt(index);
   }
@@ -1463,19 +1488,19 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
   }
 
   function startWorkMusicSeamlessTransition() {
-    if (!workMusicSeamless?.players || workMusicSeamless.transitionStarted) return;
+    if (!workMusicSeamless?.players || workMusicSeamless.transitionStarted) return false;
     const crossfadeSeconds = normalizeWorkMusicSeamlessSeconds(
       window.workMusicSeamlessOverlapSeconds
     );
-    if (crossfadeSeconds <= 0) return;
+    if (crossfadeSeconds <= 0) return false;
     const songs = getActiveWorkMusicSongs();
     const nextIndex = Number(workMusicSeamless.standbyIndex);
     const nextSong = songs[nextIndex];
-    if (!nextSong?.videoId) return;
+    if (!nextSong?.videoId) return false;
     const previousSlot = workMusicSeamless.activeSlot;
     const nextSlot = workMusicSeamless.standbySlot;
     const nextPlayer = workMusicSeamless.players[nextSlot];
-    if (!workMusicSeamless.players[previousSlot] || !nextPlayer) return;
+    if (!workMusicSeamless.players[previousSlot] || !nextPlayer) return false;
     workMusicSeamless.transitionStarted = true;
     workMusicSeamless.transitioning = true;
     workMusicSeamless.fadeStarted = false;
@@ -1490,11 +1515,13 @@ export function initWorkMusic({ showTab = (tabId) => window.showTab?.(tabId) } =
       nextPlayer.playVideo();
       // 일부 YouTube 플레이어는 playVideo() 직후 음소거 상태를 바꾸므로 다시 0으로 고정합니다.
       setWorkMusicPlayerVolume(nextPlayer, 0);
+      return true;
     } catch (err) {
       workMusicSeamless.transitionStarted = false;
       workMusicSeamless.transitioning = false;
       workMusicSeamless.transitionContext = null;
       console.warn('work music seamless play failed', err);
+      return false;
     }
   }
 
