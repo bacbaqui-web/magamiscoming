@@ -29,8 +29,8 @@ export function initClipViewer({
       <div class="clip-empty-body">PC에서 CLIP 폴더를 열면 미리보기가 Drive에 저장되고, 모바일에서는 로그인만 하면 같은 화면을 볼 수 있습니다.</div>
     `
       : `
-      <div class="clip-empty-title">CLIP 폴더를 열어주세요</div>
-      <div class="clip-empty-body">원고가 들어있는 폴더를 이곳에 끌어다 놓거나, 위의 폴더 아이콘으로 선택하면 미리보기를 펼쳐볼 수 있습니다.</div>
+      <div class="clip-empty-title">CMC 프로젝트를 열어주세요</div>
+      <div class="clip-empty-body">CMC와 CLIP 파일이 함께 있는 관리 폴더를 선택하면 작품 순서대로 미리보기를 표시합니다.</div>
     `;
 
   function setClipStatus(t) {
@@ -107,24 +107,119 @@ export function initClipViewer({
     return new Blob([imgBytes], { type });
   }
 
+  function normalizeClipPath(path) {
+    return String(path || '')
+      .replaceAll('\\', '/')
+      .replace(/^\.[:/]/, '')
+      .replace(/^\/+/, '')
+      .normalize('NFC')
+      .toLowerCase();
+  }
+
+  function sortClipFiles(files) {
+    return [...files].sort((a, b) =>
+      (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      })
+    );
+  }
+
+  async function readCmcPagePaths(file, SQL) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const sqliteOffset = findAsciiBytes(bytes, 'SQLite format 3');
+    if (sqliteOffset < 0) throw new Error('CMC SQLite 데이터를 찾지 못했습니다.');
+    const db = new SQL.Database(bytes.slice(sqliteOffset));
+    try {
+      const project = db.exec('SELECT ProjectRootCanvasNode FROM Project LIMIT 1');
+      const nodes = db.exec('SELECT MainId, FirstChildIndex, NextIndex, LinkPath FROM CanvasNode');
+      if (!project.length || !project[0].values.length || !nodes.length) return [];
+
+      const rootId = project[0].values[0][0];
+      const nodeMap = new Map(nodes[0].values.map((row) => [row[0], row]));
+      let currentId = nodeMap.get(rootId)?.[1];
+      const visited = new Set();
+      const paths = [];
+
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId);
+        const node = nodeMap.get(currentId);
+        if (!node) break;
+        if (node[3]) paths.push(normalizeClipPath(node[3]));
+        currentId = node[2];
+      }
+      return paths;
+    } finally {
+      db.close();
+    }
+  }
+
+  async function orderClipFilesByCmc(files, SQL) {
+    const clipList = files.filter((file) => file.name.toLowerCase().endsWith('.clip'));
+    const cmcList = files
+      .filter((file) => file.name.toLowerCase().endsWith('.cmc'))
+      .sort((a, b) =>
+        (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name)
+      );
+    if (!cmcList.length) {
+      return { list: sortClipFiles(clipList), cmcName: null, missing: 0, cmcCount: 0 };
+    }
+
+    const filesByPath = new Map(
+      clipList.map((file) => [normalizeClipPath(file.webkitRelativePath || file.name), file])
+    );
+    let best = null;
+    for (const cmc of cmcList) {
+      try {
+        const pagePaths = await readCmcPagePaths(cmc, SQL);
+        const cmcRelativePath = normalizeClipPath(cmc.webkitRelativePath || cmc.name);
+        const slashIndex = cmcRelativePath.lastIndexOf('/');
+        const cmcDirectory = slashIndex >= 0 ? cmcRelativePath.slice(0, slashIndex) : '';
+        const ordered = [];
+        let missing = 0;
+
+        for (const pagePath of pagePaths) {
+          const fullPath = normalizeClipPath(
+            cmcDirectory ? `${cmcDirectory}/${pagePath}` : pagePath
+          );
+          const matched = filesByPath.get(fullPath);
+          if (matched) ordered.push(matched);
+          else missing++;
+        }
+        if (!best || ordered.length > best.list.length) {
+          best = { list: ordered, cmcName: cmc.name, missing, cmcCount: cmcList.length };
+        }
+      } catch (error) {
+        console.warn('CMC 읽기 실패', cmc.name, error);
+      }
+    }
+    if (best?.list.length) return best;
+    return {
+      list: sortClipFiles(clipList),
+      cmcName: null,
+      missing: 0,
+      cmcCount: cmcList.length
+    };
+  }
+
   async function loadClipFiles(files) {
     clearClipLocal();
-    showClipMessage('CLIP 파일 불러오는 중...');
-    setClipStatus('파일 확인 중...');
-    const list = files
-      .filter((f) => f.name.toLowerCase().endsWith('.clip'))
-      .sort((a, b) =>
-        (a.webkitRelativePath || a.name).localeCompare(b.webkitRelativePath || b.name, undefined, {
-          numeric: true,
-          sensitivity: 'base'
-        })
-      );
-    if (!list.length) {
+    showClipMessage('CMC 프로젝트 불러오는 중...');
+    setClipStatus('CMC와 CLIP 파일 확인 중...');
+    const clipCount = files.filter((file) => file.name.toLowerCase().endsWith('.clip')).length;
+    if (!clipCount) {
       showClipMessage('.clip 파일을 찾지 못했습니다.');
       setClipStatus('실패: .clip 없음');
       return;
     }
     const SQL = await getClipSQL();
+    const orderedProject = await orderClipFilesByCmc(files, SQL);
+    const list = orderedProject.list;
+    if (!list.length) {
+      showClipMessage('CMC에 연결된 CLIP 파일을 찾지 못했습니다.');
+      setClipStatus('실패: CMC 연결 파일 없음');
+      return;
+    }
     let ok = 0,
       fail = 0;
     for (let i = 0; i < list.length; i++) {
@@ -158,7 +253,15 @@ export function initClipViewer({
     }
     if (ok) {
       hideClipMessage();
-      setClipStatus(`완료\n표시: ${ok}개 / 실패: ${fail}개`);
+      const orderStatus = orderedProject.cmcName
+        ? `CMC 순서: ${orderedProject.cmcName}`
+        : orderedProject.cmcCount
+          ? 'CMC 분석 실패 · 파일명 순서 사용'
+          : 'CMC 없음 · 파일명 순서 사용';
+      const missingStatus = orderedProject.missing
+        ? ` / 연결 파일 누락: ${orderedProject.missing}개`
+        : '';
+      setClipStatus(`${orderStatus}\n표시: ${ok}개 / 추출 실패: ${fail}개${missingStatus}`);
       syncClipPagesToDriveIfReady();
     } else {
       showClipMessage('미리보기 이미지를 찾지 못했습니다.');
@@ -246,7 +349,7 @@ export function initClipViewer({
           setClipStatus('실패: .clip 없음');
           return;
         }
-        clipFiles = clipList;
+        clipFiles = files;
         if (clipFolderInput) clipFolderInput.value = '';
         await loadClipFiles(clipFiles);
       } catch (err) {
