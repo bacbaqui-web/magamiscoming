@@ -1,26 +1,21 @@
 import {
-  applyStoredAppData,
-  buildAppData as buildCurrentAppData,
   getDefaultAppData,
-  getDefaultPomodoroState,
   mergeDriveParts,
   normalizeTabList,
   splitAppDataForDrive
 } from './appDataTransforms.js';
+import { applyStoredAppData, buildAppData as buildCurrentAppData } from './appDataRuntime.js';
 import { installBookmarkDriveHandlers } from './bookmarkDriveHandlers.js';
 import { installCloudStateHandlers } from './cloudStateHandlers.js';
-import { createDriveFilesStore } from './driveFiles.js';
 import { createDriveImageUrlStore } from './driveImageUrls.js';
 import { createDriveStatusStore } from './driveStatus.js';
-import { createFirebaseMetadataStore } from './firebaseMetadataStore.js';
-
 export function initCloudSyncBackend({
-  initCalendar,
-  initNotes,
-  initBookmarks,
-  initWorkMusic,
-  initClipViewer,
-  initPomodoro
+  appAuthController,
+  compatibilityFeatures,
+  createDriveFileAdapter,
+  createFilePort,
+  createFirebaseMetadataAdapter,
+  createMetadataPort
 }) {
   // ===== Hybrid Firebase metadata + Google Drive file backend =====
   // Firebase가 켜진 상태에서는 앱 메타데이터를 Firestore에만 저장합니다.
@@ -53,20 +48,15 @@ export function initCloudSyncBackend({
   const AUTO_LOGIN_STORAGE_KEY = 'magamiscoming.autoLogin';
   const SAVE_DELAY_MS = 450;
   const NON_NOTES_SAVE_DELAY_MS = 500;
-  const NOTES_INPUT_DELAY_MS = 350;
 
   const signInBtn = document.getElementById('signInBtn');
   const signOutBtn = document.getElementById('signOutBtn');
-  const userInfoEl = document.getElementById('userInfo');
-  const userAvatarEl = document.getElementById('userAvatar');
-  const userAvatarFallbackEl = document.getElementById('userAvatarFallback');
   const loadingOverlay = document.getElementById('loading-overlay');
   const driveSaveIndicator = document.getElementById('driveSaveIndicator');
 
   let googleTokenClient = null;
   let googleTokenRequestMode = 'manual';
   let driveAccessToken = null;
-  let driveUser = null;
   let driveReady = false;
   let nonNotesSaveTimer = null;
   let notesSaveTimer = null;
@@ -89,7 +79,6 @@ export function initCloudSyncBackend({
   const beginDriveUpload = (...args) => driveStatus.beginUpload(...args);
   const finishDriveUpload = () => driveStatus.finishUpload();
 
-  window.__unsubs = [];
   ['pointerdown', 'keydown', 'touchstart'].forEach((type) => {
     window.addEventListener(
       type,
@@ -141,15 +130,19 @@ export function initCloudSyncBackend({
     return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
   }
 
-  const firebaseStore = createFirebaseMetadataStore({
+  const firebaseAdapter = createFirebaseMetadataAdapter({
     enabled: FIREBASE_ENABLED,
     config: FIREBASE_CONFIG,
     normalizeTabList,
     genId
   });
+  const metadataPort = createMetadataPort({
+    adapter: firebaseAdapter,
+    authController: appAuthController
+  });
 
   function isFirebaseActive() {
-    return firebaseStore.isActive();
+    return metadataPort.isActive();
   }
 
   function getFirebaseStatusLabel() {
@@ -157,15 +150,15 @@ export function initCloudSyncBackend({
   }
 
   function assertMetadataBackendReady() {
-    firebaseStore.assertReady();
+    metadataPort.assertReady();
   }
 
   async function signInFirebaseWithGoogleToken(accessToken) {
-    return firebaseStore.signInWithGoogleToken(accessToken);
+    return firebaseAdapter.signInWithGoogleToken(accessToken);
   }
 
   async function signOutFirebase() {
-    return firebaseStore.signOut();
+    return firebaseAdapter.signOut();
   }
 
   function downloadTextFile(fileName, text, mimeType = 'text/plain;charset=utf-8') {
@@ -181,26 +174,6 @@ export function initCloudSyncBackend({
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function updateProfileUI(user = null) {
-    if (userInfoEl) {
-      userInfoEl.textContent = user
-        ? `${user.name || '로그인됨'} (${user.email || ''})`
-        : 'Google 로그인 후 Drive 데이터를 동기화할 수 있습니다.';
-    }
-    if (userAvatarEl && userAvatarFallbackEl) {
-      if (user?.picture) {
-        userAvatarEl.src = user.picture;
-        userAvatarEl.classList.remove('hidden');
-        userAvatarFallbackEl.classList.add('hidden');
-      } else {
-        userAvatarEl.removeAttribute('src');
-        userAvatarEl.classList.add('hidden');
-        userAvatarFallbackEl.textContent = user?.name?.trim()?.[0] || '?';
-        userAvatarFallbackEl.classList.remove('hidden');
-      }
-    }
-  }
-
   let currentAppData = getDefaultAppData();
 
   function buildAppData() {
@@ -209,15 +182,10 @@ export function initCloudSyncBackend({
 
   function applyAppData(data) {
     currentAppData = applyStoredAppData(data, { revokeAllDriveImageUrls });
-  }
-
-  function renderEverything() {
-    if (typeof window.renderCalendar === 'function') window.renderCalendar();
-    if (typeof window.renderImageBookmarks === 'function') window.renderImageBookmarks();
-    if (typeof window.renderWorkMusicAll === 'function') window.renderWorkMusicAll();
-    if (typeof window.renderPomodoroUI === 'function') window.renderPomodoroUI();
-    if (typeof window.renderNotesUI === 'function') window.renderNotesUI();
-    if (typeof window.renderBookmarkTabsUI === 'function') window.renderBookmarkTabsUI();
+    window.mainTabsEngine?.replaceState({
+      hiddenMainTabs: window.__hiddenMainTabs,
+      mainCustomTabs: window.__mainCustomTabs
+    });
   }
 
   async function waitForGoogle() {
@@ -338,7 +306,7 @@ export function initCloudSyncBackend({
     }
   }
 
-  const driveFiles = createDriveFilesStore({
+  const driveFileAdapter = createDriveFileAdapter({
     driveFetch,
     firebaseEnabled: FIREBASE_ENABLED,
     folders: DRIVE_FOLDERS,
@@ -346,6 +314,7 @@ export function initCloudSyncBackend({
     getBookmarkTabList: () => window.__bookmarkTabList,
     canUseDrive: () => driveReady && !!driveAccessToken
   });
+  const driveFiles = createFilePort({ adapter: driveFileAdapter });
 
   const findDriveFile = (...args) => driveFiles.findFile(...args);
   const ensureDriveFolders = () => driveFiles.ensureFolders();
@@ -373,11 +342,11 @@ export function initCloudSyncBackend({
   const resolveDriveBookmarkImages = () => driveImageUrls.resolveBookmarkImages();
 
   async function saveAppPartsToFirebase(parts, options) {
-    return firebaseStore.saveAppParts(parts, options);
+    return metadataPort.saveAppParts(parts, options);
   }
 
   async function loadAppPartsFromFirebase(options) {
-    return firebaseStore.loadAppParts(options);
+    return metadataPort.loadAppParts(options);
   }
 
   async function withDriveSaveInFlight(run) {
@@ -616,23 +585,22 @@ export function initCloudSyncBackend({
     });
     const firebaseCalendar = firebaseParts?.calendar;
     if (firebaseCalendar) {
-      window.customTasks = firebaseCalendar.customTasks || [];
-      window.taskStatus = firebaseCalendar.taskStatus || {};
-      window.__calendarViewMode = firebaseCalendar.calendarViewMode === 'month' ? 'month' : 'week';
-      window.__hiddenMainTabs = Array.isArray(firebaseCalendar.hiddenMainTabs)
-        ? firebaseCalendar.hiddenMainTabs
-        : [];
-      window.__mainCustomTabs = Array.isArray(firebaseCalendar.mainCustomTabs)
-        ? firebaseCalendar.mainCustomTabs
-        : [];
+      compatibilityFeatures.hydrateCalendar({
+        tasks: firebaseCalendar.customTasks,
+        taskStatus: firebaseCalendar.taskStatus,
+        viewMode: firebaseCalendar.calendarViewMode
+      });
+      window.mainTabsEngine.replaceState({
+        hiddenMainTabs: firebaseCalendar.hiddenMainTabs,
+        mainCustomTabs: firebaseCalendar.mainCustomTabs
+      });
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
       currentAppData.state.calendarViewMode = window.__calendarViewMode;
       currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
       currentAppData.state.mainCustomTabs = window.__mainCustomTabs;
-      window.renderMainTabVisibility?.();
-      window.renderMainCustomTabs?.();
+      compatibilityFeatures.renderMainTabs();
       return { firebase: true, calendar: firebaseCalendar };
     }
     if (FIREBASE_ENABLED) {
@@ -643,23 +611,22 @@ export function initCloudSyncBackend({
       (await loadJsonFromDrive(folders.system.id, DRIVE_CALENDAR_FILE)) ||
       (legacyCalendar ? await loadJsonFromDrive(legacyCalendar.id, DRIVE_CALENDAR_FILE) : null);
     if (calendar) {
-      window.customTasks = calendar.customTasks || [];
-      window.taskStatus = calendar.taskStatus || {};
-      window.__calendarViewMode = calendar.calendarViewMode === 'month' ? 'month' : 'week';
-      window.__hiddenMainTabs = Array.isArray(calendar.hiddenMainTabs)
-        ? calendar.hiddenMainTabs
-        : [];
-      window.__mainCustomTabs = Array.isArray(calendar.mainCustomTabs)
-        ? calendar.mainCustomTabs
-        : [];
+      compatibilityFeatures.hydrateCalendar({
+        tasks: calendar.customTasks,
+        taskStatus: calendar.taskStatus,
+        viewMode: calendar.calendarViewMode
+      });
+      window.mainTabsEngine.replaceState({
+        hiddenMainTabs: calendar.hiddenMainTabs,
+        mainCustomTabs: calendar.mainCustomTabs
+      });
       currentAppData.customTasks = window.customTasks;
       currentAppData.state = currentAppData.state || {};
       currentAppData.state.taskStatus = window.taskStatus;
       currentAppData.state.calendarViewMode = window.__calendarViewMode;
       currentAppData.state.hiddenMainTabs = window.__hiddenMainTabs;
       currentAppData.state.mainCustomTabs = window.__mainCustomTabs;
-      window.renderMainTabVisibility?.();
-      window.renderMainCustomTabs?.();
+      compatibilityFeatures.renderMainTabs();
     }
     return { folders, legacyCalendar, calendar };
   }
@@ -679,16 +646,16 @@ export function initCloudSyncBackend({
         updatedAt: new Date().toISOString()
       };
       applyAppData(mergeDriveParts(firebaseParts));
-      renderEverything();
+      compatibilityFeatures.renderAll();
       resolveDriveBookmarkImages()
-        .then(() => window.renderImageBookmarks?.())
+        .then(() => compatibilityFeatures.renderBookmarks())
         .catch((e) => console.warn('bookmark image background load failed', e));
       return;
     }
     if (FIREBASE_ENABLED) {
-      renderEverything();
+      compatibilityFeatures.renderAll();
       resolveDriveBookmarkImages()
-        .then(() => window.renderImageBookmarks?.())
+        .then(() => compatibilityFeatures.renderBookmarks())
         .catch((e) => console.warn('bookmark image background load failed', e));
       return;
     }
@@ -723,9 +690,9 @@ export function initCloudSyncBackend({
     if (isFirebaseActive()) {
       await saveAppPartsToFirebase(splitAppDataForDrive(buildAppData()));
     }
-    renderEverything();
+    compatibilityFeatures.renderAll();
     resolveDriveBookmarkImages()
-      .then(() => window.renderImageBookmarks?.())
+      .then(() => compatibilityFeatures.renderBookmarks())
       .catch((e) => console.warn('bookmark image background load failed', e));
   }
 
@@ -733,26 +700,27 @@ export function initCloudSyncBackend({
     autoSignInAttempting = false;
     loadingOverlay.classList.remove('hidden');
     try {
-      driveUser = await getUserProfile();
-      updateProfileUI(driveUser);
-      signInBtn.classList.add('hidden');
-      signOutBtn.classList.remove('hidden');
+      const user = await getUserProfile();
+      appAuthController.setCurrentUser(user);
+      compatibilityFeatures.refreshProfile();
       driveReady = true;
-      window.isAuthReady = true;
-      await loadCalendarPartFromDrive();
-      renderEverything();
-      loadingOverlay.classList.add('hidden');
-      deferredAppDataLoaded = false;
-      deferredAppDataError = null;
-      deferredAppDataPromise = loadDeferredAppDataFromDrive()
-        .then(() => {
-          deferredAppDataLoaded = true;
-        })
-        .catch((e) => {
-          deferredAppDataError = e;
-          console.error(e);
-          setDriveStatus('일부 데이터 로드 실패', true);
-        });
+      appAuthController.setReady(true);
+      await appAuthController.startPostLoginDataLoad(async () => {
+        await loadCalendarPartFromDrive();
+        compatibilityFeatures.renderCalendar();
+        loadingOverlay.classList.add('hidden');
+        deferredAppDataLoaded = false;
+        deferredAppDataError = null;
+        deferredAppDataPromise = loadDeferredAppDataFromDrive()
+          .then(() => {
+            deferredAppDataLoaded = true;
+          })
+          .catch((e) => {
+            deferredAppDataError = e;
+            console.error(e);
+            setDriveStatus('일부 데이터 로드 실패', true);
+          });
+      });
     } catch (e) {
       console.error(e);
       window.showAlert('Google Drive 데이터 로드 실패: ' + (e.message || e));
@@ -780,7 +748,7 @@ export function initCloudSyncBackend({
     await signOutFirebase();
     driveAccessToken = null;
     driveReady = false;
-    driveUser = null;
+    appAuthController.setCurrentUser(null);
     driveFiles.resetFolders();
     deferredAppDataPromise = null;
     deferredAppDataLoaded = false;
@@ -788,30 +756,10 @@ export function initCloudSyncBackend({
     clipPagesRendered = false;
     autoSignInAttempting = false;
     silentSignInUnavailable = false;
-    updateProfileUI(null);
-    signOutBtn.classList.add('hidden');
-    signInBtn.classList.remove('hidden');
-    window.isAuthReady = true;
-    window.customTasks = [];
-    window.taskStatus = {};
-    window.__calendarViewMode = 'week';
-    window.__hiddenMainTabs = [];
-    window.__mainCustomTabs = [];
-    window.renderMainTabVisibility?.();
-    window.renderMainCustomTabs?.();
-    window.imageBookmarks = [];
-    window.__notesTabs = {};
-    window.__notesTabList = [{ id: 'memo', name: '메모', order: 0 }];
-    window.__notesActiveTabId = 'memo';
-    window.__bookmarkTabList = [{ id: 'default', name: '기본', order: 0 }];
-    window.__bookmarkActiveTabId = 'default';
-    window.__workMusicTabList = [{ id: 'default', name: '기본', order: 0 }];
-    window.__workMusicActiveTabId = 'default';
-    window.workMusicSongs = [];
-    window.workMusicSeamlessEnabled = false;
-    window.workMusicSeamlessOverlapSeconds = 0;
-    window.__pomodoroState = getDefaultPomodoroState();
-    renderEverything();
+    compatibilityFeatures.refreshProfile();
+    appAuthController.setReady(true);
+    applyAppData(getDefaultAppData());
+    compatibilityFeatures.renderAll();
     window.clearClipLocal?.();
     window.showClipMessage?.(
       '<div class="clip-empty-title">CLIP 폴더를 열어주세요</div><div class="clip-empty-body">원고가 들어있는 폴더를 이곳에 끌어다 놓거나, 위의 폴더 아이콘으로 선택하면 미리보기를 펼쳐볼 수 있습니다.</div>'
@@ -820,7 +768,7 @@ export function initCloudSyncBackend({
   };
 
   window.ensureLogin = () => {
-    if (!window.isAuthReady) {
+    if (!appAuthController.getState().ready) {
       window.showAlert('Google Drive에서 데이터를 다운로드 준비 중입니다.');
       return false;
     }
@@ -851,7 +799,6 @@ export function initCloudSyncBackend({
       }
     });
   };
-  updateProfileUI(null);
 
   window.downloadAppDataBackup = () => {
     const d = new Date();
@@ -868,11 +815,8 @@ export function initCloudSyncBackend({
   installCloudStateHandlers({
     clearScheduledNotesSave,
     ensureLogin,
-    notesInputDelayMs: NOTES_INPUT_DELAY_MS,
-    normalizeTabList,
     queueNotesSave,
     renameBookmarkTabDriveFolder,
-    renderEverything,
     saveNonNotesDataNow: saveNonNotesDataQueuedNow,
     scheduleSaveNonNotesData,
     scheduleSaveNotesData,
@@ -897,7 +841,7 @@ export function initCloudSyncBackend({
     formatDriveFileTime,
     genId,
     getBookmarkTabDriveFolder,
-    renderEverything,
+    renderBookmarks: compatibilityFeatures.renderBookmarks,
     revokeDriveImageUrl,
     saveNonNotesDataNow: saveNonNotesDataQueuedNow,
     scheduleSaveAppData,
@@ -907,7 +851,7 @@ export function initCloudSyncBackend({
   });
 
   // 자동 초기 상태
-  window.isAuthReady = true;
+  appAuthController.setReady(true);
   setTimeout(async () => {
     await setupTokenClient();
     if (!driveAccessToken) {
@@ -916,26 +860,23 @@ export function initCloudSyncBackend({
     }
   }, 500);
 
-  initCalendar();
-  initNotes();
-  initBookmarks();
-  initWorkMusic?.();
-  initPomodoro?.();
-  initClipViewer?.({
-    ensureLogin,
-    isDriveLoggedIn: () => !!driveAccessToken,
-    ensureClipCurrentFolder: async () => (await ensureDriveFolders()).clipCurrent,
-    findDriveFile,
-    uploadDriveMultipart: uploadDriveMultipartWithProgress,
-    downloadDriveBlob,
-    beginDriveUploadBatch,
-    getClipPages: () => (currentAppData.state && currentAppData.state.clipPages) || [],
-    saveClipManifest: async (manifest) => {
-      currentAppData.state = currentAppData.state || {};
-      currentAppData.state.clipPages = manifest;
-      await saveAppDataQueuedNow();
-    },
-    loadAppDataFromDrive,
-    renderEverything
-  });
+  return {
+    clipViewerOptions: {
+      ensureLogin,
+      isDriveLoggedIn: () => !!driveAccessToken,
+      ensureClipCurrentFolder: async () => (await ensureDriveFolders()).clipCurrent,
+      findDriveFile,
+      uploadDriveMultipart: uploadDriveMultipartWithProgress,
+      downloadDriveBlob,
+      beginDriveUploadBatch,
+      getClipPages: () => (currentAppData.state && currentAppData.state.clipPages) || [],
+      saveClipManifest: async (manifest) => {
+        currentAppData.state = currentAppData.state || {};
+        currentAppData.state.clipPages = manifest;
+        await saveAppDataQueuedNow();
+      },
+      loadAppDataFromDrive,
+      renderEverything: compatibilityFeatures.renderAll
+    }
+  };
 }

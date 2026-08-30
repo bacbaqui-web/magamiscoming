@@ -1,0 +1,422 @@
+html {
+  scrollbar-gutter: stable;
+  background: #000;
+}
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+html::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.48);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #000;
+  color: #fff;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  min-height: 100vh;
+  padding: 16px;
+  flex-direction: column;
+  gap: 0;
+  overflow-x: hidden;
+}
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.section-card {
+  background: #2a2a2a;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  width: 100%;
+  max-width: 800px;
+}
+.notepad-tabs {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 800px;
+  position: relative;
+  z-index: 2;
+}
+#main-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  justify-content: safe center;
+  overflow-x: auto;
+  background: #000;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.45);
+}
+.notepad-tabs {
+  scrollbar-width: none;
+}
+.notepad-tabs::-webkit-scrollbar {
+  display: none;
+}
+.notepad-tab {
+  background: #1a1a1a;
+  width: 44px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  transition: 0.2s;
+  font-weight: 700;
+  color: #737373;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-bottom: 0;
+}
+.notepad-tab svg {
+  width: 20px;
+  height: 20px;
+}
+.notepad-tab:hover {
+  background: #242424;
+  color: #fff;
+}
+.notepad-tab.active {
+  background: #2a2a2a;
+  color: #fff;
+  border-color: #2a2a2a;
+  height: 40px;
+  margin-bottom: -1px;
+  box-shadow: none;
+}
+.notepad-tab.main-tab-hidden {
+  display: none;
+}
+
+body.workmusic-tab-view-active {
+  height: 100dvh;
+  overflow-y: hidden;
+}
+body.workmusic-tab-view-active .site-footer {
+  display: none;
+}
+body.workmusic-tab-view-active #workmusic-section.active {
+  position: fixed;
+  top: 55px;
+  bottom: 78px;
+  left: 50%;
+  width: calc(100% - 32px);
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transform: translateX(-50%);
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+  scrollbar-width: thin;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar-track {
+  background: transparent;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  background-clip: content-box;
+}
+body.workmusic-tab-view-active #workmusic-section.active::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.48);
+  background-clip: content-box;
+}
+.site-footer {
+  width: 100%;
+  max-width: 800px;
+  margin: auto auto 0;
+  padding: 8px 4px 2px;
+  border-top: 1px solid #252525;
+  color: #8f8f8f;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+.site-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.site-footer strong {
+  color: #d8d8d8;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.site-footer span {
+  color: #9a9a9a;
+}
+.site-footer strong::after {
+  content: '-';
+  margin-left: 6px;
+  color: #777;
+  font-weight: 500;
+}
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 10px;
+  min-width: 0;
+}
+.site-footer a {
+  color: #d8d8d8;
+  text-decoration: none;
+}
+.site-footer a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.notes-tab,
+.bookmark-tab,
+.workmusic-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+.notes-tab .tab-label,
+.bookmark-tab .tab-label,
+.workmusic-tab .tab-label {
+  min-width: 0;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-settings-trigger {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+  transition:
+    background 0.2s,
+    transform 0.15s;
+}
+.tab-settings-trigger:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.04);
+}
+.tab-settings-trigger svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.new-inner-tab {
+  background: #2f2f2f;
+  border-style: dashed;
+  color: #cfcfcf;
+}
+.new-inner-tab:hover {
+  background: #3b3b3b;
+  color: #fff;
+}
+.tab-settings-modal {
+  background: #2a2a2a;
+  max-width: 360px;
+  text-align: left;
+}
+.tab-settings-title {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.tab-settings-icons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* 아이콘 버튼 (메모 + / 편집) */
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+.drag-area {
+  border: 2px dashed #4b4b4b;
+  transition: all 0.3s ease;
+  padding: 24px;
+}
+.drag-area.active {
+  border-color: #6b6b6b;
+  background-color: #2a2a2a;
+}
+.drag-over {
+  border-color: #6b6b6b;
+  background-color: #2a2a2a;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 12px 0 76px;
+    gap: 0;
+    align-items: stretch;
+  }
+  .section-card {
+    width: 100%;
+    max-width: none;
+    padding: 12px;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  .notepad-tabs {
+    width: 100%;
+    max-width: none;
+    justify-content: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0 8px;
+    box-sizing: border-box;
+  }
+  .notepad-tab {
+    padding: 0;
+    font-size: 0.8rem;
+    flex: 0 0 auto;
+  }
+  .modal-content {
+    padding: 16px;
+    width: 95%;
+  }
+  .site-footer {
+    max-width: none;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 10px 2px;
+    font-size: 0.68rem;
+    gap: 8px;
+  }
+  .site-footer-brand {
+    gap: 4px;
+  }
+  .site-footer strong {
+    font-size: 0.72rem;
+  }
+  .site-footer strong::after {
+    margin-left: 4px;
+  }
+  .site-footer nav {
+    gap: 3px 8px;
+  }
+}
+
+.drive-save-indicator {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 6px;
+  border: 1px solid #444;
+  border-radius: 50%;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  color: #ddd;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.drive-save-indicator.show {
+  visibility: visible;
+  opacity: 1;
+}
+.drive-save-indicator svg {
+  width: 100%;
+  height: 100%;
+}
+.drive-save-indicator.busy svg {
+  animation: drive-status-spin 900ms linear infinite;
+}
+@keyframes drive-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drive-save-indicator.busy svg {
+    animation: none;
+  }
+}

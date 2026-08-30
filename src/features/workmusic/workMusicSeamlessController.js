@@ -1,0 +1,324 @@
+import { normalizeSeamlessSeconds } from './workMusicHelper.js';
+import { calculateSmartTransitionPlan } from './workMusicAnalysisHelper.js';
+
+export function createWorkMusicSeamlessController({
+  engine,
+  playbackController,
+  youtubePort,
+  root = document,
+  render = () => {},
+  interval = setInterval,
+  clear = clearInterval,
+  now = Date.now,
+  monitorMs = 500,
+  fadeMs = 50
+}) {
+  let slots = null;
+  let monitorTimer = null;
+  let fadeTimer = null;
+
+  const volume = () => {
+    const state = engine.getSnapshot();
+    return state.isMuted ? 0 : state.volume;
+  };
+  function setVolume(player, value) {
+    player?.setVolume?.(Math.max(0, Math.min(100, value)));
+    if (value <= 0) player?.mute?.();
+    else player?.unMute?.();
+  }
+  function getActivePlayer() {
+    return slots?.players?.[slots.activeSlot] || null;
+  }
+  function getStandbyPlayer() {
+    return slots?.players?.[slots.standbySlot] || null;
+  }
+  function nextIndex(fromIndex) {
+    const state = engine.getSnapshot();
+    const songs = engine.getActiveSongs();
+    const order =
+      state.playOrder.length === songs.length ? state.playOrder : songs.map((_song, i) => i);
+    const position = Math.max(0, order.indexOf(fromIndex));
+    return order[(position + 1) % order.length];
+  }
+  function stopTimers() {
+    clear(monitorTimer);
+    clear(fadeTimer);
+    monitorTimer = null;
+    fadeTimer = null;
+  }
+  function destroy() {
+    stopTimers();
+    if (slots?.players)
+      Object.values(slots.players).forEach((player) => {
+        try {
+          player?.destroy?.();
+        } catch (_error) {
+          /* 이미 제거된 Player */
+        }
+      });
+    slots = null;
+  }
+  function pause() {
+    stopTimers();
+    if (slots?.players) Object.values(slots.players).forEach((player) => player?.pauseVideo?.());
+  }
+  function applyVolume() {
+    if (!slots) return;
+    setVolume(getActivePlayer(), volume());
+    if (!slots.transitioning) setVolume(getStandbyPlayer(), 0);
+  }
+  function cueStandby(fromIndex) {
+    if (!slots) return;
+    const songs = engine.getActiveSongs();
+    slots.standbyIndex = nextIndex(fromIndex);
+    slots.transitionStarted = false;
+    slots.transitioning = false;
+    slots.fadeStarted = false;
+    slots.transition = null;
+    const song = songs[slots.standbyIndex];
+    const standby = getStandbyPlayer();
+    if (!standby || !song?.videoId) return;
+    standby.stopVideo?.();
+    standby.cueVideoById?.(song.videoId);
+    setVolume(standby, 0);
+  }
+  function finishTransition() {
+    if (!slots?.transition) return;
+    const { previousSlot, nextSlot, nextIndex: target } = slots.transition;
+    const previous = slots.players[previousSlot];
+    slots.activeSlot = nextSlot;
+    slots.standbySlot = previousSlot;
+    slots.transitionStarted = false;
+    slots.transitioning = false;
+    slots.fadeStarted = false;
+    slots.transition = null;
+    previous?.stopVideo?.();
+    engine.setState('currentIndex', target);
+    applyVolume();
+    render();
+    cueStandby(target);
+  }
+  function volumesAt({ elapsedSeconds, overlapSeconds, targetVolume }) {
+    const duration = Math.max(0.001, normalizeSeamlessSeconds(overlapSeconds));
+    const progress = Math.min(1, Math.max(0, elapsedSeconds / duration));
+    const eased = progress * progress;
+    return {
+      previous: targetVolume * (1 - eased),
+      next: targetVolume * eased,
+      complete: progress >= 1
+    };
+  }
+  function beginFade(slot) {
+    if (!slots?.transitioning || slots.fadeStarted || slot !== slots.transition?.nextSlot)
+      return false;
+    slots.fadeStarted = true;
+    const startedAt = now();
+    clear(fadeTimer);
+    const update = () => {
+      if (!slots?.transitioning) return;
+      const levels = volumesAt({
+        elapsedSeconds: (now() - startedAt) / 1000,
+        overlapSeconds: slots.transition.crossfadeSeconds,
+        targetVolume: volume()
+      });
+      setVolume(slots.players[slots.transition.previousSlot], levels.previous);
+      setVolume(slots.players[slots.transition.nextSlot], levels.next);
+      if (levels.complete) {
+        clear(fadeTimer);
+        fadeTimer = null;
+        finishTransition();
+      }
+    };
+    update();
+    fadeTimer = interval(update, fadeMs);
+    return true;
+  }
+  function createTransition() {
+    if (!slots || slots.transitionStarted) return null;
+    const state = engine.getSnapshot();
+    const crossfadeSeconds = normalizeSeamlessSeconds(state.seamlessOverlapSeconds);
+    const target = Number(slots.standbyIndex);
+    if (crossfadeSeconds <= 0 || !engine.getActiveSongs()[target]?.videoId) return null;
+    const transition = {
+      previousSlot: slots.activeSlot,
+      nextSlot: slots.standbySlot,
+      nextIndex: target,
+      crossfadeSeconds
+    };
+    if (!slots.players[transition.previousSlot] || !slots.players[transition.nextSlot]) return null;
+    return transition;
+  }
+  function transition() {
+    const context = createTransition();
+    if (!context) return false;
+    slots.transition = context;
+    slots.transitionStarted = true;
+    slots.transitioning = true;
+    slots.fadeStarted = false;
+    const nextPlayer = slots.players[context.nextSlot];
+    setVolume(nextPlayer, 0);
+    try {
+      nextPlayer.playVideo?.();
+      setVolume(nextPlayer, 0);
+      return true;
+    } catch (_error) {
+      slots.transition = null;
+      slots.transitionStarted = false;
+      slots.transitioning = false;
+      return false;
+    }
+  }
+  function shouldStart({ currentTime, duration, overlapSeconds, transitionStarted }) {
+    const overlap = normalizeSeamlessSeconds(overlapSeconds);
+    return (
+      !transitionStarted &&
+      overlap > 0 &&
+      duration > overlap + 1 &&
+      currentTime > 0 &&
+      duration - currentTime <= overlap
+    );
+  }
+  function getTriggerTiming({ currentSong, nextSong, duration, overlapSeconds }) {
+    const normalizedDuration = Number(duration || 0);
+    const plan = calculateSmartTransitionPlan({
+      currentSong,
+      nextSong,
+      fixedOverlapSeconds: overlapSeconds
+    });
+    const manualStart = Number(plan.startNextAtSeconds);
+    if (
+      plan.mode === 'smart' &&
+      plan.source === 'manual' &&
+      Number.isFinite(manualStart) &&
+      manualStart > 0 &&
+      manualStart < normalizedDuration
+    ) {
+      return { mode: 'manual', triggerAtSeconds: manualStart };
+    }
+    return {
+      mode: 'fixed',
+      triggerAtSeconds: normalizedDuration - normalizeSeamlessSeconds(overlapSeconds)
+    };
+  }
+  function monitor() {
+    if (!slots || !engine.getSnapshot().isPlaying) return false;
+    const player = getActivePlayer();
+    const state = engine.getSnapshot();
+    const songs = engine.getActiveSongs();
+    const currentTime = Number(player?.getCurrentTime?.() || 0);
+    const duration = Number(player?.getDuration?.() || 0);
+    const timing = getTriggerTiming({
+      currentSong: songs[state.currentIndex],
+      nextSong: songs[slots.standbyIndex],
+      duration,
+      overlapSeconds: state.seamlessOverlapSeconds
+    });
+    if (timing.mode === 'manual') {
+      return (
+        !slots.transitionStarted &&
+        normalizeSeamlessSeconds(state.seamlessOverlapSeconds) > 0 &&
+        duration > normalizeSeamlessSeconds(state.seamlessOverlapSeconds) + 1 &&
+        currentTime > 0 &&
+        currentTime >= timing.triggerAtSeconds &&
+        transition()
+      );
+    }
+    if (
+      shouldStart({
+        currentTime,
+        duration,
+        overlapSeconds: state.seamlessOverlapSeconds,
+        transitionStarted: slots.transitionStarted
+      })
+    )
+      return transition();
+    return false;
+  }
+  function startMonitor() {
+    clear(monitorTimer);
+    monitorTimer = interval(monitor, monitorMs);
+  }
+  function canManualTransition(index) {
+    return !!slots && !slots.transitionStarted && slots.standbyIndex === index;
+  }
+
+  async function create(index, autoplay = true) {
+    const songs = engine.getActiveSongs();
+    const box = root.getElementById('workMusicPlayerBox');
+    if (!box || songs.length <= 1 || !songs[index]?.videoId) return null;
+    destroy();
+    box.classList.add('seamless');
+    box.innerHTML =
+      '<div id="workMusicSeamlessSlotA" class="workmusic-youtube-slot active"><div id="workMusicSeamlessA"></div></div><div id="workMusicSeamlessSlotB" class="workmusic-youtube-slot standby"><div id="workMusicSeamlessB"></div></div>';
+    await youtubePort.ensureIframeApi();
+    const standbyIndex = nextIndex(index);
+    slots = {
+      players: { a: null, b: null },
+      activeSlot: 'a',
+      standbySlot: 'b',
+      standbyIndex,
+      transitionStarted: false,
+      transitioning: false,
+      fadeStarted: false,
+      transition: null
+    };
+    const events = (slot) => ({
+      onReady(event) {
+        slots.players[slot] = event.target;
+        setVolume(event.target, slot === 'a' ? volume() : 0);
+        if (slot === 'a' && autoplay) {
+          event.target.playVideo?.();
+          startMonitor();
+        }
+        if (slot === 'b') event.target.cueVideoById?.(songs[standbyIndex]?.videoId);
+      },
+      onStateChange(event) {
+        if (slot === slots?.standbySlot && slots?.transitioning && event?.data === 1)
+          beginFade(slot);
+      },
+      onError(event) {
+        const failed =
+          slot === slots?.activeSlot ? engine.getSnapshot().currentIndex : slots?.standbyIndex;
+        playbackController.handleFailure({
+          code: event?.data || '',
+          failedIndex: failed,
+          order: engine.getSnapshot().playOrder,
+          tabId: engine.getSnapshot().activeTabId
+        });
+      }
+    });
+    slots.players.a = youtubePort.createPlayer('workMusicSeamlessA', {
+      width: '100%',
+      height: '100%',
+      videoId: songs[index].videoId,
+      playerVars: { autoplay: autoplay ? 1 : 0, playsinline: 1, rel: 0, modestbranding: 1 },
+      events: events('a')
+    });
+    slots.players.b = youtubePort.createPlayer('workMusicSeamlessB', {
+      width: '100%',
+      height: '100%',
+      videoId: songs[standbyIndex]?.videoId || songs[index].videoId,
+      playerVars: { autoplay: 0, playsinline: 1, rel: 0, modestbranding: 1 },
+      events: events('b')
+    });
+    return slots;
+  }
+
+  return {
+    applyVolume,
+    beginFade,
+    canManualTransition,
+    create,
+    createTransition,
+    destroy,
+    getActivePlayer,
+    getTriggerTiming,
+    getState: () => slots,
+    monitor,
+    pause,
+    shouldStart,
+    startMonitor,
+    transition,
+    volumesAt
+  };
+}

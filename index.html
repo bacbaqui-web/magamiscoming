@@ -19,7 +19,14 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles/app.css" />
+    <link rel="stylesheet" href="styles/workmusic.css" />
+    <link rel="stylesheet" href="styles/profile-main-tabs.css" />
+    <link rel="stylesheet" href="styles/pomodoro.css" />
+    <link rel="stylesheet" href="styles/notes.css" />
+    <link rel="stylesheet" href="styles/bookmarks.css" />
+    <link rel="stylesheet" href="styles/calendar.css" />
+    <link rel="stylesheet" href="styles/clipviewer.css" />
   </head>
   <body class="text-white">
     <div id="main-tabs" class="notepad-tabs mx-auto">
@@ -504,6 +511,73 @@
               </div>
               <span id="workMusicDurationTime" class="workmusic-progress-time">0:00</span>
             </div>
+
+            <section
+              id="workMusicAnalysisPanel"
+              class="workmusic-analysis-panel"
+              aria-label="곡 분석"
+            >
+              <div class="workmusic-analysis-header">
+                <div>
+                  <strong>곡 분석</strong>
+                  <span id="workMusicAnalysisStatus" class="workmusic-analysis-status"
+                    >사용 안 함</span
+                  >
+                </div>
+                <button id="workMusicAnalyzeBtn" class="workmusic-analysis-button" type="button">
+                  분석
+                </button>
+              </div>
+              <p
+                id="workMusicAnalysisMessage"
+                class="workmusic-analysis-message"
+                aria-live="polite"
+              >
+                분석 서버가 설정되지 않았습니다.
+              </p>
+              <div class="workmusic-analysis-metrics" aria-label="분석 수치">
+                <span>BPM <b id="workMusicAnalysisBpm">-</b></span>
+                <span>신뢰도 <b id="workMusicAnalysisConfidence">-</b></span>
+                <span id="workMusicAnalysisSource">자동 분석값 없음</span>
+              </div>
+              <div class="workmusic-analysis-timeline">
+                <div
+                  id="workMusicAnalysisMarkers"
+                  class="workmusic-analysis-markers"
+                  aria-label="비트와 마디 위치"
+                ></div>
+                <div id="workMusicDrumLane" class="workmusic-drum-lane">
+                  <div class="workmusic-drum-highlight" aria-hidden="true"></div>
+                  <input
+                    id="workMusicDrumStart"
+                    class="workmusic-drum-handle workmusic-drum-handle-start"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value="0"
+                    aria-label="드럼 시작 위치"
+                    disabled
+                  />
+                  <input
+                    id="workMusicDrumEnd"
+                    class="workmusic-drum-handle workmusic-drum-handle-end"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value="1"
+                    aria-label="드럼 종료 위치"
+                    disabled
+                  />
+                </div>
+                <span id="workMusicDrumLabel" class="workmusic-drum-label">드럼 구간 없음</span>
+              </div>
+              <div class="workmusic-analysis-actions">
+                <button id="workMusicAnalysisSaveBtn" type="button" disabled>수정 저장</button>
+                <button id="workMusicAnalysisRestoreBtn" type="button" disabled>자동값 복원</button>
+              </div>
+            </section>
           </div>
 
           <div class="workmusic-player-backstage" aria-hidden="true">
@@ -1439,154 +1513,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
     <script src="src/config.js"></script>
 
-    <script>
-      // Firebase metadata + Google Drive file storage version
-
-      // 전역 상태
-      window.customTasks = window.customTasks || [];
-      window.taskStatus = window.taskStatus || {};
-      window.__calendarViewMode = window.__calendarViewMode === 'month' ? 'month' : 'week';
-      window.__notesTabs = window.__notesTabs || {};
-      window.imageBookmarks = window.imageBookmarks || []; // 북마크는 이미지와 동영상, 일반 링크 모두 포함
-      window.__bookmarkTabList = window.__bookmarkTabList || [
-        { id: 'default', name: '기본', order: 0 }
-      ];
-      window.__bookmarkActiveTabId = window.__bookmarkActiveTabId || 'default';
-      window.__hiddenMainTabs = Array.isArray(window.__hiddenMainTabs)
-        ? window.__hiddenMainTabs
-        : [];
-      window.__mainCustomTabs = Array.isArray(window.__mainCustomTabs)
-        ? window.__mainCustomTabs
-        : [];
-      window.currentTask = null;
-      window.currentEditingBookmark = null; // 현재 편집 중인 북마크 항목
-      window.isAuthReady = false;
-
-      // DOM 요소
-      const tabButtons = document.querySelectorAll('#main-tabs .notepad-tab');
-      const tabContents = document.querySelectorAll('.tab-content');
-      const driveSaveIndicator = document.getElementById('driveSaveIndicator');
-      // 유틸리티 함수
-      const showFeedbackMessage = (message) => {
-        const el = document.createElement('div');
-        el.textContent = message;
-        el.style.cssText =
-          'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.8);color:#fff;padding:16px 20px;border-radius:10px;z-index:2000;max-width:90%';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 2000);
-      };
-      const showAlert = (msg) => {
-        document.getElementById('modal-message').textContent = msg;
-        document.getElementById('alert-modal').classList.remove('hidden');
-      };
-      const hideAlert = () => {
-        document.getElementById('alert-modal').classList.add('hidden');
-      };
-      window.showFeedbackMessage = showFeedbackMessage;
-      window.showAlert = showAlert;
-      document.getElementById('modal-close-btn').addEventListener('click', hideAlert);
-      document
-        .getElementById('backupNotesBtn')
-        ?.addEventListener('click', () => window.downloadAllNotesBackup?.());
-      document
-        .getElementById('backupAllDataBtn')
-        ?.addEventListener('click', () => window.downloadAppDataBackup?.());
-
-      async function showTab(tabId) {
-        document.body.classList.remove('custom-tab-view-active');
-        document.body.classList.toggle('workmusic-tab-view-active', tabId === 'workmusic');
-        if (window.waitForFeatureData) {
-          const waiting = window.waitForFeatureData(tabId);
-          if (waiting) {
-            document.getElementById('loading-overlay')?.classList.remove('hidden');
-            try {
-              await waiting;
-            } catch (err) {
-              console.error(err);
-              window.showAlert?.(
-                '앱 데이터를 다운로드하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'
-              );
-            } finally {
-              document.getElementById('loading-overlay')?.classList.add('hidden');
-            }
-          }
-        }
-        tabContents.forEach((c) => c.classList.remove('active'));
-        document
-          .querySelectorAll('#main-tabs .notepad-tab')
-          .forEach((b) => b.classList.remove('active'));
-        document.getElementById(`${tabId}-section`).classList.add('active');
-        const btn = document.querySelector(`#main-tabs .notepad-tab[data-tab="${tabId}"]`);
-        if (btn) btn.classList.add('active');
-        syncDriveSaveIndicatorPlacement(tabId);
-      }
-      function syncDriveSaveIndicatorPlacement() {
-        if (!driveSaveIndicator) return;
-        const mainTabs = document.getElementById('main-tabs');
-        if (mainTabs && driveSaveIndicator.parentElement !== mainTabs) {
-          mainTabs.appendChild(driveSaveIndicator);
-        }
-      }
-      window.showTab = showTab;
-      function renderMainTabVisibility() {
-        const hiddenTabs = new Set(window.__hiddenMainTabs || []);
-        tabButtons.forEach((button) => {
-          if (button.dataset.tab === 'profile') return;
-          button.classList.toggle('main-tab-hidden', hiddenTabs.has(button.dataset.tab));
-        });
-        document.querySelectorAll('[data-main-tab-toggle]').forEach((input) => {
-          input.checked = !hiddenTabs.has(input.dataset.mainTabToggle);
-        });
-        const activeButton = document.querySelector('#main-tabs .notepad-tab.active');
-        if (activeButton?.classList.contains('main-tab-hidden')) showTab('profile');
-      }
-      window.renderMainTabVisibility = renderMainTabVisibility;
-      document.querySelectorAll('[data-main-tab-toggle]').forEach((input) => {
-        input.addEventListener('change', () => {
-          const hiddenTabs = new Set(window.__hiddenMainTabs || []);
-          if (input.checked) hiddenTabs.delete(input.dataset.mainTabToggle);
-          else hiddenTabs.add(input.dataset.mainTabToggle);
-          window.__hiddenMainTabs = [...hiddenTabs];
-          renderMainTabVisibility();
-          window.cloudSaveMainTabVisibility?.();
-        });
-      });
-      document.querySelectorAll('[data-main-tab-settings]').forEach((button) => {
-        button.addEventListener('click', () => {
-          if (button.dataset.mainTabSettings === 'calendar') {
-            window.openCalendarSettings?.();
-            return;
-          }
-          window.showFeedbackMessage?.('이 탭은 아직 별도 설정 항목이 없습니다.');
-        });
-      });
-      showTab('calendar');
-      renderMainTabVisibility();
-      tabButtons.forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-      // (주의) 과거 메모 탭 선택 로직은 제거됨. notes.js가 담당.
-    </script>
-
-    <script type="module">
-      // ===== Feature modules =====
-      import { initCalendar } from './src/features/calendar.js';
-      import { initNotes } from './src/features/notes.js';
-      import { initBookmarks } from './src/features/bookmarks.js';
-      import { initWorkMusic } from './src/features/workmusic.js';
-      import { initClipViewer } from './src/features/clipviewer.js';
-      import { initPomodoro } from './src/features/pomodoro.js';
-      import { initMainTabs } from './src/features/mainTabs.js';
-
-      import { initCloudSyncBackend } from './src/services/cloudSyncBackend.js';
-
-      initCloudSyncBackend({
-        initCalendar,
-        initNotes,
-        initBookmarks,
-        initWorkMusic: () => initWorkMusic({ showTab: window.showTab }),
-        initClipViewer,
-        initPomodoro
-      });
-      initMainTabs();
-    </script>
+    <script type="module" src="./src/app/bootstrap.js"></script>
   </body>
 </html>

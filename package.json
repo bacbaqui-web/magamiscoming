@@ -2,8 +2,10 @@
   "name": "comic-supporter",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Static HTML/CSS/JavaScript project for magamiscoming.",
   "scripts": {
+    "test": "node --test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",

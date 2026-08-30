@@ -1,0 +1,85 @@
+/* ===== 메모(내부) 탭 전용 스타일: 메인 탭(.notepad-tab)과 분리 ===== */
+/* 메모 공간과 분리된 '둥근 네모' 탭 */
+#notesHeaderRow {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+#notesTabsContainer {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+  margin-top: 0;
+}
+
+.notes-tab {
+  background: #3a3a3a;
+  padding: 8px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    transform 0.15s ease;
+  font-weight: 700;
+  color: #ddd;
+  font-size: 0.85rem;
+  position: relative;
+  z-index: 1;
+  border: 1px solid transparent;
+}
+.notes-tab:hover {
+  background: #4a4a4a;
+}
+.notes-tab.active {
+  background: #111;
+  color: #fff;
+  border-color: #2a2a2a;
+  z-index: 2;
+}
+
+.notes-tab.dragging {
+  opacity: 0.3;
+}
+.notes-tab.placeholder {
+  opacity: 1;
+}
+
+/* 메모 입력 영역은 탭과 분리되게 약간 간격 */
+#notes-section {
+  height: calc(100dvh - 132px);
+  min-height: 560px;
+}
+#notesArea {
+  display: block;
+  height: auto;
+  margin-top: 10px;
+  min-height: 0;
+}
+.notes-editor-frame {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+.notes-editor-frame #notesArea {
+  flex: 1 1 auto;
+  padding-top: 48px;
+}
+
+.notes-area {
+  flex-grow: 1;
+  resize: none;
+}
+textarea#notesArea::-webkit-scrollbar {
+  width: 8px;
+  background-color: #2a2a2a;
+  border-radius: 10px;
+}
+textarea#notesArea::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 10px;
+}
+textarea#notesArea::-webkit-resizer {
+  background: transparent;
+}

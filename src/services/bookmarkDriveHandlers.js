@@ -9,7 +9,7 @@ export function installBookmarkDriveHandlers({
   formatDriveFileTime,
   genId,
   getBookmarkTabDriveFolder,
-  renderEverything,
+  renderBookmarks,
   revokeDriveImageUrl,
   saveNonNotesDataNow,
   scheduleSaveAppData,
@@ -17,6 +17,8 @@ export function installBookmarkDriveHandlers({
   setDriveStatus,
   uploadDriveMultipart
 }) {
+  const getController = () => window.__bookmarksControllerCompatibility;
+
   function nowMs() {
     return Date.now();
   }
@@ -50,7 +52,7 @@ export function installBookmarkDriveHandlers({
   }
 
   function addBasicBookmark(type, values) {
-    window.imageBookmarks.push({
+    const row = {
       id: genId('bm'),
       url: null,
       title: null,
@@ -59,9 +61,14 @@ export function installBookmarkDriveHandlers({
       timestampMs: nowMs(),
       ...values,
       type
-    });
-    renderEverything();
-    scheduleSaveAppData();
+    };
+    const controller = getController();
+    if (controller) controller.addBookmark(row);
+    else {
+      window.imageBookmarks.push(row);
+      renderBookmarks();
+      scheduleSaveAppData();
+    }
   }
 
   window.addVideoBookmark = async (url) => {
@@ -97,7 +104,7 @@ export function installBookmarkDriveHandlers({
 
   window.addRemoteImage = async (url, pageUrl) => {
     if (!ensureLogin()) return;
-    window.imageBookmarks.push({
+    const row = {
       id: genId('bm'),
       url,
       pageUrl: pageUrl || null,
@@ -106,9 +113,14 @@ export function installBookmarkDriveHandlers({
       bookmarkTabId: window.__bookmarkActiveTabId || 'default',
       timestamp: driveTimestamp(nowMs()),
       timestampMs: nowMs()
-    });
-    renderEverything();
-    scheduleSaveAppData();
+    };
+    const controller = getController();
+    if (controller) controller.addBookmark(row);
+    else {
+      window.imageBookmarks.push(row);
+      renderBookmarks();
+      scheduleSaveAppData();
+    }
   };
 
   window.addImage = async (file, pageUrl) => {
@@ -130,24 +142,34 @@ export function installBookmarkDriveHandlers({
         timestampMs: ms,
         uploadStatus: 'pending'
       };
-      window.imageBookmarks.push(row);
-      renderEverything();
+      const controller = getController();
+      if (controller) controller.addBookmark(row, { save: false });
+      else {
+        window.imageBookmarks.push(row);
+        renderBookmarks();
+      }
       setDriveStatus('이미지 Drive 업로드 중...');
       uploadFileToDrive(file, null, 'bookmark')
         .then((uploaded) => {
-          const bookmark = (window.imageBookmarks || []).find((item) => item.id === row.id);
+          const bookmark =
+            getController()?.findBookmark(row.id) ||
+            (window.imageBookmarks || []).find((item) => item.id === row.id);
           if (!bookmark) return;
-          bookmark.driveFileId = uploaded.id;
-          bookmark.type = 'drive_image';
-          bookmark.sourceDomain = pageUrl
-            ? window.extractDomain?.(pageUrl) || 'Unknown'
-            : 'Google Drive';
-          bookmark.uploadStatus = 'done';
+          const changes = {
+            driveFileId: uploaded.id,
+            type: 'drive_image',
+            sourceDomain: pageUrl ? window.extractDomain?.(pageUrl) || 'Unknown' : 'Google Drive',
+            uploadStatus: 'done'
+          };
           if (uploaded.createdMs) {
-            bookmark.timestamp = driveTimestamp(uploaded.createdMs);
-            bookmark.timestampMs = uploaded.createdMs;
+            changes.timestamp = driveTimestamp(uploaded.createdMs);
+            changes.timestampMs = uploaded.createdMs;
           }
-          renderEverything();
+          if (controller) controller.updateBookmark(row.id, changes, { save: false });
+          else {
+            Object.assign(bookmark, changes);
+            renderBookmarks();
+          }
           return saveNonNotesDataNow();
         })
         .then(() => {
@@ -155,9 +177,13 @@ export function installBookmarkDriveHandlers({
         })
         .catch((e) => {
           console.error(e);
-          const bookmark = (window.imageBookmarks || []).find((item) => item.id === row.id);
-          if (bookmark) bookmark.uploadStatus = 'error';
-          renderEverything();
+          if (controller)
+            controller.updateBookmark(row.id, { uploadStatus: 'error' }, { save: false });
+          else {
+            const bookmark = (window.imageBookmarks || []).find((item) => item.id === row.id);
+            if (bookmark) bookmark.uploadStatus = 'error';
+            renderBookmarks();
+          }
           setDriveStatus('이미지 Drive 업로드 실패', true);
         });
     } catch (e) {
@@ -166,53 +192,92 @@ export function installBookmarkDriveHandlers({
   };
 
   window.updateBookmarkTitle = async (id, newTitle) => {
+    const controller = getController();
+    if (controller) {
+      controller.updateBookmark(id, { title: newTitle || null });
+      return;
+    }
     const bookmark = (window.imageBookmarks || []).find((item) => item.id === id);
     if (bookmark) {
       bookmark.title = newTitle || null;
-      renderEverything();
+      renderBookmarks();
       scheduleSaveNonNotesData();
     }
   };
 
   window.uploadBookmarkPreviewImage = async (bookmarkId, file) => {
     if (!ensureLogin()) return;
-    const bookmark = (window.imageBookmarks || []).find((item) => item.id === bookmarkId);
+    const controller = getController();
+    const bookmark =
+      controller?.findBookmark(bookmarkId) ||
+      (window.imageBookmarks || []).find((item) => item.id === bookmarkId);
     if (!bookmark) return;
-    bookmark.previewImageUrl = URL.createObjectURL(file);
-    bookmark.previewUploadStatus = 'pending';
-    renderEverything();
+    const previewImageUrl = URL.createObjectURL(file);
+    if (controller)
+      controller.updateBookmark(
+        bookmarkId,
+        { previewImageUrl, previewUploadStatus: 'pending' },
+        { save: false }
+      );
+    else {
+      bookmark.previewImageUrl = previewImageUrl;
+      bookmark.previewUploadStatus = 'pending';
+      renderBookmarks();
+    }
     setDriveStatus('미리보기 Drive 업로드 중...');
     uploadFileToDrive(file, null, 'bookmark_preview')
       .then((uploaded) => {
-        const row = (window.imageBookmarks || []).find((item) => item.id === bookmarkId);
+        const row =
+          controller?.findBookmark(bookmarkId) ||
+          (window.imageBookmarks || []).find((item) => item.id === bookmarkId);
         if (!row) return;
-        row.previewDriveFileId = uploaded.id;
-        row.previewUploadStatus = 'done';
-        renderEverything();
+        if (controller)
+          controller.updateBookmark(
+            bookmarkId,
+            { previewDriveFileId: uploaded.id, previewUploadStatus: 'done' },
+            { save: false }
+          );
+        else {
+          row.previewDriveFileId = uploaded.id;
+          row.previewUploadStatus = 'done';
+          renderBookmarks();
+        }
         return saveNonNotesDataNow();
       })
       .then(() => setDriveStatus('미리보기 Drive 저장 완료'))
       .catch((e) => {
         console.error(e);
-        const row = (window.imageBookmarks || []).find((item) => item.id === bookmarkId);
-        if (row) row.previewUploadStatus = 'error';
-        renderEverything();
+        if (controller)
+          controller.updateBookmark(bookmarkId, { previewUploadStatus: 'error' }, { save: false });
+        else {
+          const row = (window.imageBookmarks || []).find((item) => item.id === bookmarkId);
+          if (row) row.previewUploadStatus = 'error';
+          renderBookmarks();
+        }
         setDriveStatus('미리보기 Drive 업로드 실패', true);
       });
   };
 
   window.deleteImage = async (id) => {
     if (!ensureLogin()) return;
-    const row = (window.imageBookmarks || []).find((bookmark) => bookmark.id === id);
+    const controller = getController();
+    const row =
+      controller?.findBookmark(id) ||
+      (window.imageBookmarks || []).find((bookmark) => bookmark.id === id);
     if (row) {
       await deleteDriveFile(row.driveFileId);
       await deleteDriveFile(row.previewDriveFileId);
       revokeDriveImageUrl(row.driveFileId);
       revokeDriveImageUrl(row.previewDriveFileId);
     }
-    window.imageBookmarks = (window.imageBookmarks || []).filter((bookmark) => bookmark.id !== id);
-    renderEverything();
-    scheduleSaveNonNotesData();
+    if (controller) controller.deleteBookmark(id);
+    else {
+      window.imageBookmarks = (window.imageBookmarks || []).filter(
+        (bookmark) => bookmark.id !== id
+      );
+      renderBookmarks();
+      scheduleSaveNonNotesData();
+    }
     window.showFeedbackMessage('북마크가 삭제되었습니다.');
   };
 }

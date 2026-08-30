@@ -1,7 +1,11 @@
 (function () {
+  const isLocalDevelopment = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   window.APP_CONFIG = Object.freeze({
     googleClientId: '75399802933-ob5opqbukj1enr6v069rocbjo9508b35.apps.googleusercontent.com',
     youtubeApiKey: 'AIzaSyAxMNbkyUocpD_r-jnvQH_fiuYtxL952CY',
+    mediaAnalysis: {
+      apiBaseUrl: isLocalDevelopment ? 'http://127.0.0.1:8000' : ''
+    },
     firebase: {
       enabled: true,
       apiKey: 'AIzaSyDiRl8wz7HDb8HUOUFnhDQlHmuZ-sImVhI',

@@ -2,7 +2,21 @@ function toPlainData(value) {
   return JSON.parse(JSON.stringify(value ?? null));
 }
 
-export function createFirebaseMetadataStore({ enabled, config, normalizeTabList, genId }) {
+async function loadFirebaseModules() {
+  return Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js')
+  ]);
+}
+
+export function createFirebaseMetadataAdapter({
+  enabled,
+  config,
+  normalizeTabList,
+  genId,
+  loadModules = loadFirebaseModules
+}) {
   let firebaseApi = null;
   let firebaseReadyPromise = null;
   let firebaseUser = null;
@@ -39,11 +53,7 @@ export function createFirebaseMetadataStore({ enabled, config, normalizeTabList,
     if (!enabled) return false;
     if (firebaseApi) return true;
     if (firebaseReadyPromise) return firebaseReadyPromise;
-    firebaseReadyPromise = Promise.all([
-      import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'),
-      import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js')
-    ])
+    firebaseReadyPromise = loadModules()
       .then(([appMod, authMod, firestoreMod]) => {
         const firebaseApp = appMod.initializeApp(config);
         const auth = authMod.getAuth(firebaseApp);
