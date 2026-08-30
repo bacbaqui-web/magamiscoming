@@ -19,6 +19,8 @@
 - 로컬 구현은 완료했고 오라클 배포는 A1 인스턴스 가용 용량 확보 전까지 대기한다.
 - 빈 곡 목록 렌더가 PlaybackController의 빈 load를 다시 호출하던 재귀를 제거했다. 빈 목록의
   분석 Controller도 첫 선택에서 `empty` 상태를 게시한다.
+- 로컬 Origin의 Google OAuth `origin_mismatch`를 피하면서 실제 계정 데이터를 시험할 수 있게
+  운영 주소의 `?mediaAnalysis=local` 접속에서만 이 Mac의 로컬 분석 API를 사용한다.
 
 ## 검증 경계
 

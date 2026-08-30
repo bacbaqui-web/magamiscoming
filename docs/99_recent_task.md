@@ -21,6 +21,9 @@ Media Analysis API와 노동요 분석 편집 UI를 Port·Adapter·Controller �
 - 로컬 구현은 완료했고 오라클 배포는 A1 인스턴스 가용 용량 확보 전까지 대기한다.
 - 빈 곡 목록은 Player load를 재호출하지 않고 한 번만 렌더하며, 분석 상태를 `empty`로
   게시한다.
+- Google OAuth에 등록된 운영 Origin에서 로그인한 채 로컬 분석 서버를 시험할 수 있도록
+  `?mediaAnalysis=local` 테스트 모드를 추가했다. 쿼리가 없는 일반 운영 접속은 계속
+  비활성이다.
 
 ## 검증과 미실행
 

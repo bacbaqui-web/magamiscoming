@@ -34,6 +34,9 @@ YouTube 기반 노동요 목록, 재생, 이어듣기와 저장 데이터의 현
 - AppComposer가 YouTube Adapter와 Port를 만들고 노동요 기능에 주입한다.
 - AppComposer는 `APP_CONFIG.mediaAnalysis.apiBaseUrl`로 Media Analysis Browser Adapter를 만들고,
   `MediaAnalysisPort`를 거쳐 `WorkMusicAnalysisController`에 주입한다.
+- 로컬 호스트에서는 로컬 분석 API를 기본 사용한다. 운영 GitHub Pages에서 로컬 분석 서버를
+  시험할 때만 `?mediaAnalysis=local`을 명시하며, 일반 운영 접속에서는 분석 API를 비활성으로
+  유지한다.
 - AnalysisController는 작업 생성·poll·결과 조회, 곡 전환 stale 응답 차단과 현재 세션의 자동
   분석 결과 cache를 소유한다. 분석 API가 꺼지거나 응답하지 않아도 재생 Controller에는
   영향을 주지 않는다.
