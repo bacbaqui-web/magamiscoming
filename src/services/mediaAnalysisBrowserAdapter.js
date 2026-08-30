@@ -64,6 +64,15 @@ export function createMediaAnalysisBrowserAdapter({
     enabled: !!baseUrl,
     createJob: (videoId, { signal } = {}) =>
       request('/v1/jobs', { method: 'POST', body: { videoId }, signal }),
+    createBatch: (videoIds, { signal } = {}) =>
+      request('/v1/jobs/batches', { method: 'POST', body: { videoIds }, signal }),
+    getBatch: (batchId, { signal } = {}) =>
+      request(`/v1/jobs/batches/${encodeURIComponent(batchId)}`, { signal }),
+    cancelBatch: (batchId, { signal } = {}) =>
+      request(`/v1/jobs/batches/${encodeURIComponent(batchId)}`, {
+        method: 'DELETE',
+        signal
+      }),
     getJob: (jobId, { signal } = {}) =>
       request(`/v1/jobs/${encodeURIComponent(jobId)}`, { signal }),
     getResult: (videoId, { signal } = {}) =>

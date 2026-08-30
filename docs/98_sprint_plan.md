@@ -25,6 +25,7 @@ Sprint 17의 Apple Silicon 로컬 구현과 마감이즈커밍 연결을 완료�
 5. 완료: 마감이즈커밍 API Client·상태 UI·곡 지도 편집
 6. 완료: 로컬 통합 검증·문서·A1 배포 준비
 7. 완료: 독립 노동요 Lab·localStorage 저장·실제 1곡 분석과 수동 구간 복원 검증
+8. 완료: SQLite batch·결과 cache, Lab 전곡 분석 중단·재개 UI와 실제 5곡 시험 분석
 
 실제 A1 생성·배포·DNS 전환은 로컬 Task 완료 판정과 별개이며 아직 실행하지 않았다.
 

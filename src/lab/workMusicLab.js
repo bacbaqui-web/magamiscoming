@@ -1,5 +1,6 @@
 import { createWorkMusicAnalysisController } from '../features/workmusic/workMusicAnalysisController.js';
 import { createWorkMusicAnalysisView } from '../features/workmusic/workMusicAnalysisView.js';
+import { createWorkMusicBatchAnalysisController } from '../features/workmusic/workMusicBatchAnalysisController.js';
 import { createWorkMusicEngine } from '../features/workmusic/workMusicEngine.js';
 import {
   extractYoutubePlaylistId,
@@ -59,12 +60,57 @@ const elements = {
   volume: root.getElementById('workMusicVolumeRange'),
   volumeLabel: root.getElementById('workMusicVolumePercent'),
   seamless: root.getElementById('workMusicSeamlessRange'),
-  seamlessLabel: root.getElementById('workMusicSeamlessSeconds')
+  seamlessLabel: root.getElementById('workMusicSeamlessSeconds'),
+  batchPanel: root.getElementById('workMusicBatchAnalysisPanel'),
+  batchStatus: root.getElementById('workMusicBatchAnalysisStatus'),
+  batchMessage: root.getElementById('workMusicBatchAnalysisMessage'),
+  batchProgress: root.getElementById('workMusicBatchAnalysisProgress'),
+  batchCounts: root.getElementById('workMusicBatchAnalysisCounts'),
+  batchTest: root.getElementById('workMusicBatchAnalyzeTestBtn'),
+  batchAll: root.getElementById('workMusicBatchAnalyzeAllBtn'),
+  batchStop: root.getElementById('workMusicBatchStopBtn'),
+  batchResume: root.getElementById('workMusicBatchResumeBtn')
 };
 
 let analysisView = null;
 let playbackController = null;
 let seamlessController = null;
+let batchAnalysisController = null;
+
+const BATCH_STATUS_LABELS = {
+  disabled: '서버 꺼짐',
+  idle: '준비',
+  submitting: '등록 중',
+  running: '분석 중',
+  stopped: '중단됨',
+  succeeded: '완료',
+  completed_with_errors: '일부 실패',
+  unavailable: '연결 실패'
+};
+
+function renderBatchAnalysis(state) {
+  if (!elements.batchPanel) return;
+  const songs = engine.getActiveSongs();
+  const counts = state.counts || {};
+  const completed =
+    Number(counts.succeeded || 0) + Number(counts.failed || 0) + Number(counts.cancelled || 0);
+  const active = ['submitting', 'running'].includes(state.phase);
+  elements.batchPanel.dataset.phase = state.phase;
+  elements.batchStatus.textContent = BATCH_STATUS_LABELS[state.phase] || state.phase;
+  elements.batchMessage.textContent = state.message || '';
+  elements.batchProgress.max = String(Math.max(1, state.total || songs.length));
+  elements.batchProgress.value = String(completed);
+  elements.batchCounts.textContent = [
+    `완료 ${counts.succeeded || 0}`,
+    `대기 ${counts.queued || 0}`,
+    `진행 ${counts.running || 0}`,
+    `실패 ${counts.failed || 0}`
+  ].join(' · ');
+  elements.batchTest.disabled = active || !mediaAnalysisPort.enabled || !songs.length;
+  elements.batchAll.disabled = active || !mediaAnalysisPort.enabled || !songs.length;
+  elements.batchStop.disabled = !active;
+  elements.batchResume.disabled = active || !mediaAnalysisPort.enabled || state.total <= 0;
+}
 
 function persist() {
   const state = engine.getSnapshot();
@@ -82,6 +128,9 @@ function setFeedback(message = '') {
 }
 
 function renderList(songs, currentIndex) {
+  const batchJobs = new Map(
+    (batchAnalysisController?.getState().jobs || []).map((job) => [job.videoId, job.status])
+  );
   elements.count.textContent = `${songs.length}곡`;
   elements.list.replaceChildren();
   if (!songs.length) {
@@ -103,7 +152,18 @@ function renderList(songs, currentIndex) {
     const title = document.createElement('strong');
     title.textContent = song.title;
     const detail = document.createElement('span');
-    detail.textContent = song.mediaAnalysisManual ? '수동 구간 저장됨' : song.videoId;
+    const batchStatus = batchJobs.get(song.videoId);
+    detail.textContent = song.mediaAnalysisManual
+      ? '수동 구간 저장됨'
+      : batchStatus === 'succeeded'
+        ? '자동 분석 완료'
+        : batchStatus === 'running'
+          ? '분석 중'
+          : batchStatus === 'queued'
+            ? '분석 대기 중'
+            : batchStatus === 'failed'
+              ? '분석 실패'
+              : song.videoId;
     select.append(title, detail);
     const remove = document.createElement('button');
     remove.className = 'workmusic-lab-song-remove';
@@ -136,6 +196,7 @@ function render() {
   elements.seamless.value = String(state.seamlessOverlapSeconds);
   elements.seamlessLabel.textContent = `${state.seamlessOverlapSeconds}초`;
   analysisController.selectSong(song);
+  if (batchAnalysisController) renderBatchAnalysis(batchAnalysisController.getState());
 }
 
 function updateStoredDuration(player, index) {
@@ -172,6 +233,13 @@ const analysisController = createWorkMusicAnalysisController({
   }
 });
 analysisView = createWorkMusicAnalysisView({ root, controller: analysisController });
+batchAnalysisController = createWorkMusicBatchAnalysisController({
+  mediaAnalysisPort,
+  onChange: (state) => {
+    renderBatchAnalysis(state);
+    render();
+  }
+});
 
 playbackController = createWorkMusicPlaybackController({
   engine,
@@ -331,6 +399,19 @@ elements.volume.addEventListener('input', () =>
 elements.seamless.addEventListener('change', () =>
   playbackController.setSeamlessSeconds(elements.seamless.value)
 );
+elements.batchTest.addEventListener('click', () =>
+  batchAnalysisController.start(
+    engine
+      .getActiveSongs()
+      .slice(0, 5)
+      .map((song) => song.videoId)
+  )
+);
+elements.batchAll.addEventListener('click', () =>
+  batchAnalysisController.start(engine.getActiveSongs().map((song) => song.videoId))
+);
+elements.batchStop.addEventListener('click', () => batchAnalysisController.stop());
+elements.batchResume.addEventListener('click', () => batchAnalysisController.resume());
 
 setInterval(() => {
   const currentTime = playbackController.getCurrentTime();
@@ -342,6 +423,7 @@ setInterval(() => {
 }, 500);
 
 render();
+batchAnalysisController.restore();
 if (initialState.songs.length) {
   playbackController.loadAt(initialState.currentIndex, false);
 } else {

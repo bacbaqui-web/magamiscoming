@@ -2,7 +2,8 @@
 
 ## 상태
 
-OAuth·Firebase와 분리된 노동요 기능 검증 Lab을 추가하고 실제 로컬 분석을 확인했다.
+OAuth·Firebase와 분리된 노동요 Lab에 재시작 가능한 전곡 batch 분석 기반을 추가하고 실제
+5곡 시험 분석을 확인했다.
 
 ## 구현
 
@@ -32,14 +33,17 @@ OAuth·Firebase와 분리된 노동요 기능 검증 Lab을 추가하고 실제 
 - Lab에서 재생목록 URL을 영상 URL보다 먼저 판별하고 기존 재생목록 Controller로 전체 페이지를
   가져온다. 기존 localStorage 목록은 보존하며 같은 `videoId`는 중복 추가하지 않는다.
 - 사용자가 지정한 679곡 테스트 재생목록은 Lab의 로컬 목록이 비어 있을 때 자동으로 가져온다.
+- 분석 서버는 최대 100곡 batch 생성·상태·중단 API와 SQLite batch 복원을 제공한다. 현재
+  분석기 버전 결과가 있으면 재분석하지 않고 cache를 재사용한다.
+- Lab은 5곡 시험·전곡 분석, 진행률, 상태별 개수, queued 중단과 실패·취소 재개를 제공한다.
+  batch ID와 대상 videoId만 localStorage에 저장하고 상세 결과는 서버 SQLite에 둔다.
 - Lab의 시각 구조는 메인 노동요 탭의 좁은 다크 패널, 점선 입력, 5단 커버 흐름, 중앙 곡 정보,
   원형 재생 컨트롤과 분석·목록 패널을 기준으로 맞췄다.
 
 ## 검증과 미실행
 
-- backend pytest 39개, ruff check·format, pip check와
-  `python -m compileall -q src/media_analysis_service tests`가 통과했다.
-- frontend test 81개, ESLint, Prettier와 `git diff --check`가 통과했다.
+- backend pytest 42개와 ruff check·format이 통과했다.
+- frontend test 87개, ESLint, Prettier와 `git diff --check`가 통과했다.
 - Lab에서 YouTube 메타데이터 저장, 새로고침 후 1곡 복원, 실제 분석 완료(BPM 125.3,
   confidence 24%), 수동 드럼 시작 5초 저장·복원과 콘솔 오류 0건을 확인했다.
 - 인앱 브라우저의 테스트 영상은 YouTube iframe 재생을 거부했으므로 실제 브라우저 재생과 두 곡
@@ -48,6 +52,9 @@ OAuth·Firebase와 분리된 노동요 기능 검증 Lab을 추가하고 실제 
   결과는 `passed`다.
 - 공개 재생목록으로 50곡 초과 페이지네이션을 실제 확인했고 기존 1곡에 183곡을 추가해 총
   184곡이 로컬 목록에 표시되는 것을 확인했다.
+- 지정 재생목록의 첫 5곡 batch는 4곡 성공·1곡 `download_failed`였다. 성공 4곡은 SQLite 결과와
+  BPM·confidence 조회를 확인했고, 실패는 전체 batch를 막지 않았다. 679곡 전체 실행은 아직
+  시작하지 않았다.
 
 ## Git
 

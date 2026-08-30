@@ -27,20 +27,23 @@ Lab 페이지를 만든다.
 - 단일 영상뿐 아니라 공개 YouTube 재생목록 URL도 전체 페이지를 순회해 한 번에 추가한다.
   기존 로컬 목록을 유지하고 같은 영상은 중복 추가하지 않는다.
 - 기능 확인용 Lab의 목록이 비어 있으면 지정된 679곡 테스트 재생목록을 자동으로 가져온다.
+- 분석 서버에 최대 100곡 batch·SQLite 상태 복원·현재 분석기 결과 cache를 추가했다. Lab에는
+  5곡 시험·전곡 분석, 진행률, 중단·재개 UI를 연결했다.
 - Lab의 별도 대시보드 스타일을 제거하고 메인 노동요 탭의 800px 패널, 점선 링크 입력, 5단
   커버 흐름, 원형 재생 컨트롤과 회색 분석·목록 패널 디자인에 맞췄다.
 
 ## 검증 경계
 
-- backend pytest 39개와 ruff·pip check·
-  `python -m compileall -q src/media_analysis_service tests`가 통과했다.
-- frontend test 81개와 ESLint·Prettier·`git diff --check`가 통과했다.
+- backend pytest 42개와 ruff check·format이 통과했다.
+- frontend test 87개와 ESLint·Prettier·`git diff --check`가 통과했다.
 - Lab에서 목록의 localStorage 복원, 실제 1곡 분석 완료, BPM·confidence·드럼 구간 표시와 수동
   시작 5초 저장·새로고침 복원을 확인했다. 콘솔 오류는 없었다.
 - 인앱 브라우저에서 테스트 영상의 YouTube iframe 재생이 거부돼 실제 재생과 두 곡 청각 품질
   QA는 별도 사용자 브라우저 검증으로 남긴다.
 - 메인 노동요 빈 상태와 Lab을 같은 1280×720 viewport에서 비교했고 Design QA를 통과했다.
 - 공개 재생목록을 실제 입력해 183곡이 한 번에 추가되고 총 184곡으로 표시되는 것을 확인했다.
+- 지정 재생목록 첫 5곡을 실제 batch 분석해 4곡 성공·1곡 다운로드 실패를 확인했다. 성공 결과는
+  SQLite와 결과 API에서 조회되며 679곡 전체 분석은 아직 시작하지 않았다.
 
 ## Git
 

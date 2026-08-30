@@ -23,3 +23,26 @@ test('media analysis port accepts only a strict YouTube videoId', async () => {
     );
   }
 });
+
+test('media analysis port validates and deduplicates bounded batches', async () => {
+  const received = [];
+  const port = createMediaAnalysisPort({
+    adapter: {
+      enabled: true,
+      createBatch: async (values) => received.push(values),
+      getBatch: async () => ({}),
+      cancelBatch: async () => ({})
+    }
+  });
+
+  await port.createBatch(['dQw4w9WgXcQ', 'dQw4w9WgXcQ', 'M7lc1UVf-VE']);
+  assert.deepEqual(received, [['dQw4w9WgXcQ', 'M7lc1UVf-VE']]);
+  await assert.rejects(
+    Promise.resolve().then(() => port.createBatch([])),
+    TypeError
+  );
+  await assert.rejects(
+    Promise.resolve().then(() => port.createBatch(['https://youtu.be/dQw4w9WgXcQ'])),
+    TypeError
+  );
+});

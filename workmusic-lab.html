@@ -178,6 +178,30 @@
               <button id="workMusicAnalysisRestoreBtn" type="button" disabled>자동값 복원</button>
             </div>
           </section>
+
+          <section
+            id="workMusicBatchAnalysisPanel"
+            class="workmusic-batch-analysis-panel"
+            aria-label="전곡 분석"
+          >
+            <div class="workmusic-batch-analysis-header">
+              <div>
+                <strong>전곡 분석</strong>
+                <span id="workMusicBatchAnalysisStatus">준비</span>
+              </div>
+              <div class="workmusic-batch-analysis-actions">
+                <button id="workMusicBatchAnalyzeTestBtn" type="button">5곡 시험 분석</button>
+                <button id="workMusicBatchAnalyzeAllBtn" type="button">전곡 분석</button>
+                <button id="workMusicBatchStopBtn" type="button" disabled>중단</button>
+                <button id="workMusicBatchResumeBtn" type="button" disabled>재개</button>
+              </div>
+            </div>
+            <p id="workMusicBatchAnalysisMessage" aria-live="polite">
+              먼저 5곡 시험 분석을 실행해주세요.
+            </p>
+            <progress id="workMusicBatchAnalysisProgress" max="1" value="0"></progress>
+            <span id="workMusicBatchAnalysisCounts">완료 0 · 대기 0 · 진행 0 · 실패 0</span>
+          </section>
         </section>
 
         <aside class="workmusic-lab-list-panel">
@@ -190,6 +214,6 @@
       </section>
     </main>
     <script src="src/config.js"></script>
-    <script type="module" src="src/lab/workMusicLab.js?v=test-playlist-1"></script>
+    <script type="module" src="src/lab/workMusicLab.js?v=batch-analysis-1"></script>
   </body>
 </html>

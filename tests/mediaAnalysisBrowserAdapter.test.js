@@ -43,3 +43,22 @@ test('browser adapter converts fetch failure into a bounded unavailable error', 
     message: '분석 서버에 연결할 수 없습니다.'
   });
 });
+
+test('browser adapter exposes batch create, status and cancel requests', async () => {
+  const calls = [];
+  const adapter = createMediaAnalysisBrowserAdapter({
+    apiBaseUrl: 'http://127.0.0.1:8000',
+    async fetchImpl(url, options) {
+      calls.push({ url, options });
+      return { ok: true, json: async () => ({ batchId: 'batch-1', jobs: [] }) };
+    }
+  });
+
+  await adapter.createBatch(['dQw4w9WgXcQ']);
+  await adapter.getBatch('batch-1');
+  await adapter.cancelBatch('batch-1');
+
+  assert.equal(calls[0].options.body, JSON.stringify({ videoIds: ['dQw4w9WgXcQ'] }));
+  assert.equal(calls[1].url, 'http://127.0.0.1:8000/v1/jobs/batches/batch-1');
+  assert.equal(calls[2].options.method, 'DELETE');
+});

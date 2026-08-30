@@ -179,7 +179,7 @@ styles/
 - `ports/metadataPort.js`: AppAuthController 인증 상태를 기준으로 메타데이터 읽기·쓰기 Adapter 호출
 - `ports/filePort.js`: 기존 Drive 파일 검색, 폴더 준비, 업로드, 다운로드와 삭제 호출을 Adapter에 전달
 - `ports/youtubePort.js`: YouTube Player 생성·제어와 외부 메타데이터 요청을 Adapter에 전달
-- `ports/mediaAnalysisPort.js`: videoId·jobId 계약을 검증하고 분석 Adapter 호출을 전달
+- `ports/mediaAnalysisPort.js`: videoId·jobId·최대 100곡 batch 계약을 검증하고 분석 Adapter 호출을 전달
 - `services/firebaseMetadataStore.js`: Firebase SDK를 사용하는 Firestore 메타데이터 Adapter
 - `services/driveFiles.js`: File Port 뒤에서 Google Drive REST API를 호출하는 Drive File Adapter
 - `services/youtubeBrowserAdapter.js`: IFrame Player API와 YouTube HTTP 요청을 실행하는 브라우저 Adapter
@@ -188,6 +188,8 @@ styles/
 - `lab/workMusicLab.js`: Lab 전용 DOM, WorkMusic Engine·재생·분석·재생목록 Controller와
   localStorage 조립
 - `services/localWorkMusicStore.js`: Lab 곡 목록·수동 구간·재생 설정의 localStorage 직렬화 경계
+- `services/localWorkMusicBatchStore.js`: Lab batch ID·대상 videoId·재개 상태의 작은 localStorage 경계
+- `features/workmusic/workMusicBatchAnalysisController.js`: batch 분할 요청, 상태 집계, 중단·재개와 polling
 - `styles/workmusic-lab.css`: 독립 Lab 화면의 레이아웃과 반응형 스타일
 - `services/cloudSyncBackend.js`: Firebase·Drive 인증·저장 Lifecycle 구현과 Compatibility 렌더 요청
 - `services/cloudPersistenceHandlers.js`: 로그인 확인과 공통 저장 즉시 실행·예약 계약
@@ -238,6 +240,8 @@ styles/
   - `tests/workMusicAnalysisController.test.js`: 초기 빈 목록 상태, POST·poll·result, stale 차단과 수동 저장 시점
   - `tests/workMusicAnalysisHelper.test.js`: 수동 우선·신뢰도·고정 이어듣기 fallback 계산
   - `tests/localWorkMusicStore.test.js`: Lab 목록·수동 구간 저장과 손상 데이터 복구 계약
+  - `tests/localWorkMusicBatchStore.test.js`: batch 재개 상태 저장과 손상 데이터 복구 계약
+  - `tests/workMusicBatchAnalysisController.test.js`: 100곡 분할, 진행 집계와 새로고침 복원 계약
   - `tests/workMusicPlaylistController.test.js`: 재생목록 전체 페이지 순회, 비공개·중복 항목 제외 계약
   - `tests/driveFileAdapter.test.js`: 기존 Drive 폴더 이름과 업로드·다운로드·삭제 요청 계약
   - `tests/pomodoroHelper.test.js`: 시간 표시, 설정 범위와 날짜별 상태 정규화 계약

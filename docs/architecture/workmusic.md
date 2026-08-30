@@ -69,6 +69,13 @@ YouTube 기반 노동요 목록, 재생, 이어듣기와 저장 데이터의 현
   `videoId`는 건너뛴다.
 - 현재 기능 확인용 Lab은 지정된 테스트 재생목록을 기본값으로 사용하며, localStorage 목록이
   비어 있을 때만 자동으로 가져온다.
+- Lab의 전곡 분석은 `WorkMusicBatchAnalysisController`가 최대 100곡씩 batch 요청으로 나누고
+  서버의 단일 FIFO Worker를 그대로 사용한다. batch ID·대상 videoId·활성 상태만 별도
+  localStorage에 저장해 새로고침 후 polling을 재개하며, 상세 자동 결과는 분석 서버 SQLite에
+  둔다.
+- 중단은 queued 작업만 취소하고 실행 중인 한 곡은 안전하게 완료한다. 재개는 같은 대상 목록을
+  다시 제출해 현재 분석기 버전의 성공 cache와 실행 중 작업을 재사용하고 실패·취소 곡만 새로
+  대기시킨다.
 - detected 자동 분석값, YouTube Player와 타이머는 Lab에서도 런타임 상태이며 저장하지 않는다.
 - Lab 검증 결과를 이유로 자동 분석값을 메인 재생에 연결하지 않는다. 실제 청각 QA와 별도 승인
   후 검증된 계약만 메인 앱에 반영한다.
