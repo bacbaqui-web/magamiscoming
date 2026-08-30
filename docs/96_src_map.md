@@ -185,7 +185,8 @@ styles/
 - `services/youtubeBrowserAdapter.js`: IFrame Player API와 YouTube HTTP 요청을 실행하는 브라우저 Adapter
 - `services/mediaAnalysisBrowserAdapter.js`: 설정된 API Origin에만 JSON 분석 요청을 보내는 Browser Adapter
 - `workmusic-lab.html`: 로그인·Firebase 없이 노동요 분석과 이어듣기를 확인하는 독립 Lab 화면
-- `lab/workMusicLab.js`: Lab 전용 DOM, WorkMusic Engine·재생·분석 Controller와 localStorage 조립
+- `lab/workMusicLab.js`: Lab 전용 DOM, WorkMusic Engine·재생·분석·재생목록 Controller와
+  localStorage 조립
 - `services/localWorkMusicStore.js`: Lab 곡 목록·수동 구간·재생 설정의 localStorage 직렬화 경계
 - `styles/workmusic-lab.css`: 독립 Lab 화면의 레이아웃과 반응형 스타일
 - `services/cloudSyncBackend.js`: Firebase·Drive 인증·저장 Lifecycle 구현과 Compatibility 렌더 요청
@@ -237,6 +238,7 @@ styles/
   - `tests/workMusicAnalysisController.test.js`: 초기 빈 목록 상태, POST·poll·result, stale 차단과 수동 저장 시점
   - `tests/workMusicAnalysisHelper.test.js`: 수동 우선·신뢰도·고정 이어듣기 fallback 계산
   - `tests/localWorkMusicStore.test.js`: Lab 목록·수동 구간 저장과 손상 데이터 복구 계약
+  - `tests/workMusicPlaylistController.test.js`: 재생목록 전체 페이지 순회, 비공개·중복 항목 제외 계약
   - `tests/driveFileAdapter.test.js`: 기존 Drive 폴더 이름과 업로드·다운로드·삭제 요청 계약
   - `tests/pomodoroHelper.test.js`: 시간 표시, 설정 범위와 날짜별 상태 정규화 계약
   - `tests/pomodoroEngine.test.js`: 타이머 진행·일시정지·자동 단계 전환과 실행 중 복원 계약

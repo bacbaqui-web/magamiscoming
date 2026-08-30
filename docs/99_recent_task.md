@@ -29,6 +29,8 @@ OAuth·Firebase와 분리된 노동요 기능 검증 Lab을 추가하고 실제 
   쓰지 않는다.
 - Lab은 기존 WorkMusic Engine, Playback·Seamless·Analysis Controller와 Port·Adapter를 직접
   조립하며, 기존 WorkMusicComposer와 인증 Lifecycle은 사용하지 않는다.
+- Lab에서 재생목록 URL을 영상 URL보다 먼저 판별하고 기존 재생목록 Controller로 전체 페이지를
+  가져온다. 기존 localStorage 목록은 보존하며 같은 `videoId`는 중복 추가하지 않는다.
 - Lab의 시각 구조는 메인 노동요 탭의 좁은 다크 패널, 점선 입력, 5단 커버 흐름, 중앙 곡 정보,
   원형 재생 컨트롤과 분석·목록 패널을 기준으로 맞췄다.
 
@@ -36,13 +38,15 @@ OAuth·Firebase와 분리된 노동요 기능 검증 Lab을 추가하고 실제 
 
 - backend pytest 39개, ruff check·format, pip check와
   `python -m compileall -q src/media_analysis_service tests`가 통과했다.
-- frontend test 80개, ESLint, Prettier와 `git diff --check`가 통과했다.
+- frontend test 81개, ESLint, Prettier와 `git diff --check`가 통과했다.
 - Lab에서 YouTube 메타데이터 저장, 새로고침 후 1곡 복원, 실제 분석 완료(BPM 125.3,
   confidence 24%), 수동 드럼 시작 5초 저장·복원과 콘솔 오류 0건을 확인했다.
 - 인앱 브라우저의 테스트 영상은 YouTube iframe 재생을 거부했으므로 실제 브라우저 재생과 두 곡
   청각 전환은 미검증이다. Firebase는 Lab 범위 밖이며 호출하지 않았다.
 - 메인 노동요와 Lab의 빈 상태를 1280×720, DPR 1에서 캡처·비교했고 `design-qa.md`의 최종
   결과는 `passed`다.
+- 공개 재생목록으로 50곡 초과 페이지네이션을 실제 확인했고 기존 1곡에 183곡을 추가해 총
+  184곡이 로컬 목록에 표시되는 것을 확인했다.
 
 ## Git
 

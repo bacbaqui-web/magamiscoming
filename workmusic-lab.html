@@ -21,9 +21,13 @@
       </header>
 
       <form id="workMusicLabAddForm" class="workmusic-lab-add-form">
-        <label for="workMusicLabUrl">YouTube 링크 붙여넣기</label>
+        <label for="workMusicLabUrl">YouTube 영상 또는 재생목록 링크 붙여넣기</label>
         <div>
-          <input id="workMusicLabUrl" autocomplete="off" placeholder="https://youtu.be/..." />
+          <input
+            id="workMusicLabUrl"
+            autocomplete="off"
+            placeholder="https://www.youtube.com/playlist?list=..."
+          />
           <button type="submit">추가</button>
         </div>
         <p id="workMusicLabFeedback" class="workmusic-lab-feedback" aria-live="polite"></p>
@@ -185,6 +189,7 @@
         </aside>
       </section>
     </main>
+    <script src="src/config.js"></script>
     <script type="module" src="src/lab/workMusicLab.js"></script>
   </body>
 </html>

@@ -2,10 +2,13 @@ import { createWorkMusicAnalysisController } from '../features/workmusic/workMus
 import { createWorkMusicAnalysisView } from '../features/workmusic/workMusicAnalysisView.js';
 import { createWorkMusicEngine } from '../features/workmusic/workMusicEngine.js';
 import {
+  extractYoutubePlaylistId,
   extractYoutubeVideoId,
   formatWorkMusicDuration
 } from '../features/workmusic/workMusicHelper.js';
+import { createWorkMusicMetadataController } from '../features/workmusic/workMusicMetadataController.js';
 import { createWorkMusicPlaybackController } from '../features/workmusic/workMusicPlaybackController.js';
+import { createWorkMusicPlaylistController } from '../features/workmusic/workMusicPlaylistController.js';
 import { createWorkMusicSeamlessController } from '../features/workmusic/workMusicSeamlessController.js';
 import { createMediaAnalysisPort } from '../ports/mediaAnalysisPort.js';
 import { createYoutubePort } from '../ports/youtubePort.js';
@@ -20,6 +23,17 @@ const root = document;
 const initialState = loadLocalWorkMusicState();
 const engine = createWorkMusicEngine({ initialState });
 const youtubePort = createYoutubePort({ adapter: createYoutubeBrowserAdapter() });
+const metadataController = createWorkMusicMetadataController({
+  apiKey: window.APP_CONFIG?.youtubeApiKey || '',
+  root,
+  youtubePort
+});
+const playlistController = createWorkMusicPlaylistController({
+  fetchProxyText: async () => '',
+  metadataController,
+  parseFeed: () => ({ items: [] }),
+  parseHtml: () => ({ items: [] })
+});
 const mediaAnalysisPort = createMediaAnalysisPort({
   adapter: createMediaAnalysisBrowserAdapter({ apiBaseUrl: 'http://127.0.0.1:8000' })
 });
@@ -209,6 +223,46 @@ async function fetchMetadata(videoId) {
 
 elements.form.addEventListener('submit', async (event) => {
   event.preventDefault();
+  const playlistId = extractYoutubePlaylistId(elements.url.value);
+  if (playlistId) {
+    setFeedback('재생목록 전체를 불러오는 중입니다...');
+    const playlist = await playlistController.fetchPlaylist(playlistId);
+    if (!playlist.items.length) {
+      return setFeedback('재생목록을 불러오지 못했습니다. 공개 재생목록인지 확인해주세요.');
+    }
+    const state = engine.getSnapshot();
+    const existingVideoIds = new Set(state.songs.map((song) => song.videoId));
+    const importedAt = Date.now();
+    const additions = playlist.items
+      .filter((item) => !existingVideoIds.has(item.videoId))
+      .map((item, index) => ({
+        id: `${item.videoId}-${importedAt}-${index}`,
+        videoId: item.videoId,
+        title: item.title,
+        artist: item.artist || '',
+        thumbnail: item.thumbnail || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+        durationSeconds: Number(item.durationSeconds || 0),
+        workMusicTabId: 'default'
+      }));
+    if (!additions.length) {
+      return setFeedback(`재생목록 ${playlist.items.length}곡이 이미 모두 저장되어 있습니다.`);
+    }
+    const songs = [...state.songs, ...additions];
+    const firstAddedIndex = state.songs.length;
+    engine.setSongs(songs);
+    engine.setState('currentIndex', firstAddedIndex);
+    engine.rebuildPlayOrder();
+    elements.url.value = '';
+    persist();
+    render();
+    await playbackController.loadAt(firstAddedIndex, false);
+    const skippedCount = playlist.items.length - additions.length;
+    return setFeedback(
+      skippedCount
+        ? `${additions.length}곡을 저장했습니다. 중복 ${skippedCount}곡은 건너뛰었습니다.`
+        : `${additions.length}곡을 한 번에 저장했습니다.`
+    );
+  }
   const videoId = extractYoutubeVideoId(elements.url.value);
   if (!videoId) return setFeedback('올바른 YouTube URL 또는 11자리 videoId를 입력해주세요.');
   const state = engine.getSnapshot();
