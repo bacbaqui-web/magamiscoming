@@ -57,6 +57,17 @@ YouTube 기반 노동요 목록, 재생, 이어듣기와 저장 데이터의 현
 - 재생바 아래 분석 패널은 상태, BPM·신뢰도, beat/bar marker, 드럼 구간 편집을 표시한다.
   range drag 중에는 runtime draft만 바꾸고 drag 종료 또는 `수정 저장`에서만 저장한다.
 
+## 기능 검증 Lab 계약
+
+- `workmusic-lab.html`은 OAuth·Firebase·메인 AppComposer와 분리된 노동요 전용 검증 화면이다.
+- Lab은 기존 WorkMusic Engine, Playback·Seamless·Analysis Controller와 YouTube·Media Analysis
+  Port를 재사용하되 `WorkMusicComposer` 전체와 Cloud 저장 Lifecycle은 사용하지 않는다.
+- Lab 곡 목록, 현재 인덱스, 볼륨, 이어듣기 초와 `mediaAnalysisManual`은
+  `magamiscoming.workmusicLab.v1` localStorage에만 저장한다.
+- detected 자동 분석값, YouTube Player와 타이머는 Lab에서도 런타임 상태이며 저장하지 않는다.
+- Lab 검증 결과를 이유로 자동 분석값을 메인 재생에 연결하지 않는다. 실제 청각 QA와 별도 승인
+  후 검증된 계약만 메인 앱에 반영한다.
+
 ## 맡지 않는 책임
 
 - 노동요 기능은 Firebase와 Drive 중 어느 저장소를 사용할지 결정하지 않는다.

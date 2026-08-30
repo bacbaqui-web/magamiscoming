@@ -2,8 +2,8 @@
 
 ## 요청
 
-로컬 Media Analysis API와 마감이즈커밍 노동요 화면을 안전한 경계로 연결하고, 분석 결과를
-표시·수정·저장할 수 있게 한다.
+메인 앱 통합 전에 노동요 분석·스마트 이어듣기를 독립적으로 검증할 수 있는 localStorage 기반
+Lab 페이지를 만든다.
 
 ## 완료 결과
 
@@ -21,15 +21,19 @@
   분석 Controller도 첫 선택에서 `empty` 상태를 게시한다.
 - 로컬 Origin의 Google OAuth `origin_mismatch`를 피하면서 실제 계정 데이터를 시험할 수 있게
   운영 주소의 `?mediaAnalysis=local` 접속에서만 이 Mac의 로컬 분석 API를 사용한다.
+- `workmusic-lab.html`에서 로그인 없이 YouTube 목록 추가·재생 Controller·분석·수동 드럼 구간
+  보정을 확인할 수 있다. 목록과 수동값은 `magamiscoming.workmusicLab.v1` localStorage에만
+  저장하고 Firebase와 메인 앱 저장 데이터는 건드리지 않는다.
 
 ## 검증 경계
 
 - backend pytest 39개와 ruff·pip check·
   `python -m compileall -q src/media_analysis_service tests`가 통과했다.
-- frontend test 76개와 ESLint·Prettier·`git diff --check`가 통과했다.
-- 로컬 브라우저에서 빈 노동요 탭의 분석 상태 `곡 없음`, 분석 버튼 비활성,
-  `APP_CONFIG.mediaAnalysis.apiBaseUrl` 로컬 활성화와 콘솔 오류 없음을 확인했다.
-- 실제 Firebase 저장, YouTube 재생과 청각 품질 QA는 별도 수동 검증으로 남긴다.
+- frontend test 80개와 ESLint·Prettier·`git diff --check`가 통과했다.
+- Lab에서 목록의 localStorage 복원, 실제 1곡 분석 완료, BPM·confidence·드럼 구간 표시와 수동
+  시작 5초 저장·새로고침 복원을 확인했다. 콘솔 오류는 없었다.
+- 인앱 브라우저에서 테스트 영상의 YouTube iframe 재생이 거부돼 실제 재생과 두 곡 청각 품질
+  QA는 별도 사용자 브라우저 검증으로 남긴다.
 
 ## Git
 

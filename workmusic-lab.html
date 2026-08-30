@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>노동요 분석 Lab</title>
+    <link rel="stylesheet" href="styles/workmusic.css" />
+    <link rel="stylesheet" href="styles/workmusic-lab.css" />
+  </head>
+  <body>
+    <main class="workmusic-lab-shell">
+      <header class="workmusic-lab-header">
+        <div>
+          <span class="workmusic-lab-kicker">LOCAL FEATURE LAB</span>
+          <h1>노동요 분석·스마트 이어듣기</h1>
+          <p>로그인과 Firebase 없이 이 브라우저의 localStorage에만 저장합니다.</p>
+        </div>
+        <span id="workMusicLabSaveState" class="workmusic-lab-save-state">로컬 저장 준비</span>
+      </header>
+
+      <form id="workMusicLabAddForm" class="workmusic-lab-add-form">
+        <label for="workMusicLabUrl">YouTube URL 또는 videoId</label>
+        <div>
+          <input id="workMusicLabUrl" autocomplete="off" placeholder="https://youtu.be/..." />
+          <button type="submit">목록에 추가</button>
+        </div>
+        <p id="workMusicLabFeedback" class="workmusic-lab-feedback" aria-live="polite"></p>
+      </form>
+
+      <section class="workmusic-lab-grid">
+        <aside class="workmusic-lab-list-panel">
+          <div class="workmusic-lab-section-title">
+            <h2>로컬 목록</h2>
+            <span id="workMusicLabCount">0곡</span>
+          </div>
+          <div id="workMusicLabList" class="workmusic-lab-list"></div>
+        </aside>
+
+        <section class="workmusic-lab-player-panel">
+          <div class="workmusic-lab-current">
+            <img id="workMusicLabThumbnail" alt="현재 곡 썸네일" />
+            <div>
+              <span>현재 곡</span>
+              <h2 id="workMusicLabTitle">곡을 추가해주세요</h2>
+              <p id="workMusicLabArtist"></p>
+            </div>
+          </div>
+
+          <div id="workMusicPlayerBox" class="workmusic-lab-player"></div>
+
+          <div class="workmusic-lab-progress-row">
+            <span id="workMusicElapsedTime">0:00</span>
+            <input id="workMusicSeekRange" type="range" min="0" max="1" step="0.1" value="0" />
+            <span id="workMusicDurationTime">0:00</span>
+          </div>
+
+          <div class="workmusic-lab-controls">
+            <button id="workMusicPrevBtn" type="button">이전</button>
+            <button id="workMusicPlayBtn" class="primary" type="button">재생</button>
+            <button id="workMusicNextBtn" type="button">다음</button>
+            <label>
+              이어듣기
+              <input id="workMusicSeamlessRange" type="range" min="0" max="20" step="1" />
+              <b id="workMusicSeamlessSeconds">0초</b>
+            </label>
+            <label>
+              볼륨
+              <input id="workMusicVolumeRange" type="range" min="0" max="100" step="5" />
+              <b id="workMusicVolumePercent">80%</b>
+            </label>
+          </div>
+
+          <section
+            id="workMusicAnalysisPanel"
+            class="workmusic-analysis-panel"
+            aria-label="곡 분석"
+          >
+            <div class="workmusic-analysis-header">
+              <div>
+                <strong>곡 분석</strong>
+                <span id="workMusicAnalysisStatus" class="workmusic-analysis-status">준비 중</span>
+              </div>
+              <button id="workMusicAnalyzeBtn" class="workmusic-analysis-button" type="button">
+                분석
+              </button>
+            </div>
+            <p
+              id="workMusicAnalysisMessage"
+              class="workmusic-analysis-message"
+              aria-live="polite"
+            ></p>
+            <div class="workmusic-analysis-metrics" aria-label="분석 수치">
+              <span>BPM <b id="workMusicAnalysisBpm">—</b></span>
+              <span>신뢰도 <b id="workMusicAnalysisConfidence">—</b></span>
+              <span id="workMusicAnalysisSource">구간 없음</span>
+            </div>
+            <div class="workmusic-analysis-timeline">
+              <div
+                id="workMusicAnalysisMarkers"
+                class="workmusic-analysis-markers"
+                aria-label="비트와 마디 위치"
+              ></div>
+              <div id="workMusicDrumLane" class="workmusic-drum-lane">
+                <div class="workmusic-drum-highlight" aria-hidden="true"></div>
+                <input
+                  id="workMusicDrumStart"
+                  class="workmusic-drum-handle workmusic-drum-handle-start"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value="0"
+                  aria-label="드럼 시작 위치"
+                  disabled
+                />
+                <input
+                  id="workMusicDrumEnd"
+                  class="workmusic-drum-handle workmusic-drum-handle-end"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value="1"
+                  aria-label="드럼 종료 위치"
+                  disabled
+                />
+              </div>
+              <span id="workMusicDrumLabel" class="workmusic-drum-label">드럼 구간 —</span>
+            </div>
+            <div class="workmusic-analysis-actions">
+              <button id="workMusicAnalysisSaveBtn" type="button" disabled>수정 저장</button>
+              <button id="workMusicAnalysisRestoreBtn" type="button" disabled>자동값 복원</button>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="src/lab/workMusicLab.js"></script>
+  </body>
+</html>

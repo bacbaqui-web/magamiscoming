@@ -1,0 +1,287 @@
+import { createWorkMusicAnalysisController } from '../features/workmusic/workMusicAnalysisController.js';
+import { createWorkMusicAnalysisView } from '../features/workmusic/workMusicAnalysisView.js';
+import { createWorkMusicEngine } from '../features/workmusic/workMusicEngine.js';
+import {
+  extractYoutubeVideoId,
+  formatWorkMusicDuration
+} from '../features/workmusic/workMusicHelper.js';
+import { createWorkMusicPlaybackController } from '../features/workmusic/workMusicPlaybackController.js';
+import { createWorkMusicSeamlessController } from '../features/workmusic/workMusicSeamlessController.js';
+import { createMediaAnalysisPort } from '../ports/mediaAnalysisPort.js';
+import { createYoutubePort } from '../ports/youtubePort.js';
+import {
+  loadLocalWorkMusicState,
+  saveLocalWorkMusicState
+} from '../services/localWorkMusicStore.js';
+import { createMediaAnalysisBrowserAdapter } from '../services/mediaAnalysisBrowserAdapter.js';
+import { createYoutubeBrowserAdapter } from '../services/youtubeBrowserAdapter.js';
+
+const root = document;
+const initialState = loadLocalWorkMusicState();
+const engine = createWorkMusicEngine({ initialState });
+const youtubePort = createYoutubePort({ adapter: createYoutubeBrowserAdapter() });
+const mediaAnalysisPort = createMediaAnalysisPort({
+  adapter: createMediaAnalysisBrowserAdapter({ apiBaseUrl: 'http://127.0.0.1:8000' })
+});
+
+const elements = {
+  form: root.getElementById('workMusicLabAddForm'),
+  url: root.getElementById('workMusicLabUrl'),
+  feedback: root.getElementById('workMusicLabFeedback'),
+  list: root.getElementById('workMusicLabList'),
+  count: root.getElementById('workMusicLabCount'),
+  title: root.getElementById('workMusicLabTitle'),
+  artist: root.getElementById('workMusicLabArtist'),
+  thumbnail: root.getElementById('workMusicLabThumbnail'),
+  saveState: root.getElementById('workMusicLabSaveState'),
+  play: root.getElementById('workMusicPlayBtn'),
+  previous: root.getElementById('workMusicPrevBtn'),
+  next: root.getElementById('workMusicNextBtn'),
+  seek: root.getElementById('workMusicSeekRange'),
+  elapsed: root.getElementById('workMusicElapsedTime'),
+  duration: root.getElementById('workMusicDurationTime'),
+  volume: root.getElementById('workMusicVolumeRange'),
+  volumeLabel: root.getElementById('workMusicVolumePercent'),
+  seamless: root.getElementById('workMusicSeamlessRange'),
+  seamlessLabel: root.getElementById('workMusicSeamlessSeconds')
+};
+
+let analysisView = null;
+let playbackController = null;
+let seamlessController = null;
+
+function persist() {
+  const state = engine.getSnapshot();
+  saveLocalWorkMusicState({
+    songs: state.songs,
+    currentIndex: state.currentIndex,
+    volume: state.volume,
+    seamlessOverlapSeconds: state.seamlessOverlapSeconds
+  });
+  elements.saveState.textContent = '이 브라우저에 저장됨';
+}
+
+function setFeedback(message = '') {
+  elements.feedback.textContent = message;
+}
+
+function renderList(songs, currentIndex) {
+  elements.count.textContent = `${songs.length}곡`;
+  elements.list.replaceChildren();
+  if (!songs.length) {
+    const empty = document.createElement('p');
+    empty.className = 'workmusic-lab-empty';
+    empty.textContent = 'YouTube 링크를 추가하면 여기에 저장됩니다.';
+    elements.list.appendChild(empty);
+    return;
+  }
+  songs.forEach((song, index) => {
+    const row = document.createElement('div');
+    row.className = `workmusic-lab-song${index === currentIndex ? ' active' : ''}`;
+    const thumbnail = document.createElement('img');
+    thumbnail.alt = '';
+    thumbnail.src = song.thumbnail;
+    const select = document.createElement('button');
+    select.type = 'button';
+    select.dataset.select = String(index);
+    const title = document.createElement('strong');
+    title.textContent = song.title;
+    const detail = document.createElement('span');
+    detail.textContent = song.mediaAnalysisManual ? '수동 구간 저장됨' : song.videoId;
+    select.append(title, detail);
+    const remove = document.createElement('button');
+    remove.className = 'workmusic-lab-song-remove';
+    remove.type = 'button';
+    remove.dataset.remove = String(index);
+    remove.setAttribute('aria-label', '목록에서 삭제');
+    remove.textContent = '삭제';
+    row.append(thumbnail, select, remove);
+    elements.list.appendChild(row);
+  });
+}
+
+function render() {
+  const state = engine.getSnapshot();
+  const songs = engine.getActiveSongs();
+  const song = songs[state.currentIndex] || null;
+  renderList(songs, state.currentIndex);
+  elements.title.textContent = song?.title || '곡을 추가해주세요';
+  elements.artist.textContent = song?.artist || '';
+  elements.thumbnail.src = song?.thumbnail || '';
+  elements.thumbnail.hidden = !song;
+  elements.play.textContent = state.isPlaying ? '일시정지' : '재생';
+  elements.play.disabled = !song;
+  elements.previous.disabled = songs.length < 2;
+  elements.next.disabled = songs.length < 2;
+  elements.volume.value = String(state.volume);
+  elements.volumeLabel.textContent = `${state.volume}%`;
+  elements.seamless.value = String(state.seamlessOverlapSeconds);
+  elements.seamlessLabel.textContent = `${state.seamlessOverlapSeconds}초`;
+  analysisController.selectSong(song);
+}
+
+function updateStoredDuration(player, index) {
+  const durationSeconds = Number(player?.getDuration?.() || 0);
+  if (durationSeconds <= 0) return;
+  const state = engine.getSnapshot();
+  const active = engine.getActiveSongs()[index];
+  engine.setSongs(
+    state.songs.map((song) =>
+      song.id === active?.id ? { ...song, durationSeconds: Math.round(durationSeconds) } : song
+    )
+  );
+  persist();
+  render();
+}
+
+const analysisController = createWorkMusicAnalysisController({
+  mediaAnalysisPort,
+  onChange: (state) => analysisView?.render(state),
+  async saveManual({ songId, videoId, manual }) {
+    const state = engine.getSnapshot();
+    engine.setSongs(
+      state.songs.map((song) => {
+        const matches = songId != null ? song.id === songId : song.videoId === videoId;
+        if (!matches) return song;
+        const next = { ...song };
+        if (manual) next.mediaAnalysisManual = { ...manual };
+        else delete next.mediaAnalysisManual;
+        return next;
+      })
+    );
+    persist();
+    render();
+  }
+});
+analysisView = createWorkMusicAnalysisView({ root, controller: analysisController });
+
+playbackController = createWorkMusicPlaybackController({
+  engine,
+  youtubePort,
+  root,
+  notify: setFeedback,
+  render,
+  save: persist,
+  actions: {
+    onReady: updateStoredDuration,
+    onStateChange(event) {
+      if (event?.data === 0) playbackController.next();
+      else if (event?.data === 1 || event?.data === 2) {
+        engine.setState('isPlaying', event.data === 1);
+        render();
+      }
+    }
+  }
+});
+seamlessController = createWorkMusicSeamlessController({
+  engine,
+  playbackController,
+  youtubePort,
+  root,
+  render
+});
+playbackController.setSeamlessController(seamlessController);
+
+async function fetchMetadata(videoId) {
+  const fallback = {
+    title: `YouTube ${videoId}`,
+    artist: '',
+    thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+  };
+  try {
+    const url = new URL('https://www.youtube.com/oembed');
+    url.searchParams.set('url', `https://www.youtube.com/watch?v=${videoId}`);
+    url.searchParams.set('format', 'json');
+    const response = await youtubePort.fetchResponse(url.href, { cache: 'no-store' });
+    if (!response.ok) return fallback;
+    const data = await response.json();
+    return {
+      title: String(data.title || fallback.title),
+      artist: String(data.author_name || ''),
+      thumbnail: String(data.thumbnail_url || fallback.thumbnail)
+    };
+  } catch (_error) {
+    return fallback;
+  }
+}
+
+elements.form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const videoId = extractYoutubeVideoId(elements.url.value);
+  if (!videoId) return setFeedback('올바른 YouTube URL 또는 11자리 videoId를 입력해주세요.');
+  const state = engine.getSnapshot();
+  const duplicateIndex = state.songs.findIndex((song) => song.videoId === videoId);
+  if (duplicateIndex >= 0) {
+    engine.setState('currentIndex', duplicateIndex);
+    persist();
+    render();
+    await playbackController.loadAt(duplicateIndex, false);
+    return setFeedback('이미 저장된 곡으로 이동했습니다.');
+  }
+  setFeedback('YouTube 정보를 확인하는 중입니다...');
+  const metadata = await fetchMetadata(videoId);
+  const songs = [
+    ...state.songs,
+    {
+      id: `${videoId}-${Date.now()}`,
+      videoId,
+      ...metadata,
+      durationSeconds: 0,
+      workMusicTabId: 'default'
+    }
+  ];
+  engine.setSongs(songs);
+  engine.setState('currentIndex', songs.length - 1);
+  engine.rebuildPlayOrder();
+  elements.url.value = '';
+  persist();
+  render();
+  await playbackController.loadAt(songs.length - 1, false);
+  setFeedback('로컬 목록에 저장했습니다.');
+});
+
+elements.list.addEventListener('click', async (event) => {
+  const select = event.target.closest('[data-select]');
+  const remove = event.target.closest('[data-remove]');
+  if (select) {
+    const index = Number(select.dataset.select);
+    engine.setState('currentIndex', index);
+    persist();
+    render();
+    await playbackController.loadAt(index, false);
+  } else if (remove) {
+    const index = Number(remove.dataset.remove);
+    const state = engine.getSnapshot();
+    const songs = state.songs.filter((_song, songIndex) => songIndex !== index);
+    playbackController.destroy();
+    engine.setSongs(songs);
+    engine.setState('currentIndex', Math.min(index, Math.max(0, songs.length - 1)));
+    engine.rebuildPlayOrder();
+    persist();
+    render();
+    if (songs.length) await playbackController.loadAt(engine.getSnapshot().currentIndex, false);
+  }
+});
+
+elements.play.addEventListener('click', () => playbackController.toggle());
+elements.previous.addEventListener('click', () => playbackController.previous());
+elements.next.addEventListener('click', () => playbackController.next());
+elements.seek.addEventListener('input', () => playbackController.seek(elements.seek.value));
+elements.volume.addEventListener('input', () =>
+  playbackController.setVolume(elements.volume.value)
+);
+elements.seamless.addEventListener('change', () =>
+  playbackController.setSeamlessSeconds(elements.seamless.value)
+);
+
+setInterval(() => {
+  const currentTime = playbackController.getCurrentTime();
+  const duration = playbackController.getDuration();
+  elements.seek.max = String(Math.max(1, duration));
+  elements.seek.value = String(Math.min(duration || 0, currentTime));
+  elements.elapsed.textContent = formatWorkMusicDuration(currentTime);
+  elements.duration.textContent = formatWorkMusicDuration(duration);
+}, 500);
+
+render();
+if (initialState.songs.length) playbackController.loadAt(initialState.currentIndex, false);

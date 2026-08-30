@@ -1,0 +1,274 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter,
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #101214;
+  color: #f5f7f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #23282d, #101214 46%);
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  border: 1px solid #3a4148;
+  border-radius: 10px;
+  background: #252a2f;
+  color: inherit;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+button:hover {
+  border-color: #dc3535;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+button.primary,
+.workmusic-lab-add-form button {
+  background: #dc3535;
+  border-color: #dc3535;
+}
+
+.workmusic-lab-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 56px;
+}
+.workmusic-lab-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.workmusic-lab-header h1 {
+  margin: 4px 0 8px;
+  font-size: clamp(26px, 4vw, 42px);
+}
+.workmusic-lab-header p,
+.workmusic-lab-current p {
+  margin: 0;
+  color: #aeb6bd;
+}
+.workmusic-lab-kicker {
+  color: #ff6767;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+.workmusic-lab-save-state {
+  border: 1px solid #343b41;
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #aeb6bd;
+  font-size: 13px;
+}
+
+.workmusic-lab-add-form,
+.workmusic-lab-list-panel,
+.workmusic-lab-player-panel {
+  border: 1px solid #30363c;
+  border-radius: 18px;
+  background: rgba(24, 28, 31, 0.94);
+}
+.workmusic-lab-add-form {
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.workmusic-lab-add-form label {
+  display: block;
+  font-size: 13px;
+  color: #c1c7cc;
+  margin-bottom: 8px;
+}
+.workmusic-lab-add-form > div {
+  display: flex;
+  gap: 10px;
+}
+.workmusic-lab-add-form input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #3a4148;
+  border-radius: 10px;
+  background: #111416;
+  color: inherit;
+  padding: 12px;
+}
+.workmusic-lab-feedback {
+  min-height: 20px;
+  margin: 8px 0 0;
+  color: #ff8b8b;
+  font-size: 13px;
+}
+
+.workmusic-lab-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 18px;
+}
+.workmusic-lab-list-panel,
+.workmusic-lab-player-panel {
+  padding: 18px;
+}
+.workmusic-lab-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.workmusic-lab-section-title h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.workmusic-lab-section-title span {
+  color: #929aa1;
+  font-size: 13px;
+}
+.workmusic-lab-list {
+  display: grid;
+  gap: 8px;
+}
+.workmusic-lab-empty {
+  color: #8d969d;
+  padding: 28px 12px;
+  text-align: center;
+}
+.workmusic-lab-song {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: #20252a;
+  color: inherit;
+  text-align: left;
+}
+.workmusic-lab-song.active {
+  border-color: #dc3535;
+  background: #2b2224;
+}
+.workmusic-lab-song img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.workmusic-lab-song strong,
+.workmusic-lab-song span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workmusic-lab-song span {
+  color: #9da5ac;
+  font-size: 12px;
+}
+.workmusic-lab-song-remove {
+  padding: 7px 9px;
+  color: #ff8585;
+}
+
+.workmusic-lab-current {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.workmusic-lab-current img {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #111;
+}
+.workmusic-lab-current span {
+  color: #8f989f;
+  font-size: 12px;
+}
+.workmusic-lab-current h2 {
+  margin: 3px 0;
+  font-size: 20px;
+}
+.workmusic-lab-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #090a0b;
+}
+.workmusic-lab-progress-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  color: #aab2b8;
+  font-size: 12px;
+}
+.workmusic-lab-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.workmusic-lab-controls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-left: 1px solid #343a40;
+  padding-left: 12px;
+  color: #aeb6bd;
+  font-size: 12px;
+}
+.workmusic-lab-controls input[type='range'] {
+  width: 96px;
+}
+
+.workmusic-analysis-panel {
+  margin-top: 0;
+}
+.workmusic-player-backstage,
+.workmusic-youtube-slot {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 780px) {
+  .workmusic-lab-shell {
+    width: min(100% - 20px, 680px);
+    padding-top: 18px;
+  }
+  .workmusic-lab-header {
+    display: block;
+  }
+  .workmusic-lab-save-state {
+    display: inline-block;
+    margin-top: 12px;
+  }
+  .workmusic-lab-grid {
+    grid-template-columns: 1fr;
+  }
+  .workmusic-lab-add-form > div {
+    flex-direction: column;
+  }
+}

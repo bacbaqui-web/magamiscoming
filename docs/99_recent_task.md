@@ -2,7 +2,7 @@
 
 ## 상태
 
-Media Analysis API와 노동요 분석 편집 UI를 Port·Adapter·Controller 경계로 연결했다.
+OAuth·Firebase와 분리된 노동요 기능 검증 Lab을 추가하고 실제 로컬 분석을 확인했다.
 
 ## 구현
 
@@ -24,15 +24,21 @@ Media Analysis API와 노동요 분석 편집 UI를 Port·Adapter·Controller �
 - Google OAuth에 등록된 커스텀 운영 Origin에서 로그인한 채 로컬 분석 서버를 시험할 수 있도록
   `?mediaAnalysis=local` 테스트 모드를 추가했다. 쿼리가 없는 일반 운영 접속은 계속
   비활성이다.
+- `workmusic-lab.html`은 노동요 목록·현재 인덱스·볼륨·이어듣기 초와 사용자가 보정한
+  `mediaAnalysisManual`만 전용 localStorage에 저장한다. Firebase와 메인 앱 데이터는 읽거나
+  쓰지 않는다.
+- Lab은 기존 WorkMusic Engine, Playback·Seamless·Analysis Controller와 Port·Adapter를 직접
+  조립하며, 기존 WorkMusicComposer와 인증 Lifecycle은 사용하지 않는다.
 
 ## 검증과 미실행
 
 - backend pytest 39개, ruff check·format, pip check와
   `python -m compileall -q src/media_analysis_service tests`가 통과했다.
-- frontend test 76개, ESLint, Prettier와 `git diff --check`가 통과했다.
-- 로컬 브라우저 빈 노동요 화면에서 분석 상태 `곡 없음`, 분석 버튼 비활성, 로컬 분석 API
-  설정과 콘솔 오류 없음을 확인했다.
-- 실제 Firebase 저장, YouTube IFrame 재생과 청각 품질 확인은 수행하지 않았다.
+- frontend test 80개, ESLint, Prettier와 `git diff --check`가 통과했다.
+- Lab에서 YouTube 메타데이터 저장, 새로고침 후 1곡 복원, 실제 분석 완료(BPM 125.3,
+  confidence 24%), 수동 드럼 시작 5초 저장·복원과 콘솔 오류 0건을 확인했다.
+- 인앱 브라우저의 테스트 영상은 YouTube iframe 재생을 거부했으므로 실제 브라우저 재생과 두 곡
+  청각 전환은 미검증이다. Firebase는 Lab 범위 밖이며 호출하지 않았다.
 
 ## Git
 
