@@ -109,7 +109,9 @@ function render() {
   elements.artist.textContent = song?.artist || '';
   elements.thumbnail.src = song?.thumbnail || '';
   elements.thumbnail.hidden = !song;
-  elements.play.textContent = state.isPlaying ? '일시정지' : '재생';
+  elements.play.classList.toggle('is-playing', state.isPlaying);
+  elements.play.setAttribute('aria-label', state.isPlaying ? '일시정지' : '재생');
+  elements.play.title = state.isPlaying ? '일시정지' : '재생';
   elements.play.disabled = !song;
   elements.previous.disabled = songs.length < 2;
   elements.next.disabled = songs.length < 2;

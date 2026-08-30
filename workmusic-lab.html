@@ -10,43 +10,48 @@
   <body>
     <main class="workmusic-lab-shell">
       <header class="workmusic-lab-header">
-        <div>
-          <span class="workmusic-lab-kicker">LOCAL FEATURE LAB</span>
-          <h1>노동요 분석·스마트 이어듣기</h1>
-          <p>로그인과 Firebase 없이 이 브라우저의 localStorage에만 저장합니다.</p>
+        <div class="workmusic-lab-title-row">
+          <h1>노동요</h1>
+          <span class="workmusic-lab-kicker">기능 확인용</span>
         </div>
-        <span id="workMusicLabSaveState" class="workmusic-lab-save-state">로컬 저장 준비</span>
+        <div class="workmusic-lab-local-state">
+          <span>로그인 없이 이 브라우저에만 저장</span>
+          <b id="workMusicLabSaveState">로컬 저장 준비</b>
+        </div>
       </header>
 
       <form id="workMusicLabAddForm" class="workmusic-lab-add-form">
-        <label for="workMusicLabUrl">YouTube URL 또는 videoId</label>
+        <label for="workMusicLabUrl">YouTube 링크 붙여넣기</label>
         <div>
           <input id="workMusicLabUrl" autocomplete="off" placeholder="https://youtu.be/..." />
-          <button type="submit">목록에 추가</button>
+          <button type="submit">추가</button>
         </div>
         <p id="workMusicLabFeedback" class="workmusic-lab-feedback" aria-live="polite"></p>
       </form>
 
-      <section class="workmusic-lab-grid">
-        <aside class="workmusic-lab-list-panel">
-          <div class="workmusic-lab-section-title">
-            <h2>로컬 목록</h2>
-            <span id="workMusicLabCount">0곡</span>
-          </div>
-          <div id="workMusicLabList" class="workmusic-lab-list"></div>
-        </aside>
-
+      <section class="workmusic-lab-stage">
         <section class="workmusic-lab-player-panel">
+          <div class="workmusic-lab-cover-flow" aria-label="현재 곡과 이전·다음 곡 커버">
+            <div class="workmusic-lab-cover far">♪</div>
+            <div class="workmusic-lab-cover near">♪</div>
+            <div class="workmusic-lab-cover current">
+              <img id="workMusicLabThumbnail" alt="현재 곡 썸네일" />
+              <span>♪</span>
+            </div>
+            <div class="workmusic-lab-cover near">♪</div>
+            <div class="workmusic-lab-cover far">♪</div>
+          </div>
+
           <div class="workmusic-lab-current">
-            <img id="workMusicLabThumbnail" alt="현재 곡 썸네일" />
             <div>
-              <span>현재 곡</span>
               <h2 id="workMusicLabTitle">곡을 추가해주세요</h2>
               <p id="workMusicLabArtist"></p>
             </div>
           </div>
 
-          <div id="workMusicPlayerBox" class="workmusic-lab-player"></div>
+          <div class="workmusic-player-backstage" aria-hidden="true">
+            <div id="workMusicPlayerBox"></div>
+          </div>
 
           <div class="workmusic-lab-progress-row">
             <span id="workMusicElapsedTime">0:00</span>
@@ -54,10 +59,47 @@
             <span id="workMusicDurationTime">0:00</span>
           </div>
 
-          <div class="workmusic-lab-controls">
-            <button id="workMusicPrevBtn" type="button">이전</button>
-            <button id="workMusicPlayBtn" class="primary" type="button">재생</button>
-            <button id="workMusicNextBtn" type="button">다음</button>
+          <div class="workmusic-lab-controls" aria-label="재생 컨트롤">
+            <button
+              id="workMusicPrevBtn"
+              class="workmusic-lab-icon-button"
+              type="button"
+              aria-label="이전 재생"
+              title="이전 재생"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M6 5h2v14H6zM19 6.2v11.6c0 .8-.9 1.3-1.6.8L9.2 12l8.2-6.6c.7-.5 1.6 0 1.6.8z"
+                />
+              </svg>
+            </button>
+            <button
+              id="workMusicPlayBtn"
+              class="workmusic-lab-icon-button primary"
+              type="button"
+              aria-label="재생"
+              title="재생"
+            >
+              <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+              <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              </svg>
+            </button>
+            <button
+              id="workMusicNextBtn"
+              class="workmusic-lab-icon-button"
+              type="button"
+              aria-label="다음 재생"
+              title="다음 재생"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path
+                  d="M16 5h2v14h-2zM5 6.2v11.6c0 .8.9 1.3 1.6.8l8.2-6.6-8.2-6.6c-.7-.5-1.6 0-1.6.8z"
+                />
+              </svg>
+            </button>
             <label>
               이어듣기
               <input id="workMusicSeamlessRange" type="range" min="0" max="20" step="1" />
@@ -133,6 +175,14 @@
             </div>
           </section>
         </section>
+
+        <aside class="workmusic-lab-list-panel">
+          <div class="workmusic-lab-section-title">
+            <h2>재생 목록</h2>
+            <span id="workMusicLabCount">0곡</span>
+          </div>
+          <div id="workMusicLabList" class="workmusic-lab-list"></div>
+        </aside>
       </section>
     </main>
     <script type="module" src="src/lab/workMusicLab.js"></script>
