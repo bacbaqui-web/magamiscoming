@@ -20,6 +20,8 @@ import { createMediaAnalysisBrowserAdapter } from '../services/mediaAnalysisBrow
 import { createYoutubeBrowserAdapter } from '../services/youtubeBrowserAdapter.js';
 
 const root = document;
+const DEFAULT_TEST_PLAYLIST_URL =
+  'https://youtube.com/playlist?list=PL63xrS6vfdgO3Yz6hIVRgn2SfYcYx-siI';
 const initialState = loadLocalWorkMusicState();
 const engine = createWorkMusicEngine({ initialState });
 const youtubePort = createYoutubePort({ adapter: createYoutubeBrowserAdapter() });
@@ -340,4 +342,9 @@ setInterval(() => {
 }, 500);
 
 render();
-if (initialState.songs.length) playbackController.loadAt(initialState.currentIndex, false);
+if (initialState.songs.length) {
+  playbackController.loadAt(initialState.currentIndex, false);
+} else {
+  elements.url.value = DEFAULT_TEST_PLAYLIST_URL;
+  elements.form.requestSubmit();
+}
