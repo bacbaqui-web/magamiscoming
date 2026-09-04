@@ -1987,6 +1987,22 @@ body {
   padding: 4px 8px;
   font-size: 0.75rem;
 }
+.workmusic-model-section {
+  position: absolute;
+  top: 0;
+  height: 20px;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  border-left: 1px solid #b3b9bf;
+  background: rgba(30, 35, 40, 0.8);
+  color: #fff;
+  font-size: 0.65rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.workmusic-model-section.chorus_candidate {
+  background: rgba(93, 58, 130, 0.85);
+}
 .workmusic-precision-waveform {
   position: relative;
   overflow: hidden;

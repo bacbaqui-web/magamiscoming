@@ -70,7 +70,7 @@ export function createWorkMusicAnalysisView({ root = document, controller, onSee
     const waveform = Array.isArray(result?.waveform) ? result.waveform.slice(0, 1000) : [];
     let sections = duration > 0 && Array.isArray(result?.sections) ? result.sections : [];
     const repetition =
-      sections.filter((s) => s.label === 'chorus_candidate').length < 2
+      !result?.structureModel && sections.filter((s) => s.label === 'chorus_candidate').length < 2
         ? findWaveformRepetitions(result)
         : [];
     if (repetition.length >= 2) sections = repetition;
@@ -86,7 +86,7 @@ export function createWorkMusicAnalysisView({ root = document, controller, onSee
       region.style.left = `${(start / duration) * 100}%`;
       region.style.width = `${((end - start) / duration) * 100}%`;
       region.textContent = repetition.length >= 2 ? '반복 후렴 후보' : labels[kind] || '';
-      region.title = `${region.textContent} ${formatSeconds(start)}–${formatSeconds(end)} · 추정 신뢰도 ${Math.round(Number(section.confidence || 0) * 100)}%`;
+      region.title = `${region.textContent} ${formatSeconds(start)}–${formatSeconds(end)}${section.confidence == null ? '' : ` · 추정 신뢰도 ${Math.round(Number(section.confidence) * 100)}%`}`;
       fragment.appendChild(region);
     });
     waveform.forEach((value, index) => {

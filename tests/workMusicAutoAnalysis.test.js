@@ -11,11 +11,29 @@ const current = (videoId) => ({
   analyzerVersion: '0.3.0',
   structureVersion: '1.0',
   waveformDetailVersion: '1.0',
+  structureAttemptVersion: '1.0',
   durationSeconds: 200,
   waveform: [0, 0.5, 1],
   sections: [],
   drumStart: 10,
   drumEnd: 190
+});
+
+test('model verse labels override early-chorus heuristic and fallback attempt is current', () => {
+  const result = {
+    ...current('model'),
+    structureModel: 'all-in-one-mlx-1.0.6',
+    sections: [
+      { start: 0, end: 5, label: 'verse' },
+      { start: 5, end: 15, label: 'chorus_candidate' },
+      { start: 30, end: 45, label: 'chorus_candidate' }
+    ]
+  };
+  assert.equal(suggestVerseEnd(result, { drumStart: 0, drumEnd: 190 }).value, 15);
+  result.sections[0].label = 'intro';
+  assert.equal(suggestVerseEnd(result, { drumStart: 0, drumEnd: 190 }).value, 45);
+  assert.equal(isCurrentAnalysis({ ...result, structureAttemptVersion: undefined }), false);
+  assert.equal(isCurrentAnalysis({ ...result, structureModel: null }), true);
 });
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 

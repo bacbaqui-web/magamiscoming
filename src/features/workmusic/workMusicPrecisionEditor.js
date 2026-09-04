@@ -213,6 +213,28 @@ export function createWorkMusicPrecisionEditor({
     playhead.setAttribute('fill', '#ffbc4d');
     svg.appendChild(playhead);
     lane.appendChild(svg);
+    if (state?.detected?.structureModel) {
+      const names = {
+        intro: '인트로',
+        verse: '벌스',
+        chorus_candidate: '후렴',
+        bridge: '브릿지',
+        outro: '아웃트로',
+        inst: '간주'
+      };
+      for (const section of state.detected.sections || []) {
+        if (!names[section.label] || section.end <= start || section.start >= end) continue;
+        const region = doc.createElement('span');
+        const left = Math.max(start, section.start),
+          right = Math.min(end, section.end);
+        region.className = `workmusic-model-section ${section.label}`;
+        region.style.left = `${((left - start) / (end - start)) * 100}%`;
+        region.style.width = `${((right - left) / (end - start)) * 100}%`;
+        region.textContent = names[section.label];
+        region.title = `${names[section.label]} 추정 · ${time(section.start)}–${time(section.end)}`;
+        lane.appendChild(region);
+      }
+    }
     project();
   }
   function schedule() {
@@ -381,7 +403,7 @@ export function createWorkMusicPrecisionEditor({
   return {
     renderPlayback,
     render(next) {
-      const signature = `${next.videoId}:${next.detected?.durationSeconds || 0}:${next.detected?.waveformDetailVersion || ''}`;
+      const signature = `${next.videoId}:${next.detected?.durationSeconds || 0}:${next.detected?.waveformDetailVersion || ''}:${next.detected?.structureAttemptVersion || ''}:${next.detected?.structureModel || ''}`;
       const changed = signature !== version;
       const newSong = state?.videoId !== next.videoId;
       state = next;

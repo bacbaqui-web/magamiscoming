@@ -21,6 +21,7 @@ export function isCurrentAnalysis(result) {
     (version[0] > 0 || (version[0] === 0 && version[1] >= 3)) &&
     result?.structureVersion === '1.0' &&
     result?.waveformDetailVersion === '1.0' &&
+    result?.structureAttemptVersion === '1.0' &&
     Number(result.durationSeconds) > 0 &&
     Array.isArray(result.waveform) &&
     result.waveform.length > 0 &&
@@ -42,7 +43,8 @@ export function suggestVerseEnd(result, range) {
   if (!range) return null;
   const { drumStart: start, drumEnd: end } = range;
   const spectral = (result?.sections || []).filter((s) => s.label === 'chorus_candidate');
-  const waveformFallback = spectral.length < 2;
+  const modelStructure = result?.structureModel === 'all-in-one-mlx-1.0.6';
+  const waveformFallback = !modelStructure && spectral.length < 2;
   const repeated = waveformFallback ? findWaveformRepetitions(result) : [];
   const sections = (
     repeated.length >= 2
@@ -63,7 +65,13 @@ export function suggestVerseEnd(result, range) {
   const opening = Math.max(Number(result?.drumStart) || 0, introEnd);
   const first = choruses[0];
   const openingWindow = Math.max(12, Math.min(30, Number(result?.durationSeconds || 0) * 0.12));
-  const chorusOpening = first && first.start <= opening + openingWindow;
+  const verseBefore =
+    first &&
+    sections.some(
+      (s) => s.label === 'verse' && s.start < first.start && s.end <= first.start + 0.01
+    );
+  const chorusOpening =
+    first && (modelStructure ? !verseBefore : first.start <= opening + openingWindow);
   const selected = chorusOpening ? choruses[1] : first;
   const value = selected?.end ?? (start + end) / 2;
   return {
