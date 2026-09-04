@@ -15,11 +15,12 @@ export function createWorkMusicPrecisionEditor({
   const label = root.getElementById('workMusicZoomLabel');
   const status = root.getElementById('workMusicPrecisionLabel');
   const seek = root.getElementById('workMusicSeekRange');
+  const durationLabel = root.getElementById('workMusicSeekEndTime');
   const playbackLine = root.getElementById('workMusicPlaybackLine');
   const timeLabels = {
-    drumStart: [root.getElementById('workMusicDrumStartTime'), '인트로 끝'],
-    verseEnd: [root.getElementById('workMusicVerseEndTime'), '1절'],
-    drumEnd: [root.getElementById('workMusicDrumEndTime'), '아웃트로 시작']
+    drumStart: root.getElementById('workMusicDrumStartTime'),
+    verseEnd: root.getElementById('workMusicVerseEndTime'),
+    drumEnd: root.getElementById('workMusicDrumEndTime')
   };
   const buttons = Object.fromEntries(
     ['In', 'Out', 'Reset', 'Left', 'Right'].map((key) => [
@@ -80,12 +81,12 @@ export function createWorkMusicPrecisionEditor({
       input.value = String(value);
       input.style.visibility = value < start || value > end ? 'hidden' : '';
       overview.style.setProperty(KEYS[key], `${((value - start) / width) * 100}%`);
-      const [caption, name] = timeLabels[key] || [];
+      const caption = timeLabels[key];
       if (caption) {
         caption.hidden = !state?.draft || value < start || value > end;
-        caption.textContent = `${name} ${time(value)}`;
+        caption.textContent = time(value);
         const x = ((value - start) / width) * pixelWidth;
-        const labelWidth = Math.min(140, pixelWidth);
+        const labelWidth = Math.min(80, pixelWidth);
         const left = Math.max(0, Math.min(pixelWidth - labelWidth, x - labelWidth / 2));
         let row = 0;
         while (occupied.some((item) => item.row === row && Math.abs(item.left - left) < labelWidth))
@@ -120,6 +121,13 @@ export function createWorkMusicPrecisionEditor({
     if ((scrub || Date.now() < previewUntil) && next?.videoId === playback?.videoId)
       next = playback;
     playback = next;
+    if (durationLabel) {
+      const total = duration();
+      durationLabel.textContent =
+        Number.isFinite(total) && total > 0
+          ? `${Math.floor(total / 60)}:${String(Math.floor(total % 60)).padStart(2, '0')}`
+          : '—:—';
+    }
     if (!(end > start) && duration() > 0) {
       start = 0;
       end = duration();
@@ -397,6 +405,7 @@ export function createWorkMusicPrecisionEditor({
         }
       }
       project();
+      if (!(end > start)) renderPlayback(playback);
     }
   };
 }

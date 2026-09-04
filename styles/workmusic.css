@@ -1712,7 +1712,7 @@ body {
   --drum-end: 100%;
   --verse-end: 50%;
   height: auto;
-  margin: 24px 9px 22px;
+  margin: 46px 9px 22px;
   overflow: visible;
 }
 .workmusic-progress-row[hidden],
@@ -1731,6 +1731,20 @@ body {
   background: transparent;
   z-index: 4;
   cursor: ew-resize;
+}
+.workmusic-seek-endpoint {
+  position: absolute;
+  top: -40px;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: #c8c8c8;
+  pointer-events: none;
+}
+.workmusic-seek-start-time {
+  left: -9px;
+}
+.workmusic-seek-end-time {
+  right: -9px;
 }
 .workmusic-waveform-seek::-webkit-slider-runnable-track {
   height: 2px;

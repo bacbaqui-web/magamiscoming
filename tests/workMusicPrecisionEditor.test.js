@@ -43,6 +43,7 @@ function setup(getWaveform) {
     'ZoomLeft',
     'ZoomRight',
     'SeekRange',
+    'SeekEndTime',
     'PlaybackLine',
     'DrumStartTime',
     'DrumEndTime',
@@ -155,18 +156,29 @@ test('waveform click and slider seek use viewport seconds; middle drag pans with
   assert.equal(seek.max, '100');
 });
 
+test('duration endpoint follows song changes and clears unknown duration', () => {
+  const f = setup();
+  assert.equal(f.elements.workMusicSeekEndTime.textContent, '1:40');
+  f.editor.render({ videoId: 'b', detected: { durationSeconds: 190.8 }, draft: null });
+  assert.equal(f.elements.workMusicSeekEndTime.textContent, '3:10');
+  f.editor.render({ videoId: 'c', detected: null, draft: null });
+  assert.equal(f.elements.workMusicSeekEndTime.textContent, '—:—');
+});
+
 test('time captions follow edits, avoid overlap and hide outside zoom', async () => {
   const f = setup();
   await f.request();
   const start = f.elements.workMusicDrumStartTime;
   const verse = f.elements.workMusicVerseEndTime;
-  assert.equal(start.textContent, '인트로 끝 0:10.00');
+  assert.equal(start.textContent, '0:10.00');
+  assert.equal(f.elements.workMusicSeekEndTime.textContent, '1:40');
   const previous = start.style.left;
   f.editor.render({ ...f.state, draft: { drumStart: 49, verseEnd: 50, drumEnd: 51 } });
   assert.notEqual(start.style.left, previous);
   assert.notEqual(start.style.top, verse.style.top);
   f.editor.render(f.state);
   f.click('In');
+  assert.equal(f.elements.workMusicSeekEndTime.textContent, '1:40');
   assert.equal(start.hidden, true);
   assert.equal(verse.hidden, false);
   assert.equal(f.elements.workMusicPrecisionLabel.hidden, true);
