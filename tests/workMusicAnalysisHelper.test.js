@@ -7,7 +7,7 @@ import {
   normalizeAnalysisRange
 } from '../src/features/workmusic/workMusicAnalysisHelper.js';
 
-test('DJ aligns green boundaries and caps incoming at ten and outgoing at four seconds', () => {
+test('DJ previews the next intro for up to ten seconds and mutes the previous song at green', () => {
   for (const outro of [0, 0.15, 1, 4, 12, 30]) {
     for (const intro of [0, 0.25, 3, 15, 40]) {
       for (const late of [0, 0.5, 10]) {
@@ -21,7 +21,8 @@ test('DJ aligns green boundaries and caps incoming at ten and outgoing at four s
         assert.equal(plan.boundarySeconds, 100 - outro);
         assert.equal(plan.triggerAtSeconds + plan.introSeconds, plan.boundarySeconds);
         assert.ok(plan.introSeconds <= intro && plan.introSeconds <= 10);
-        assert.ok(Math.abs(plan.outroSeconds - Math.min(4, outro)) < 1e-9);
+        assert.equal(plan.outroSeconds, 0);
+        assert.equal(plan.crossfadeSeconds, plan.introSeconds);
         assert.equal(plan.nextStartSeconds - intro, late);
       }
     }
@@ -43,8 +44,8 @@ test('DJ uses displayed cached range, but saved edits take priority; verse is no
   input.currentSong.mediaAnalysisManual = { drumStart: 10, drumEnd: 85, verseEnd: 40 };
   assert.equal(calculateDjTransitionPlan(input).boundarySeconds, 85);
   assert.equal(calculateDjTransitionPlan({ ...input, verseMode: true }).boundarySeconds, 40);
-  assert.equal(calculateDjTransitionPlan(input).outroSeconds, 4);
-  assert.equal(calculateDjTransitionPlan({ ...input, verseMode: true }).outroSeconds, 4);
+  assert.equal(calculateDjTransitionPlan(input).outroSeconds, 0);
+  assert.equal(calculateDjTransitionPlan({ ...input, verseMode: true }).outroSeconds, 0);
   assert.deepEqual(normalizeAnalysisRange({ drumStart: 10, drumEnd: 85, verseEnd: 200 }), {
     drumStart: 10,
     drumEnd: 85,

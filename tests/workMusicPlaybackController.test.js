@@ -97,10 +97,10 @@ test('SeamlessController는 두 곡 수동 구간으로 실제 전환 시작 시
       triggerAtSeconds: 70,
       boundarySeconds: 80,
       introSeconds: 10,
-      outroSeconds: 4,
+      outroSeconds: 0,
       nextStartSeconds: 0,
       nextGreenStart: 10,
-      crossfadeSeconds: 14
+      crossfadeSeconds: 10
     }
   );
 });
@@ -276,7 +276,7 @@ test('SeamlessController가 monitor, standby 재생과 fade 완료를 실행한�
     ensureIframeApi: async () => {},
     createPlayer(_id, options) {
       const player = {
-        current: options.videoId === 'video-a' ? 91 : 0,
+        current: options.videoId === 'video-a' ? 80 : 0,
         duration: 100,
         volume: 0,
         getCurrentTime() {
@@ -343,7 +343,7 @@ test('SeamlessController가 monitor, standby 재생과 fade 완료를 실행한�
   assert.equal(players[1].player.volume, 80);
 });
 
-test('zero-head DJ starts next green immediately while the outgoing tail fades; seek cancels', async () => {
+test('zero-head DJ switches immediately at green without an outgoing tail', async () => {
   const players = [];
   const engine = createWorkMusicEngine({
     initialState: {
@@ -396,11 +396,10 @@ test('zero-head DJ starts next green immediately while the outgoing tail fades; 
   });
   await controller.create(0, true);
   assert.equal(controller.monitor(), true);
-  assert.equal(players[0].paused, undefined);
-  assert.equal(engine.getSnapshot().currentIndex, 0);
+  assert.equal(players[0].paused, true);
+  assert.equal(engine.getSnapshot().currentIndex, 1);
   assert.equal(players[1].volume, 80);
-  assert.equal(controller.getState().transitioning, true);
+  assert.equal(controller.getState().transitioning, false);
   controller.cancelTransition();
   assert.equal(controller.getState().transitioning, false);
-  assert.equal(players[0].volume, 80);
 });
