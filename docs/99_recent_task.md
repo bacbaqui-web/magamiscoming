@@ -10,9 +10,10 @@
   이어서 추적한다. 서버는 브라우저와 별개로 순서대로 처리하며 결과 cache를 유지한다.
 - `GET /v1/jobs/queue` 계약을 로컬·Oracle 서비스에 추가했다. 기존 Firebase 인증·재생·자동 분석값
   미적용·기본 Oracle 주소는 유지한다. 로컬 사용 주소는 `https://magamiscom.ing/?mediaAnalysis=local`다.
-- 검증: 프런트엔드 94개 테스트, backend 65개 테스트. FIFO 동시 실행 최대 1, 중복·취소 집계,
+- 검증: 프런트엔드 95개 테스트, backend 65개 테스트. FIFO 동시 실행 최대 1, 중복·취소 집계,
   곡 전환 중 POST 유지·결과 오염 방지·활성 작업 복원·큐 오류 안내·View 버튼 상태를 확인했다.
   로컬 실제 API에서 health·큐 조회와 기존 성공 결과의 cache 재사용을 확인했다.
+- 복원된 작업이 먼저 완료된 뒤 이전 결과 조회가 늦게 도착해도 완료 화면을 덮어쓰지 않도록 검증했다.
 - ESLint·Prettier·Ruff·쉘 문법·diff 검사를 실행했다. 실제 로그인 브라우저 클릭·시각 QA는 남아 있다.
   Oracle YouTube 접근 제한은 이번 큐 기능과 별개로 남아 있다.
 - 로컬·Oracle에 반영했다. Oracle에서도 테스트 65개·Ruff가 통과했고 공개 health 200,

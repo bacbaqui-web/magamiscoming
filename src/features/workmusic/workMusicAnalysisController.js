@@ -111,9 +111,9 @@ export function createWorkMusicAnalysisController({
   async function loadExisting(version, videoId, signal) {
     try {
       const result = await mediaAnalysisPort.getResult(videoId, { signal });
-      if (isCurrent(version, videoId)) applyDetected(result);
+      if (!signal.aborted && isCurrent(version, videoId)) applyDetected(result);
     } catch (error) {
-      if (error?.name === 'AbortError' || !isCurrent(version, videoId)) return;
+      if (signal.aborted || error?.name === 'AbortError' || !isCurrent(version, videoId)) return;
       if (error?.status === 404) {
         state = { ...state, phase: 'idle', message: '분석 결과가 없습니다.' };
       } else {
@@ -188,6 +188,7 @@ export function createWorkMusicAnalysisController({
   }
 
   async function followJob(videoId, existingJob) {
+    if (currentSong?.videoId === videoId) abortController?.abort();
     const operation = {
       state: { phase: existingJob?.status || 'submitting', message: '분석 큐에 등록 중...' }
     };

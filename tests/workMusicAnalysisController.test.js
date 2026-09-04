@@ -127,6 +127,45 @@ test('queue lookup failure is not reported as an empty queue', async () => {
   }
 });
 
+test('late initial result lookup cannot overwrite a recovered job completion', async () => {
+  let rejectInitial;
+  let calls = 0;
+  let finished = false;
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: {
+      enabled: true,
+      getQueue: async () => ({
+        queuedCount: 0,
+        runningCount: finished ? 0 : 1,
+        activeJob: finished ? null : { jobId: 'existing', status: 'running' }
+      }),
+      getJob: async () => {
+        finished = true;
+        return { status: 'succeeded' };
+      },
+      getResult: async () => {
+        calls += 1;
+        if (calls > 1) return result;
+        return new Promise((_resolve, reject) => {
+          rejectInitial = reject;
+        });
+      }
+    },
+    wait: async () => {}
+  });
+  try {
+    const selecting = controller.selectSong(song);
+    await flush();
+    assert.equal(controller.getState().phase, 'succeeded');
+    rejectInitial(Object.assign(new Error('not found'), { status: 404 }));
+    await selecting;
+    assert.equal(controller.getState().phase, 'succeeded');
+    assert.equal(controller.getState().detected.videoId, song.videoId);
+  } finally {
+    controller.destroy();
+  }
+});
+
 test('analysis rejects over ten minutes but accepts exactly ten minutes', async () => {
   let calls = 0;
   const controller = createWorkMusicAnalysisController({
