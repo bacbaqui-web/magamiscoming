@@ -28,10 +28,14 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
     const save = drag?.moved && event?.type !== 'pointercancel';
     drag = null;
     doc.removeEventListener?.('pointermove', move);
-    doc.removeEventListener?.('pointerup', stopDrag);
-    doc.removeEventListener?.('pointercancel', stopDrag);
-    win?.removeEventListener?.('blur', stopDrag);
+    doc.removeEventListener?.('pointerup', endDrag);
+    doc.removeEventListener?.('pointercancel', endDrag);
+    win?.removeEventListener?.('blur', endDrag);
     if (save) void controller.commitDraft();
+  }
+  function endDrag(event) {
+    stopDrag(event);
+    close();
   }
   function close() {
     stopDrag({ type: 'pointercancel' });
@@ -154,9 +158,9 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
         moved: false
       };
       doc.addEventListener?.('pointermove', move);
-      doc.addEventListener?.('pointerup', stopDrag);
-      doc.addEventListener?.('pointercancel', stopDrag);
-      win?.addEventListener?.('blur', stopDrag);
+      doc.addEventListener?.('pointerup', endDrag);
+      doc.addEventListener?.('pointercancel', endDrag);
+      win?.addEventListener?.('blur', endDrag);
     });
     input?.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {

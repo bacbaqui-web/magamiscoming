@@ -113,6 +113,8 @@ test('pointerdown opens immediately without a position jump; detailed range save
   assert.equal(f.state().draft.verseEnd, 50);
   f.root.fire('pointerup');
   assert.equal(f.pending.size, 0);
+  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
+  f.inputs.verseEnd.fire('keydown', { key: 'Enter' });
   assert.equal(f.elements.workMusicPrecisionPanel.hidden, false);
   range.value = '50.01';
   range.fire('input');
@@ -125,7 +127,7 @@ test('pointerdown opens immediately without a position jump; detailed range save
   assert.equal(f.inputs.verseEnd.focused, true);
 });
 
-test('release/cancel/blur end drag and leave detail visible; song change closes it', () => {
+test('release/cancel/blur and song change restore the full waveform', () => {
   for (const stop of ['pointerup', 'pointercancel', 'blur', 'song']) {
     const f = setup();
     f.inputs.drumStart.fire('pointerdown', { button: 0, clientX: 0, clientY: 0 });
@@ -135,7 +137,7 @@ test('release/cancel/blur end drag and leave detail visible; song change closes 
     else f.root.fire(stop);
     f.advance(100);
     assert.equal(f.pending.size, 0);
-    assert.equal(f.elements.workMusicPrecisionPanel.hidden, stop === 'song', stop);
+    assert.equal(f.elements.workMusicPrecisionPanel.hidden, true, stop);
     const original = f.state().draft.drumStart;
     f.root.fire('pointermove', { clientX: 300 });
     assert.equal(f.state().draft.drumStart, original);
@@ -150,6 +152,7 @@ test('original handle drag uses the zoomed scale and commits once on release', (
   assert.equal(f.state().draft.drumStart, 10);
   f.root.fire('pointerup');
   assert.equal(f.commits(), 1);
+  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
   assert.equal(f.elements.workMusicPrecisionWaveform.children.length, 1);
   assert.equal(f.elements.workMusicPrecisionWaveform.children[0].children.length, 2);
 });
