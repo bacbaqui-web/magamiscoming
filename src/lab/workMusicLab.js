@@ -416,6 +416,8 @@ elements.batchResume.addEventListener('click', () => batchAnalysisController.res
 setInterval(() => {
   const currentTime = playbackController.getCurrentTime();
   const duration = playbackController.getDuration();
+  const videoId = playbackController.getPlayer()?.getVideoData?.()?.video_id || '';
+  analysisView?.renderPlayback({ videoId, currentTime, duration });
   elements.seek.max = String(Math.max(1, duration));
   elements.seek.value = String(Math.min(duration || 0, currentTime));
   elements.elapsed.textContent = formatWorkMusicDuration(currentTime);

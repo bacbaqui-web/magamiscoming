@@ -22,6 +22,10 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   const confidence = root.getElementById('workMusicAnalysisConfidence');
   const source = root.getElementById('workMusicAnalysisSource');
   const markerLane = root.getElementById('workMusicAnalysisMarkers');
+  const playbackLabel = root.getElementById('workMusicAnalysisPlayback');
+  let selectedVideoId = '';
+  let analysisDuration = 0;
+  let playback = null;
   const drumLane = root.getElementById('workMusicDrumLane');
   const drumStart = root.getElementById('workMusicDrumStart');
   const drumEnd = root.getElementById('workMusicDrumEnd');
@@ -60,9 +64,34 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     markerLane.appendChild(fragment);
   }
 
+  function renderPlayback(next) {
+    playback = next;
+    if (!markerLane) return;
+    const duration = analysisDuration || Number(next?.duration || 0);
+    const time = Number(next?.currentTime);
+    const valid =
+      !!selectedVideoId &&
+      next?.videoId === selectedVideoId &&
+      Number.isFinite(duration) &&
+      duration > 0 &&
+      Number.isFinite(time);
+    markerLane.dataset.playback = String(valid);
+    const current = valid ? Math.max(0, Math.min(duration, time)) : 0;
+    markerLane.style.setProperty(
+      '--playback-position',
+      `${valid ? (current / duration) * 100 : 0}%`
+    );
+    if (playbackLabel)
+      playbackLabel.textContent = valid
+        ? `재생 위치 ${formatSeconds(current)} / ${formatSeconds(duration)}`
+        : '재생 위치 —';
+  }
+
   function render(state) {
     if (!panel) return;
     const result = state.detected;
+    selectedVideoId = state.videoId || '';
+    analysisDuration = Math.max(0, Number(result?.durationSeconds || 0));
     const duration = Math.max(0, Number(result?.durationSeconds || 0));
     const draft = state.draft;
     panel.dataset.phase = state.phase;
@@ -91,6 +120,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     if (source)
       source.textContent = state.manual ? '수동 구간 사용' : result ? '자동 분석값' : '구간 없음';
     renderMarkers(result);
+    renderPlayback(playback);
 
     const hasDraft = !!draft && duration > 0;
     [drumStart, drumEnd].forEach((input) => {
@@ -123,5 +153,5 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   saveButton?.addEventListener('click', () => controller.commitDraft());
   restoreButton?.addEventListener('click', () => controller.restoreDetected());
 
-  return { render };
+  return { render, renderPlayback };
 }

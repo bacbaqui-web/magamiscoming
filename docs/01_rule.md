@@ -54,4 +54,7 @@
 - 정적 검사는 실제 Firebase, Drive, 파일 선택, YouTube 재생과 청각 QA를 대신하지 않는다.
 - 실행하지 않은 외부 환경 검증은 미검증으로 명시한다.
 - Task가 끝나면 `docs/99_recent_task.md`와 `current_task.md`를 갱신한다.
+- 사용자의 상시 승인에 따라 이 프로젝트의 요청된 수정은 검증 후 별도 확인 질문 없이
+  관련 파일만 커밋·푸시하고 GitHub Pages 배포 결과까지 확인한다. 분석·설명만 요청한 경우에는
+  적용하지 않는다. 무관한 변경·비밀값은 제외하며 검사 실패·충돌·새로운 위험이 있으면 보고한다.
 - Sprint가 끝나면 Architecture, Source Map과 `docs/completed/` 기록을 동기화한다.

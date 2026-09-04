@@ -150,7 +150,7 @@ styles/
 - `features/workmusic/workMusicPlaylistController.js`: YouTube 재생목록 요청 진입점
 - `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 수동 분석 pair의 시작 시각, 고정 겹침 fallback, 대기 곡 cue, monitor, fade와 전환 완료 실행
 - `features/workmusic/workMusicAnalysisController.js`: 곡별 큐 등록·백그라운드 추적·서버 큐 집계·활성 작업 복원, 결과 cache와 수동 구간 저장 요청
-- `features/workmusic/workMusicAnalysisView.js`: 분석 상태·서버 실행/대기 수·marker lane·드럼 구간 handle 렌더와 편집 이벤트
+- `features/workmusic/workMusicAnalysisView.js`: 분석 상태·서버 실행/대기 수·marker lane·재생 위치선·드럼 구간 handle 렌더와 편집 이벤트
 - `features/workmusic/workMusicAnalysisHelper.js`: 분석 구간 검증과 수동·자동·고정 전환 계획 순수 계산
 - `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서 순수 계산
 - `features/clipviewer.js`: CLIP Engine·Composer·Controller와 외부 기능을 조립하고 공개 호환 계약을 연결하는 진입점

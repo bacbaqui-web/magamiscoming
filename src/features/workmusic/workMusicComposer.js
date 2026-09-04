@@ -693,6 +693,7 @@ export function createWorkMusicComposer({
     const duration = Math.max(0, playerDuration || Number(song?.durationSeconds || 0));
     const current = Math.max(0, Math.min(elapsed, duration || elapsed));
     const percent = duration > 0 ? Math.min(100, (current / duration) * 100) : 0;
+    analysisView?.renderPlayback({ videoId: playerVideoId, currentTime: current, duration });
     if (workMusicElapsedTime)
       workMusicElapsedTime.textContent = formatWorkMusicDuration(current) || '0:00';
     if (workMusicDurationTime)
