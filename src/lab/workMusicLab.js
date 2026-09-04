@@ -241,7 +241,11 @@ const analysisController = createWorkMusicAnalysisController({
     render();
   }
 });
-analysisView = createWorkMusicAnalysisView({ root, controller: analysisController });
+analysisView = createWorkMusicAnalysisView({
+  root,
+  controller: analysisController,
+  onSeek: (seconds) => playbackController.seek(seconds)
+});
 autoAnalysis = createWorkMusicAutoAnalysisController({
   mediaAnalysisPort,
   onResult: (result) => analysisController.acceptResult(result),
@@ -423,7 +427,6 @@ elements.list.addEventListener('click', async (event) => {
 elements.play.addEventListener('click', () => playbackController.toggle());
 elements.previous.addEventListener('click', () => playbackController.previous());
 elements.next.addEventListener('click', () => playbackController.next());
-elements.seek.addEventListener('input', () => playbackController.seek(elements.seek.value));
 elements.volume.addEventListener('input', () =>
   playbackController.setVolume(elements.volume.value)
 );
@@ -449,8 +452,6 @@ setInterval(() => {
   const duration = playbackController.getDuration();
   const videoId = getWorkMusicPlaybackVideoId(playbackController.getPlayer());
   analysisView?.renderPlayback({ videoId, currentTime, duration });
-  elements.seek.max = String(Math.max(1, duration));
-  elements.seek.value = String(Math.min(duration || 0, currentTime));
   elements.elapsed.textContent = formatWorkMusicDuration(currentTime);
   elements.duration.textContent = formatWorkMusicDuration(duration);
 }, 500);

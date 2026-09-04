@@ -1712,8 +1712,82 @@ body {
   --drum-end: 100%;
   --verse-end: 50%;
   height: auto;
-  margin: 4px 9px 22px;
+  margin: 24px 9px 22px;
   overflow: visible;
+}
+.workmusic-progress-row[hidden],
+.workmusic-lab-progress-row[hidden] {
+  display: none;
+}
+.workmusic-drum-lane > .workmusic-waveform-seek {
+  position: absolute;
+  top: -18px;
+  left: -9px;
+  width: calc(100% + 18px);
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  z-index: 4;
+  cursor: ew-resize;
+}
+.workmusic-waveform-seek::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #555;
+}
+.workmusic-waveform-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: #ffbc4d;
+  border: 0;
+}
+.workmusic-waveform-seek::-moz-range-track {
+  height: 2px;
+  background: #555;
+}
+.workmusic-waveform-seek::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffbc4d;
+  border: 0;
+}
+.workmusic-waveform-seek[data-offscreen='true']::-webkit-slider-thumb {
+  opacity: 0.25;
+}
+.workmusic-waveform-seek[data-offscreen='true']::-moz-range-thumb {
+  opacity: 0.25;
+}
+.workmusic-boundary-line,
+.workmusic-waveform-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: #4ec48e;
+  z-index: 2;
+  pointer-events: none;
+}
+.workmusic-boundary-start {
+  left: var(--drum-start);
+}
+.workmusic-boundary-end {
+  left: var(--drum-end);
+}
+.workmusic-waveform-playhead {
+  background: #ffbc4d;
+}
+.workmusic-drum-lane[data-start-visible='false'] .workmusic-boundary-start,
+.workmusic-drum-lane[data-end-visible='false'] .workmusic-boundary-end {
+  display: none;
+}
+.workmusic-drum-lane[data-panning='true'] {
+  cursor: grabbing;
 }
 .workmusic-drum-highlight {
   position: absolute;
@@ -1770,7 +1844,7 @@ body {
   background: #fff;
   transform: translateX(-50%);
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
 }
 .workmusic-verse-line span {
   position: absolute;

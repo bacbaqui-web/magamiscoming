@@ -14,7 +14,7 @@ const STATUS_LABELS = {
   unavailable: '서버 연결 안 됨'
 };
 
-export function createWorkMusicAnalysisView({ root = document, controller }) {
+export function createWorkMusicAnalysisView({ root = document, controller, onSeek }) {
   const documentFactory = typeof root.createElement === 'function' ? root : root.ownerDocument;
   const panel = root.getElementById('workMusicAnalysisPanel');
   const status = root.getElementById('workMusicAnalysisStatus');
@@ -42,7 +42,8 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   const precisionEditor = createWorkMusicPrecisionEditor({
     root,
     inputs: { drumStart, drumEnd, verseEnd },
-    controller
+    controller,
+    onSeek
   });
 
   const formatSeconds = (value) => {

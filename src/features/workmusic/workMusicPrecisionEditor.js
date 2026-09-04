@@ -1,13 +1,21 @@
 const ZOOMS = [1, 2, 3, 5, 8, 12, 20, 32, 64];
 const KEYS = { drumStart: '--drum-start', drumEnd: '--drum-end', verseEnd: '--verse-end' };
 
-export function createWorkMusicPrecisionEditor({ root, inputs, controller, timers = globalThis }) {
+export function createWorkMusicPrecisionEditor({
+  root,
+  inputs,
+  controller,
+  onSeek,
+  timers = globalThis
+}) {
   const doc = typeof root.createElement === 'function' ? root : root.ownerDocument;
   const overview = root.getElementById('workMusicDrumLane');
   const panel = root.getElementById('workMusicPrecisionPanel');
   const lane = root.getElementById('workMusicPrecisionWaveform');
   const label = root.getElementById('workMusicZoomLabel');
   const status = root.getElementById('workMusicPrecisionLabel');
+  const seek = root.getElementById('workMusicSeekRange');
+  const playbackLine = root.getElementById('workMusicPlaybackLine');
   const timeLabels = {
     drumStart: [root.getElementById('workMusicDrumStartTime'), '인트로 끝'],
     verseEnd: [root.getElementById('workMusicVerseEndTime'), '1절'],
@@ -21,6 +29,14 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
   );
   if (!overview || !panel || !lane) return { render() {}, renderPlayback() {} };
   overview.appendChild(panel);
+  if (seek) {
+    overview.appendChild(seek);
+    seek.classList?.add('workmusic-waveform-seek');
+    seek.setAttribute('aria-label', '음파 재생 위치');
+  }
+  let scrub = false,
+    previewUntil = 0,
+    drag = null;
   let state,
     version = '',
     zoomIndex = 0,
@@ -34,7 +50,7 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
     playback = null;
   let green = null,
     playhead = null;
-  const duration = () => Number(state?.detected?.durationSeconds || 0);
+  const duration = () => Number(state?.detected?.durationSeconds || playback?.duration || 0);
   const svgNode = (tag) =>
     doc.createElementNS?.('http://www.w3.org/2000/svg', tag) || doc.createElement(tag);
   const time = (n) => `${Math.floor(n / 60)}:${(n % 60).toFixed(2).padStart(5, '0')}`;
@@ -45,6 +61,12 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
     overview.dataset.zoomed = String(zoomIndex > 0);
     overview.dataset.verseVisible = String(
       Number(state?.draft?.verseEnd) >= start && Number(state?.draft?.verseEnd) <= end
+    );
+    overview.dataset.startVisible = String(
+      !!state?.draft && state.draft.drumStart >= start && state.draft.drumStart <= end
+    );
+    overview.dataset.endVisible = String(
+      !!state?.draft && state.draft.drumEnd >= start && state.draft.drumEnd <= end
     );
     const occupied = [];
     const pixelWidth = overview.getBoundingClientRect?.().width || 800;
@@ -95,17 +117,56 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
     renderPlayback(playback);
   }
   function renderPlayback(next) {
+    if ((scrub || Date.now() < previewUntil) && next?.videoId === playback?.videoId)
+      next = playback;
     playback = next;
-    if (!playhead) return;
+    if (!(end > start) && duration() > 0) {
+      start = 0;
+      end = duration();
+    }
     const current = Number(next?.currentTime);
     const visible =
       Number.isFinite(current) &&
       current >= start &&
       current <= end &&
       (!next?.videoId || next.videoId === state?.videoId);
-    playhead.setAttribute('opacity', visible ? '1' : '0');
-    playhead.setAttribute('x', String(((current - start) / (end - start)) * 1000));
+    if (seek) {
+      seek.min = String(start);
+      seek.max = String(end || 1);
+      seek.step = '0.01';
+      seek.disabled = !(duration() > 0);
+      seek.value = String(Number.isFinite(current) ? current : start);
+      seek.dataset.offscreen = String(!visible);
+      seek.setAttribute('aria-valuetext', time(Number.isFinite(current) ? current : 0));
+    }
+    if (playbackLine) {
+      playbackLine.hidden = !visible;
+      playbackLine.style.left = `${((current - start) / (end - start)) * 100}%`;
+    }
+    playhead?.setAttribute('opacity', visible ? '1' : '0');
+    playhead?.setAttribute('x', String(((current - start) / (end - start)) * 1000));
   }
+  function seekTo(seconds) {
+    if (!(duration() > 0) || !onSeek) return;
+    const currentTime = Math.max(0, Math.min(duration(), seconds));
+    previewUntil = 0;
+    playback = { videoId: state?.videoId, currentTime, duration: duration() };
+    renderPlayback(playback);
+    previewUntil = Date.now() + 1000;
+    onSeek(currentTime);
+  }
+  seek?.addEventListener('input', () => seekTo(Number(seek.value)));
+  seek?.addEventListener('pointerdown', () => {
+    scrub = true;
+  });
+  const releaseScrub = () => {
+    scrub = false;
+  };
+  seek?.addEventListener('pointerup', releaseScrub);
+  seek?.addEventListener('pointercancel', releaseScrub);
+  seek?.addEventListener('blur', releaseScrub);
+  doc.defaultView?.addEventListener('pointerup', releaseScrub);
+  doc.defaultView?.addEventListener('blur', releaseScrub);
   function draw() {
     lane.replaceChildren();
     green = null;
@@ -246,6 +307,45 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
     },
     { passive: false }
   );
+  overview.addEventListener('click', (event) => {
+    if (event.button !== 0 || event.target?.closest?.('input')) return;
+    const rect = overview.getBoundingClientRect();
+    if (event.clientY < rect.top || event.clientY > rect.bottom) return;
+    seekTo(
+      start + Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * (end - start)
+    );
+  });
+  overview.addEventListener('pointerdown', (event) => {
+    if (event.button !== 1 || zoomIndex === 0) return;
+    event.preventDefault();
+    drag = { id: event.pointerId, x: event.clientX, start, width: end - start };
+    overview.setPointerCapture?.(event.pointerId);
+    overview.dataset.panning = 'true';
+  });
+  overview.addEventListener('pointermove', (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    start = Math.max(
+      0,
+      Math.min(
+        duration() - drag.width,
+        drag.start -
+          ((event.clientX - drag.x) / overview.getBoundingClientRect().width) * drag.width
+      )
+    );
+    end = start + drag.width;
+    project();
+    schedule();
+  });
+  const stopPan = () => {
+    drag = null;
+    overview.dataset.panning = 'false';
+  };
+  overview.addEventListener('pointerup', stopPan);
+  overview.addEventListener('pointercancel', stopPan);
+  overview.addEventListener('lostpointercapture', stopPan);
+  overview.addEventListener('auxclick', (event) => {
+    if (event.button === 1) event.preventDefault();
+  });
   Object.entries(inputs).forEach(([key, input]) => {
     input?.addEventListener('pointerdown', () => {
       selected = key;
@@ -256,6 +356,19 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
   });
   overview.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') changeZoom(0);
+    if (event.target?.closest?.('input')) return;
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      changeZoom(zoomIndex + 1);
+    }
+    if (event.key === '-') {
+      event.preventDefault();
+      changeZoom(zoomIndex - 1);
+    }
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      pan(event.key === 'ArrowLeft' ? -1 : 1);
+    }
   });
   return {
     renderPlayback,
@@ -264,6 +377,14 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
       const changed = signature !== version;
       const newSong = state?.videoId !== next.videoId;
       state = next;
+      if (newSong) {
+        playback = null;
+        previewUntil = 0;
+        scrub = false;
+        stopPan();
+        start = 0;
+        end = 0;
+      }
       if (changed) {
         version = signature;
         if (newSong) zoomIndex = 0;

@@ -29,7 +29,7 @@ function setup(getWaveform) {
     setAttribute(k, v) {
       this[k] = v;
     },
-    getBoundingClientRect: () => ({ left: 0, width: 800 })
+    getBoundingClientRect: () => ({ left: 0, width: 800, top: 0, bottom: 200 })
   });
   const ids = [
     'DrumLane',
@@ -42,6 +42,8 @@ function setup(getWaveform) {
     'ZoomReset',
     'ZoomLeft',
     'ZoomRight',
+    'SeekRange',
+    'PlaybackLine',
     'DrumStartTime',
     'DrumEndTime',
     'VerseEndTime'
@@ -52,9 +54,11 @@ function setup(getWaveform) {
   const timers = new Map();
   let timerId = 0;
   const calls = [];
+  const seeks = [];
   const editor = createWorkMusicPrecisionEditor({
     root,
     inputs,
+    onSeek: (seconds) => seeks.push(seconds),
     timers: {
       setTimeout(f) {
         timers.set(++timerId, f);
@@ -88,6 +92,7 @@ function setup(getWaveform) {
   return {
     inputs,
     elements,
+    seeks,
     editor,
     state,
     calls,
@@ -123,6 +128,31 @@ test('buttons change viewport; clicking and releasing handles never changes zoom
   assert.equal(f.inputs.drumStart.style.visibility, '');
   assert.equal(f.inputs.verseEnd.min, '0');
   assert.equal(f.inputs.verseEnd.max, '100');
+});
+
+test('waveform click and slider seek use viewport seconds; middle drag pans without seeking', async () => {
+  const f = setup();
+  await f.request();
+  const lane = f.elements.workMusicDrumLane,
+    seek = f.elements.workMusicSeekRange;
+  lane.fire('click', { button: 0, clientX: 200, clientY: 100 });
+  assert.equal(f.seeks.at(-1), 25);
+  assert.equal(seek.value, '25');
+  f.click('In');
+  lane.fire('click', { button: 0, clientX: 200, clientY: 100 });
+  assert.equal(f.seeks.at(-1), 37.5);
+  seek.value = '42';
+  seek.fire('input');
+  assert.equal(f.seeks.at(-1), 42);
+  assert.equal(f.elements.workMusicPlaybackLine.style.left, '34%');
+  lane.fire('pointerdown', { button: 1, pointerId: 1, clientX: 400, preventDefault() {} });
+  lane.fire('pointermove', { pointerId: 1, clientX: 560 });
+  lane.fire('pointerup');
+  assert.equal(seek.min, '15');
+  assert.equal(f.seeks.length, 3);
+  lane.fire('keydown', { key: 'Escape' });
+  assert.equal(seek.min, '0');
+  assert.equal(seek.max, '100');
 });
 
 test('time captions follow edits, avoid overlap and hide outside zoom', async () => {
