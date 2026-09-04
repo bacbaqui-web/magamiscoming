@@ -13,6 +13,7 @@ export function createWorkMusicAnalysisController({
 } = {}) {
   const detectedByVideoId = new Map();
   const operations = new Map();
+  const prefetches = new Map();
   const lifetime = new AbortController();
   let queue = null;
   let queueUnavailable = false;
@@ -58,6 +59,27 @@ export function createWorkMusicAnalysisController({
       ? { ...range, verseEnd: range.verseEnd ?? (range.drumStart + range.drumEnd) / 2 }
       : null;
   };
+
+  function prefetchExisting(song) {
+    const videoId = song?.videoId;
+    if (!videoId || !mediaAnalysisPort?.enabled || manualForSong(song) || lifetime.signal.aborted)
+      return Promise.resolve(null);
+    if (detectedByVideoId.has(videoId)) return Promise.resolve(detectedByVideoId.get(videoId));
+    if (prefetches.has(videoId)) return prefetches.get(videoId);
+    const request = Promise.resolve()
+      .then(() => mediaAnalysisPort.getResult(videoId, { signal: lifetime.signal }))
+      .then((result) => {
+        if (!lifetime.signal.aborted && result?.videoId === videoId) {
+          detectedByVideoId.set(videoId, { ...result });
+          return result;
+        }
+        return null;
+      })
+      .catch(() => null)
+      .finally(() => prefetches.delete(videoId));
+    prefetches.set(videoId, request);
+    return request;
+  }
 
   async function refreshQueue() {
     if (!mediaAnalysisPort?.getQueue || lifetime.signal.aborted) return;
@@ -329,6 +351,7 @@ export function createWorkMusicAnalysisController({
       });
     },
     getState: snapshot,
+    prefetchExisting,
     restoreDetected,
     selectSong,
     updateDraft

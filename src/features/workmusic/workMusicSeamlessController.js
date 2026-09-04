@@ -8,6 +8,8 @@ export function createWorkMusicSeamlessController({
   root = document,
   render = () => {},
   detectedByVideoId,
+  prepareSong = async () => {},
+  onStatus = () => {},
   interval = setInterval,
   clear = clearInterval,
   now = Date.now,
@@ -17,6 +19,13 @@ export function createWorkMusicSeamlessController({
   let slots = null;
   let monitorTimer = null;
   let fadeTimer = null;
+  let generation = 0;
+  let statusText = '';
+  function report(text) {
+    if (statusText === text) return;
+    statusText = text;
+    onStatus(text);
+  }
 
   const volume = () => {
     const state = engine.getSnapshot();
@@ -39,7 +48,12 @@ export function createWorkMusicSeamlessController({
     const order =
       state.playOrder.length === songs.length ? state.playOrder : songs.map((_song, i) => i);
     const position = Math.max(0, order.indexOf(fromIndex));
-    return order[(position + 1) % order.length];
+    for (let offset = 1; offset < order.length; offset += 1) {
+      const candidate = order[(position + offset) % order.length];
+      if (songs[candidate]?.videoId && songs[candidate]?.playbackStatus !== 'error')
+        return candidate;
+    }
+    return -1;
   }
   function stopTimers() {
     clear(monitorTimer);
@@ -48,16 +62,19 @@ export function createWorkMusicSeamlessController({
     fadeTimer = null;
   }
   function destroy() {
+    generation += 1;
     stopTimers();
-    if (slots?.players)
-      Object.values(slots.players).forEach((player) => {
+    const previous = slots;
+    slots = null;
+    if (previous?.players)
+      Object.values(previous.players).forEach((player) => {
         try {
           player?.destroy?.();
         } catch (_error) {
           /* 이미 제거된 Player */
         }
       });
-    slots = null;
+    report('');
   }
   function pause() {
     stopTimers();
@@ -98,10 +115,46 @@ export function createWorkMusicSeamlessController({
     slots.transition = null;
     const song = songs[slots.standbyIndex];
     const standby = getStandbyPlayer();
-    if (!standby || !song?.videoId) return;
+    if (!standby) return;
     standby.stopVideo?.();
-    standby.cueVideoById?.(song.videoId);
     setVolume(standby, 0);
+    if (!song?.videoId) {
+      report('디제잉: 재생 가능한 다음 곡이 없습니다.');
+      return;
+    }
+    prepareRanges(fromIndex, slots.standbyIndex);
+    standby.cueVideoById?.(song.videoId);
+  }
+  function prepareRanges(fromIndex, target) {
+    const session = slots;
+    const songs = engine.getActiveSongs();
+    report('디제잉: 곡 구간 정보를 확인 중입니다.');
+    void Promise.all([prepareSong(songs[fromIndex]), prepareSong(songs[target])])
+      .then(() => {
+        if (session === slots && slots?.standbyIndex === target) monitor();
+      })
+      .catch(() => {
+        if (session === slots) report('디제잉: 구간 조회 실패 — 곡 끝에서 순차 전환합니다.');
+      });
+  }
+  function failStandby(code) {
+    if (!slots) return;
+    const failedIndex = slots.standbyIndex;
+    clear(fadeTimer);
+    fadeTimer = null;
+    slots.transitioning = false;
+    slots.transitionStarted = false;
+    slots.fadeStarted = false;
+    slots.transition = null;
+    playbackController.handleFailure({
+      code,
+      failedIndex,
+      standby: true,
+      order: engine.getSnapshot().playOrder,
+      tabId: engine.getSnapshot().activeTabId
+    });
+    cueStandby(engine.getSnapshot().currentIndex);
+    applyVolume();
   }
   function finishTransition() {
     if (!slots?.transition) return;
@@ -133,6 +186,7 @@ export function createWorkMusicSeamlessController({
     if (!slots?.transitioning || slots.fadeStarted || slot !== slots.transition?.nextSlot)
       return false;
     slots.fadeStarted = true;
+    report('디제잉: 비초록 구간 페이드 전환 중');
     clear(fadeTimer);
     const update = () => {
       if (!slots?.transitioning) return;
@@ -179,6 +233,7 @@ export function createWorkMusicSeamlessController({
     slots.transitioning = true;
     slots.fadeStarted = false;
     slots.requestedAt = now();
+    report('디제잉: 다음 곡 재생 시작을 기다리는 중');
     const nextPlayer = slots.players[context.nextSlot];
     setVolume(nextPlayer, 0);
     try {
@@ -219,20 +274,17 @@ export function createWorkMusicSeamlessController({
     if (!slots || !engine.getSnapshot().isPlaying) return false;
     if (slots.transitioning) {
       if (!slots.fadeStarted && now() - slots.requestedAt > 15000) {
-        const failedIndex = slots.standbyIndex;
-        cancelTransition();
-        playbackController.handleFailure({
-          code: 'timeout',
-          failedIndex,
-          order: engine.getSnapshot().playOrder,
-          tabId: engine.getSnapshot().activeTabId
-        });
+        failStandby('timeout');
       }
       return false;
     }
     const player = getActivePlayer();
     const state = engine.getSnapshot();
     const songs = engine.getActiveSongs();
+    if (slots.standbyIndex < 0) {
+      report('디제잉: 재생 가능한 다음 곡이 없습니다.');
+      return false;
+    }
     const currentTime = Number(player?.getCurrentTime?.() || 0);
     const duration = Number(player?.getDuration?.() || 0);
     const timing = getTriggerTiming({
@@ -246,6 +298,11 @@ export function createWorkMusicSeamlessController({
       currentTime,
       overlapSeconds: state.seamlessOverlapSeconds
     });
+    report(
+      timing.mode === 'dj'
+        ? `디제잉: ${timing.triggerAtSeconds.toFixed(1)}초부터 최대 ${timing.crossfadeSeconds.toFixed(1)}초 페이드`
+        : '디제잉: 구간 정보가 없는 곡이 있어 곡 끝에서 순차 전환합니다.'
+    );
     return (
       !slots.transitionStarted &&
       duration > 0 &&
@@ -266,10 +323,12 @@ export function createWorkMusicSeamlessController({
     const box = root.getElementById('workMusicPlayerBox');
     if (!box || songs.length <= 1 || !songs[index]?.videoId) return null;
     destroy();
+    const creating = generation;
     box.classList.add('seamless');
     box.innerHTML =
       '<div id="workMusicSeamlessSlotA" class="workmusic-youtube-slot active"><div id="workMusicSeamlessA"></div></div><div id="workMusicSeamlessSlotB" class="workmusic-youtube-slot standby"><div id="workMusicSeamlessB"></div></div>';
     await youtubePort.ensureIframeApi();
+    if (creating !== generation) return null;
     const standbyIndex = nextIndex(index);
     slots = {
       players: { a: null, b: null },
@@ -281,23 +340,35 @@ export function createWorkMusicSeamlessController({
       fadeStarted: false,
       transition: null
     };
+    const session = slots;
     const events = (slot) => ({
       onReady(event) {
+        if (slots !== session) return;
         slots.players[slot] = event.target;
         setVolume(event.target, slot === 'a' ? volume() : 0);
         if (slot === 'a' && autoplay) {
           event.target.playVideo?.();
           startMonitor();
         }
-        if (slot === 'b') event.target.cueVideoById?.(songs[standbyIndex]?.videoId);
+        if (slot === 'b') cueStandby(index);
       },
       onStateChange(event) {
+        if (slots !== session) return;
         if (slot === slots?.standbySlot && slots?.transitioning && event?.data === 1)
           beginFade(slot);
-        if (slot === slots?.activeSlot && event?.data === 0 && !slots.transitionStarted)
-          transition();
+        if (slot === slots?.activeSlot && event?.data === 0 && !slots.transitionStarted) {
+          if (!transition()) {
+            engine.setState('isPlaying', false);
+            render();
+          }
+        }
       },
       onError(event) {
+        if (slots !== session) return;
+        if (slot === slots.standbySlot) {
+          failStandby(event?.data || '');
+          return;
+        }
         const failed =
           slot === slots?.activeSlot ? engine.getSnapshot().currentIndex : slots?.standbyIndex;
         playbackController.handleFailure({

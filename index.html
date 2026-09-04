@@ -540,6 +540,7 @@
                 class="workmusic-analysis-message"
                 aria-live="polite"
               ></p>
+              <p id="workMusicDjStatus" class="workmusic-analysis-legend" role="status"></p>
               <div class="workmusic-analysis-metrics" aria-label="분석 수치">
                 <span>BPM <b id="workMusicAnalysisBpm">-</b></span>
                 <span>신뢰도 <b id="workMusicAnalysisConfidence">-</b></span>
@@ -598,6 +599,36 @@
                   />
                 </div>
                 <span id="workMusicDrumLabel" class="workmusic-drum-label">드럼 구간 없음</span>
+                <section
+                  id="workMusicPrecisionPanel"
+                  class="workmusic-precision-panel"
+                  aria-label="음파 정밀 조절"
+                  hidden
+                >
+                  <div class="workmusic-precision-header">
+                    <span id="workMusicPrecisionLabel"></span>
+                    <button id="workMusicPrecisionClose" type="button">확대 닫기</button>
+                  </div>
+                  <div class="workmusic-precision-track">
+                    <div id="workMusicPrecisionWaveform" class="workmusic-precision-waveform"></div>
+                    <span class="workmusic-precision-line" aria-hidden="true"></span>
+                    <input
+                      id="workMusicPrecisionRange"
+                      class="workmusic-drum-handle"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      aria-label="정밀 위치"
+                    />
+                  </div>
+                  <p class="workmusic-analysis-legend">
+                    손을 뗀 뒤 위 확대 핸들로 정밀 조절하세요. 원래 음파의 일부를 확대 표시합니다.
+                  </p>
+                </section>
+                <p class="workmusic-analysis-legend">
+                  핸들을 누른 채 3초 멈추면 주변 음파가 확대됩니다.
+                </p>
                 <p id="workMusicAnalysisPlayback" class="workmusic-analysis-legend">재생 위치 —</p>
                 <p id="workMusicAnalysisStructure" class="workmusic-analysis-legend"></p>
               </div>

@@ -1839,6 +1839,56 @@ body {
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
+.workmusic-precision-panel {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #777;
+  border-radius: 5px;
+  background: #1b1b1b;
+}
+.workmusic-precision-panel[hidden] {
+  display: none;
+}
+.workmusic-precision-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.workmusic-precision-header button {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+.workmusic-precision-track {
+  position: relative;
+  margin: 8px 9px 22px;
+}
+.workmusic-precision-waveform {
+  position: relative;
+  overflow: hidden;
+  height: 100px;
+  background: #252525;
+}
+.workmusic-precision-line {
+  position: absolute;
+  inset-block: 0;
+  left: var(--precision-position);
+  width: 1px;
+  transform: translateX(-50%);
+  background: #4ec48e;
+  pointer-events: none;
+}
+.workmusic-precision-panel[data-boundary='verseEnd'] .workmusic-precision-line {
+  background: #fff;
+}
+.workmusic-precision-panel[data-boundary='verseEnd'] input::-webkit-slider-thumb {
+  background: #fff;
+}
+.workmusic-precision-panel[data-boundary='verseEnd'] input::-moz-range-thumb {
+  background: #fff;
+}
 .workmusic-analysis-actions {
   justify-content: flex-end;
   margin-top: 10px;

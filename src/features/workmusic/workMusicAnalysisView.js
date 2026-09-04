@@ -1,3 +1,5 @@
+import { createWorkMusicPrecisionEditor } from './workMusicPrecisionEditor.js';
+
 const STATUS_LABELS = {
   disabled: '분석 꺼짐',
   empty: '곡 없음',
@@ -36,6 +38,11 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   const drumLabel = root.getElementById('workMusicDrumLabel');
   const saveButton = root.getElementById('workMusicAnalysisSaveBtn');
   const restoreButton = root.getElementById('workMusicAnalysisRestoreBtn');
+  const precisionEditor = createWorkMusicPrecisionEditor({
+    root,
+    inputs: { drumStart, drumEnd, verseEnd },
+    controller
+  });
 
   const formatSeconds = (value) => {
     const seconds = Math.max(0, Number(value || 0));
@@ -193,6 +200,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     } else if (drumLabel) drumLabel.textContent = '재생 구간 —';
     if (saveButton) saveButton.disabled = !hasDraft || !state.dirty;
     if (restoreButton) restoreButton.disabled = !state.manual;
+    precisionEditor.render(state);
   }
 
   analyzeButton?.addEventListener('click', () => controller.analyzeCurrent());

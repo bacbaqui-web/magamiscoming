@@ -266,6 +266,11 @@ playbackController = createWorkMusicPlaybackController({
   }
 });
 seamlessController = createWorkMusicSeamlessController({
+  prepareSong: analysisController.prefetchExisting,
+  onStatus: (text) => {
+    const label = root.getElementById('workMusicDjStatus');
+    if (label) label.textContent = text;
+  },
   detectedByVideoId: analysisController.detectedByVideoId,
   engine,
   playbackController,

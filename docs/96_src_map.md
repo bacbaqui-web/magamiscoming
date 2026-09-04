@@ -148,9 +148,10 @@ styles/
 - `features/workmusic/workMusicPlaybackController.js`: 일반 Player 생성·파괴, 재생·정지·seek·이전·다음·음량과 오류 곡 건너뛰기 실행
 - `features/workmusic/workMusicMetadataController.js`: YouTube 곡 메타데이터 요청 진입점
 - `features/workmusic/workMusicPlaylistController.js`: YouTube 재생목록 요청 진입점
-- `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 비초록 영역 DJ 전환·구간 미확인 순차 재생, cue, monitor, 실제 재생 시각 기반 fade
+- `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 비초록 DJ 전환, 기존 결과 준비, 실패 후보 제외·standby 복구, monitor·fade·상태 안내
 - `features/workmusic/workMusicAnalysisController.js`: 곡별 큐 등록·백그라운드 추적·서버 큐 집계·활성 작업 복원, 결과 cache와 수동 구간 저장 요청
 - `features/workmusic/workMusicAnalysisView.js`: 분석 상태·큐·음파·후렴 후보·재생 위치선·초록 시작/끝과 흰 1절 핸들 렌더·편집 이벤트
+- `features/workmusic/workMusicPrecisionEditor.js`: 3초 정지 hold 감지, 주변 음파 확대창·정밀 range, 타이머와 곡 전환 정리
 - `features/workmusic/workMusicPlaybackIdentity.js`: 실제 Player 정보·공개 영상 URL에서 재생 videoId를 조회하는 순수 경계
 - `features/workmusic/workMusicAnalysisHelper.js`: 분석 구간·1절 검증, 비초록 DJ 계획과 이전 후보 계획 호환 계산
 - `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서 순수 계산

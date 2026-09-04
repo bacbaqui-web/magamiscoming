@@ -205,7 +205,7 @@ export function createWorkMusicPlaybackController({
     }
   }
 
-  function handleFailure({ code = '', failedIndex, order, tabId }) {
+  function handleFailure({ code = '', failedIndex, order, tabId, standby = false }) {
     const snapshot = engine.getSnapshot();
     const songs = activeSongs();
     if (!songs.length || failedIndex < 0 || failedIndex >= songs.length) return { nextIndex: -1 };
@@ -226,6 +226,10 @@ export function createWorkMusicPlaybackController({
           : song
       )
     );
+    if (standby) {
+      render();
+      return { nextIndex: -1 };
+    }
     engine.setState('currentIndex', failedIndex);
     engine.setState('isPlaying', false);
     const validOrder = (order || []).filter(
