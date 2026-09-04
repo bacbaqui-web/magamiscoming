@@ -2,6 +2,7 @@ import { downloadTextFile, openTabSettings, renderManagedTab } from '../tabSetti
 import { createWorkMusicEngine } from './workMusicEngine.js';
 import { createWorkMusicAnalysisController } from './workMusicAnalysisController.js';
 import { createWorkMusicAnalysisView } from './workMusicAnalysisView.js';
+import { createWorkMusicAutoAnalysisController } from './workMusicAutoAnalysisController.js';
 import { getWorkMusicPlaybackVideoId } from './workMusicPlaybackIdentity.js';
 import { createWorkMusicListController } from './workMusicListController.js';
 import { createWorkMusicMetadataController } from './workMusicMetadataController.js';
@@ -173,6 +174,7 @@ export function createWorkMusicComposer({
   let listController = null;
   let analysisController = null;
   let analysisView = null;
+  let autoAnalysis = null;
 
   // ===== 노동요(YouTube) =====
   // 일반 embed iframe + YouTube postMessage 제어. 재생/일시정지는 iframe을 다시 만들지 않고 명령만 보냅니다.
@@ -745,6 +747,7 @@ export function createWorkMusicComposer({
     const currentIndex = normalizeWorkMusicCurrentIndex(songs);
     const song = songs[currentIndex];
     void analysisController?.selectSong(song);
+    autoAnalysis?.sync(songs);
     renderWorkMusicFlow(getWorkMusicFlowSongs(songs));
     if (workMusicNowTitle) {
       workMusicNowTitle.textContent = song
@@ -2033,6 +2036,21 @@ export function createWorkMusicComposer({
     }
   });
   analysisView = createWorkMusicAnalysisView({ root, controller: analysisController });
+  autoAnalysis = createWorkMusicAutoAnalysisController({
+    mediaAnalysisPort,
+    onResult: (result) => analysisController.acceptResult(result),
+    onChange: (state) => {
+      const label = root.getElementById('workMusicAutoAnalysisStatus');
+      if (label) label.textContent = `${state.message} · ${state.done}/${state.total}`;
+      const button = root.getElementById('workMusicAutoAnalysisToggle');
+      if (button) button.textContent = state.paused ? '자동 분석 재개' : '자동 분석 일시정지';
+    }
+  });
+  root
+    .getElementById('workMusicAutoAnalysisToggle')
+    ?.addEventListener('click', () => autoAnalysis.toggle());
+  host.addEventListener?.('pagehide', () => autoAnalysis.destroy(), { once: true });
+  autoAnalysis.sync(engine.getActiveSongs());
   seamlessController = createWorkMusicSeamlessController({
     prepareSong: analysisController.prefetchExisting,
     onStatus: (text) => {

@@ -1,5 +1,6 @@
 import { createWorkMusicAnalysisController } from '../features/workmusic/workMusicAnalysisController.js';
 import { createWorkMusicAnalysisView } from '../features/workmusic/workMusicAnalysisView.js';
+import { createWorkMusicAutoAnalysisController } from '../features/workmusic/workMusicAutoAnalysisController.js';
 import { getWorkMusicPlaybackVideoId } from '../features/workmusic/workMusicPlaybackIdentity.js';
 import { createWorkMusicBatchAnalysisController } from '../features/workmusic/workMusicBatchAnalysisController.js';
 import { createWorkMusicEngine } from '../features/workmusic/workMusicEngine.js';
@@ -74,6 +75,7 @@ const elements = {
 };
 
 let analysisView = null;
+let autoAnalysis = null;
 let playbackController = null;
 let seamlessController = null;
 let batchAnalysisController = null;
@@ -202,6 +204,7 @@ function render() {
     djButton.textContent = state.seamlessOverlapSeconds > 0 ? '디제잉 켜짐' : '디제잉 꺼짐';
   }
   analysisController.selectSong(song);
+  autoAnalysis?.sync(songs);
   if (batchAnalysisController) renderBatchAnalysis(batchAnalysisController.getState());
 }
 
@@ -239,6 +242,21 @@ const analysisController = createWorkMusicAnalysisController({
   }
 });
 analysisView = createWorkMusicAnalysisView({ root, controller: analysisController });
+autoAnalysis = createWorkMusicAutoAnalysisController({
+  mediaAnalysisPort,
+  onResult: (result) => analysisController.acceptResult(result),
+  onChange: (state) => {
+    root.getElementById('workMusicAutoAnalysisStatus').textContent =
+      `${state.message} · ${state.done}/${state.total}`;
+    root.getElementById('workMusicAutoAnalysisToggle').textContent = state.paused
+      ? '자동 분석 재개'
+      : '자동 분석 일시정지';
+  }
+});
+root
+  .getElementById('workMusicAutoAnalysisToggle')
+  .addEventListener('click', () => autoAnalysis.toggle());
+window.addEventListener('pagehide', () => autoAnalysis.destroy(), { once: true });
 batchAnalysisController = createWorkMusicBatchAnalysisController({
   mediaAnalysisPort,
   onChange: (state) => {

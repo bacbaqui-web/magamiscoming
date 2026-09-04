@@ -153,7 +153,8 @@ styles/
 - `features/workmusic/workMusicAnalysisView.js`: 분석 상태·큐·음파·후렴 후보·재생 위치선·초록 시작/끝과 흰 1절 핸들 렌더·편집 이벤트
 - `features/workmusic/workMusicPrecisionEditor.js`: 3초 정지 hold 감지, 주변 음파 확대창·정밀 range, 타이머와 곡 전환 정리
 - `features/workmusic/workMusicPlaybackIdentity.js`: 실제 Player 정보·공개 영상 URL에서 재생 videoId를 조회하는 순수 경계
-- `features/workmusic/workMusicAnalysisHelper.js`: 분석 구간·1절 검증, 비초록 DJ 계획과 이전 후보 계획 호환 계산
+- `features/workmusic/workMusicAnalysisHelper.js`: 분석 호환성·구간 검증, 후렴 기반 1절 후보와 비초록 DJ 계획 계산
+- `features/workmusic/workMusicAutoAnalysisController.js`: 현재 목록 순차 분석, 구버전 갱신·일시정지·연결 재시도
 - `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서 순수 계산
 - `features/clipviewer.js`: CLIP Engine·Composer·Controller와 외부 기능을 조립하고 공개 호환 계약을 연결하는 진입점
 - `features/clipviewer/clipViewerEngine.js`: 페이지 목록, CMC 정렬 결과, 로컬 미리보기, 저장 manifest와 동기화 상태의 단일 소유자

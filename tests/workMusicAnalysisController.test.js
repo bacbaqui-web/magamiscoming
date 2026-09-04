@@ -252,7 +252,7 @@ test('controller runs POST, poll, result and keeps detected values runtime-only'
   controller.updateDraft('drumStart', 14);
   assert.deepEqual(saved, []);
   await controller.commitDraft();
-  assert.deepEqual(saved[0].manual, { drumStart: 14, drumEnd: 190, verseEnd: 100 });
+  assert.deepEqual(saved[0].manual, { drumStart: 14, drumEnd: 190 });
   await controller.restoreDetected();
   assert.equal(saved[1].manual, null);
 });

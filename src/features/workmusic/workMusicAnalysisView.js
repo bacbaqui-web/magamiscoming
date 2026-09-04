@@ -166,6 +166,8 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     if (source)
       source.textContent = state.manual ? '수동 구간 사용' : result ? '자동 분석값' : '구간 없음';
     renderMarkers(result);
+    if (structureLabel && result?.waveform?.length)
+      structureLabel.textContent = `1절: ${state.verseSuggestion || '대략적인 후보'} · 후렴/벌스 구분은 추정입니다. 흰 핸들로 보정해 주세요.`;
     renderPlayback(playback);
 
     const hasDraft = !!draft && duration > 0;

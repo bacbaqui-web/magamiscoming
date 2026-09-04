@@ -1,4 +1,8 @@
-import { calculateSmartTransitionPlan, normalizeAnalysisRange } from './workMusicAnalysisHelper.js';
+import {
+  calculateSmartTransitionPlan,
+  normalizeAnalysisRange,
+  suggestVerseEnd
+} from './workMusicAnalysisHelper.js';
 
 const clone = (value) => (value ? { ...value } : null);
 const waitDefault = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -22,6 +26,7 @@ export function createWorkMusicAnalysisController({
   let selectionVersion = 0;
   let selectionKey = null;
   let currentSong = null;
+  let verseWasEdited = false;
   let abortController = null;
   let state = {
     phase: mediaAnalysisPort?.enabled ? 'idle' : 'disabled',
@@ -44,7 +49,11 @@ export function createWorkMusicAnalysisController({
     songId: currentSong?.id ?? null,
     detected: clone(state.detected),
     manual: clone(state.manual),
-    draft: clone(state.draft)
+    draft: clone(state.draft),
+    verseSuggestion:
+      state.manual?.verseEnd != null || verseWasEdited
+        ? '직접 지정한 1절 위치'
+        : suggestVerseEnd(state.detected, state.draft)?.reason
   });
   const publish = () => {
     if (!lifetime.signal.aborted) onChange(snapshot());
@@ -56,7 +65,7 @@ export function createWorkMusicAnalysisController({
   const draftFrom = (manual, detected) => {
     const range = clone(manual || normalizeAnalysisRange(detected, detected?.durationSeconds));
     return range
-      ? { ...range, verseEnd: range.verseEnd ?? (range.drumStart + range.drumEnd) / 2 }
+      ? { ...range, verseEnd: range.verseEnd ?? suggestVerseEnd(detected, range).value }
       : null;
   };
 
@@ -128,8 +137,8 @@ export function createWorkMusicAnalysisController({
       phase: 'succeeded',
       message: '분석 완료',
       detected: { ...result },
-      draft: draftFrom(state.manual, result),
-      dirty: false
+      draft: state.dirty ? state.draft : draftFrom(state.manual, result),
+      dirty: state.dirty
     };
     publish();
   }
@@ -167,6 +176,7 @@ export function createWorkMusicAnalysisController({
     }
 
     selectionVersion += 1;
+    verseWasEdited = false;
     selectionKey = nextKey;
     currentSong = nextSong;
     abortController?.abort();
@@ -278,6 +288,7 @@ export function createWorkMusicAnalysisController({
 
   function updateDraft(boundary, value) {
     if (!['drumStart', 'drumEnd', 'verseEnd'].includes(boundary)) return;
+    if (boundary === 'verseEnd') verseWasEdited = true;
     const duration = Number(state.detected?.durationSeconds || currentSong?.durationSeconds || 0);
     const current = state.draft || {
       drumStart: 0,
@@ -305,10 +316,11 @@ export function createWorkMusicAnalysisController({
     const duration = Number(state.detected?.durationSeconds || song?.durationSeconds || 0);
     const manual = normalizeAnalysisRange(state.draft, duration);
     if (!song || !manual) return false;
+    if (!verseWasEdited && state.manual?.verseEnd == null) delete manual.verseEnd;
     await saveManual({ songId: song.id, videoId: song.videoId, manual });
     if (!isCurrent(version, song.videoId)) return false;
     currentSong = { ...currentSong, mediaAnalysisManual: manual };
-    state = { ...state, manual, draft: clone(manual), dirty: false };
+    state = { ...state, manual, draft: draftFrom(manual, state.detected), dirty: false };
     publish();
     return true;
   }
@@ -321,6 +333,7 @@ export function createWorkMusicAnalysisController({
     if (!isCurrent(version, song.videoId)) return false;
     const nextSong = { ...currentSong };
     delete nextSong.mediaAnalysisManual;
+    verseWasEdited = false;
     currentSong = nextSong;
     state = {
       ...state,
@@ -333,6 +346,13 @@ export function createWorkMusicAnalysisController({
   }
 
   return {
+    acceptResult(result) {
+      detectedByVideoId.set(result.videoId, { ...result });
+      if (currentSong?.videoId === result.videoId) {
+        abortController?.abort();
+        applyDetected(result);
+      }
+    },
     analyzeCurrent,
     commitDraft,
     destroy() {
