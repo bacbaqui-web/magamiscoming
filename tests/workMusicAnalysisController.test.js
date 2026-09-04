@@ -15,6 +15,27 @@ const result = {
   confidence: 0.8
 };
 
+test('analysis rejects over ten minutes but accepts exactly ten minutes', async () => {
+  let calls = 0;
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: {
+      enabled: true,
+      getResult: async () => result,
+      createJob: async () => {
+        calls += 1;
+        return { status: 'succeeded' };
+      }
+    }
+  });
+  await controller.selectSong({ ...song, durationSeconds: 600.01 });
+  assert.equal(await controller.analyzeCurrent(), false);
+  assert.equal(calls, 0);
+  assert.match(controller.getState().message, /10분/);
+  await controller.selectSong({ ...song, durationSeconds: 600 });
+  assert.equal(await controller.analyzeCurrent(), true);
+  assert.equal(calls, 1);
+});
+
 test('enabled controller publishes an empty phase for the initial empty song list', async () => {
   const states = [];
   const controller = createWorkMusicAnalysisController({

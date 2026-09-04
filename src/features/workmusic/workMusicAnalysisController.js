@@ -8,7 +8,7 @@ export function createWorkMusicAnalysisController({
   onChange = () => {},
   saveManual = async () => {},
   pollIntervalMs = 1000,
-  maxPolls = 240,
+  maxPolls = 1800,
   wait = waitDefault
 } = {}) {
   const detectedByVideoId = new Map();
@@ -124,6 +124,11 @@ export function createWorkMusicAnalysisController({
 
   async function analyzeCurrent() {
     if (!mediaAnalysisPort?.enabled || !currentSong?.videoId) return false;
+    if (Number(currentSong.durationSeconds) > 600) {
+      state = { ...state, phase: 'failed', message: '10분을 초과하는 곡은 분석할 수 없습니다.' };
+      publish();
+      return false;
+    }
     const version = selectionVersion;
     const videoId = currentSong.videoId;
     abortController?.abort();
@@ -151,7 +156,10 @@ export function createWorkMusicAnalysisController({
         state = {
           ...state,
           phase: job.status || 'failed',
-          message: job.errorMessage || '분석에 실패했습니다.'
+          message:
+            job.errorCode === 'download_failed'
+              ? 'YouTube에서 음원을 가져오지 못했습니다. 접근 제한 또는 다운로드 오류일 수 있습니다.'
+              : job.errorMessage || '분석에 실패했습니다.'
         };
         publish();
         return false;

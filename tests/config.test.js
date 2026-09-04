@@ -16,7 +16,10 @@ test('media analysis uses localhost by default only on local origins', () => {
     loadConfig({ hostname: '127.0.0.1' }).mediaAnalysis.apiBaseUrl,
     'http://127.0.0.1:8000'
   );
-  assert.equal(loadConfig({ hostname: 'bacbaqui-web.github.io' }).mediaAnalysis.apiBaseUrl, '');
+  const remote = loadConfig({ hostname: 'bacbaqui-web.github.io' }).mediaAnalysis;
+  assert.equal(remote.apiBaseUrl, 'https://insight.magamiscom.ing/media-analysis');
+  assert.equal(remote.requireAuth, true);
+  assert.equal(loadConfig({ hostname: '127.0.0.1' }).mediaAnalysis.requireAuth, false);
 });
 
 test('production can explicitly opt into the local media analysis server', () => {

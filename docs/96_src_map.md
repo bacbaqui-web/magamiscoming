@@ -184,6 +184,7 @@ styles/
 - `services/driveFiles.js`: File Port 뒤에서 Google Drive REST API를 호출하는 Drive File Adapter
 - `services/youtubeBrowserAdapter.js`: IFrame Player API와 YouTube HTTP 요청을 실행하는 브라우저 Adapter
 - `services/mediaAnalysisBrowserAdapter.js`: 설정된 API Origin에만 JSON 분석 요청을 보내는 Browser Adapter
+- `services/mediaAnalysisAuth.js`: 기존 Firebase 로그인 ID 토큰을 원격 분석 요청에만 제공
 - `workmusic-lab.html`: 로그인·Firebase 없이 노동요 분석과 이어듣기를 확인하는 독립 Lab 화면
 - `lab/workMusicLab.js`: Lab 전용 DOM, WorkMusic Engine·재생·분석·재생목록 Controller와
   localStorage 조립

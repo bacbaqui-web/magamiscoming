@@ -7,7 +7,10 @@
     googleClientId: '75399802933-ob5opqbukj1enr6v069rocbjo9508b35.apps.googleusercontent.com',
     youtubeApiKey: 'AIzaSyAxMNbkyUocpD_r-jnvQH_fiuYtxL952CY',
     mediaAnalysis: {
-      apiBaseUrl: useLocalMediaAnalysis ? 'http://127.0.0.1:8000' : ''
+      apiBaseUrl: useLocalMediaAnalysis
+        ? 'http://127.0.0.1:8000'
+        : 'https://insight.magamiscom.ing/media-analysis',
+      requireAuth: !useLocalMediaAnalysis
     },
     firebase: {
       enabled: true,

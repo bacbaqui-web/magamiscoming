@@ -7,6 +7,7 @@ import { createMediaAnalysisPort } from '../ports/mediaAnalysisPort.js';
 import { createDriveFilesStore } from '../services/driveFiles.js';
 import { createFirebaseMetadataAdapter } from '../services/firebaseMetadataStore.js';
 import { createMediaAnalysisBrowserAdapter } from '../services/mediaAnalysisBrowserAdapter.js';
+import { getMediaAnalysisAccessToken } from '../services/mediaAnalysisAuth.js';
 import { createYoutubePort } from '../ports/youtubePort.js';
 import { createYoutubeBrowserAdapter } from '../services/youtubeBrowserAdapter.js';
 
@@ -82,6 +83,9 @@ export function createAppComposer({
     const youtubePort = createYoutube({ adapter: youtubeAdapter });
     const mediaAnalysisAdapter = createMediaAnalysisAdapter({
       apiBaseUrl: host.APP_CONFIG?.mediaAnalysis?.apiBaseUrl || '',
+      getAccessToken: host.APP_CONFIG?.mediaAnalysis?.requireAuth
+        ? getMediaAnalysisAccessToken
+        : undefined,
       fetchImpl: host.fetch?.bind?.(host)
     });
     const mediaAnalysisPort = createMediaAnalysis({ adapter: mediaAnalysisAdapter });

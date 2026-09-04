@@ -1,5 +1,47 @@
 # Recent Task
 
+## 후속 변경: 모든 로그인 사용자 허용·10분 제한
+
+- 이메일 허용 목록을 제거했다. 마감이즈커밍 Firebase 프로젝트의 정상 ID 토큰이 있는
+  모든 사용자가 분석 API를 이용할 수 있다. 익명·만료·잘못된 프로젝트 토큰은 계속 거부한다.
+- 정확히 600초는 허용하고 600초 초과는 거부한다. UI의 알려진 길이로 즉시 안내하며,
+  서버도 다운로드 전 실제 메타데이터를 조회하고 변환 후 PCM 길이를 다시 검사한다.
+- 곡 길이를 확인할 수 없는 영상도 다운로드 전에 거부한다. 실패해도 기존 재생은 유지한다.
+- 분석기 버전은 `0.2.1`로 바꿔 이전 30분 정책의 성공 cache를 새 작업에 재사용하지 않는다.
+- 이전의 이메일 확인 대기는 해제했다. 사용자가 두 저장소 커밋·푸시를 승인했다.
+  로그인 브라우저 최종 검증은 남아 있다.
+- Oracle 서비스에 새 정책을 적용했다. 프런트 테스트 89개, Oracle backend 테스트 61개와
+  ESLint·Prettier·Ruff·diff 검사를 통과했다. 정확히 600초 허용, 초과·길이 미확인 시 다운로드
+  미실행, PCM 길이 재검사, 다른 프로젝트 토큰 거부를 검증했다.
+- 새 버전 `0.2.1`로 Oracle 실제 213초 곡의 분석·결과 조회·cache 재사용을 다시 확인했다
+  (작업 22초). HTTPS health 200, 익명 요청 401, 기존 5개 서비스 active를 확인했다.
+
+## 이전 구현 기록
+
+## 2026-09-04 Oracle E2 분석 연결 — 계정 허용·프런트 배포 대기
+
+- 기존 분석 버튼의 작업 생성→poll→결과 조회 경로를 Oracle HTTPS API에 연결했다.
+  주소: `https://insight.magamiscom.ing/media-analysis`. 변경한 프런트 소스는 아직 푸시하지 않았다.
+- 서버의 Firebase ID 토큰 검증과 검증된 이메일 허용 목록, Nginx 요청 제한을 추가했다.
+  허용 이메일은 사용자 확인 전이므로 빈 목록으로 두어 인증된 계정도 아직 접근할 수 없다.
+- 서비스는 `/srv/apps/media-analysis-service`, SQLite는 `/var/lib/media-analysis-service`에
+  분리했다. CPU 25%, MemoryHigh 160MB, MemoryMax 256MB, swap 64MB, 단일 FIFO를 적용했다.
+- 긴 WAV를 블록 단위로 읽어 메모리를 절약한다. 분석기 버전은 `0.2.0`, 곡 길이는 30분 제한이다.
+- Oracle의 실제 YouTube 한 곡(213.043초)을 격리된 API smoke에서 분석했다.
+  작업 78초, 프로세스 전체 98초, BPM 122.73, confidence 0.246. 결과 재조회와 성공 cache 재사용을
+  검증했다. 낮은 confidence 결과를 자동 전환에 사용하지 않는다.
+- 다른 공개 영상은 YouTube 로그인/봇 확인 요구로 다운로드 실패했다. 전체 곡 다운로드를
+  보장하지 않으며 쿠키 복사·우회·로컬 Mac 자동 대체는 하지 않았다.
+- 공개 HTTPS health 200, 익명 작업 요청 401을 확인했다. 기존 5개 서비스는 모두 active였다.
+- frontend 테스트 88개, ESLint·Prettier·diff 검사 통과. Oracle backend pytest 53개, Ruff lint·format 통과.
+  pytest에는 의존 라이브러리의 deprecation 경고 2건이 남는다.
+- Google 계정 로그인 상태의 브라우저 클릭→원격 완료 검증, 프런트 공개 배포는 미완료다.
+- Python venv 패키지 설치로 Ubuntu Python 3.12 패치 패키지가 함께 갱신됐다. Nginx는 설정
+  검사 후 reload만 했다. 서버 reboot나 기존 앱 서비스 재시작은 하지 않았다.
+- Nginx 원본은 `/etc/nginx/sites-available/insight-widget.before-media-analysis-20260904`에 보존했다.
+
+## 이전 Task: 로컬 Lab batch 분석
+
 ## 상태
 
 OAuth·Firebase와 분리된 노동요 Lab에 재시작 가능한 전곡 batch 분석 기반을 추가하고 실제

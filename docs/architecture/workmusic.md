@@ -34,9 +34,15 @@ YouTube 기반 노동요 목록, 재생, 이어듣기와 저장 데이터의 현
 - AppComposer가 YouTube Adapter와 Port를 만들고 노동요 기능에 주입한다.
 - AppComposer는 `APP_CONFIG.mediaAnalysis.apiBaseUrl`로 Media Analysis Browser Adapter를 만들고,
   `MediaAnalysisPort`를 거쳐 `WorkMusicAnalysisController`에 주입한다.
-- 로컬 호스트에서는 로컬 분석 API를 기본 사용한다. OAuth 로그인이 가능한 운영 사이트에서
-  로컬 분석 서버를 시험할 때만 `?mediaAnalysis=local`을 명시하며, 일반 운영 접속에서는 분석
-  API를 비활성으로 유지한다.
+- 로컬 호스트와 `?mediaAnalysis=local`에서는 로컬 분석 API를 사용한다. 운영 설정은
+  `https://insight.magamiscom.ing/media-analysis`의 Oracle E2 API를 사용한다.
+- 원격 분석 요청은 기존 Firebase 로그인에서 갱신한 ID 토큰을 Authorization 헤더로 보낸다.
+  토큰을 별도 저장하지 않는다. 서버는 서명·만료·프로젝트를 확인하며 해당 Firebase 프로젝트에
+  로그인한 모든 사용자가 이용할 수 있다. 이메일 허용 목록은 없다. Lab은 기존 로컬 검증 경로를 유지한다.
+- Oracle는 단일 FIFO, SQLite 결과 재사용, CPU 25%·메모리 256MB 제한으로 실행한다.
+  분석기는 PCM을 작은 블록으로 읽으며 최대 10분 곡을 지원한다. 600초는 허용하고 초과하면
+  다운로드 전 메타데이터와 변환 후 실제 PCM 길이로 거부한다. 길이 확인 불가도 거부한다. YouTube 다운로드가 제한된
+  곡은 실패를 안내하고 재생은 유지한다. API 연결 대기는 최대 30분이며 완료 후 재조회할 수 있다.
 - AnalysisController는 작업 생성·poll·결과 조회, 곡 전환 stale 응답 차단과 현재 세션의 자동
   분석 결과 cache를 소유한다. 분석 API가 꺼지거나 응답하지 않아도 재생 Controller에는
   영향을 주지 않는다.

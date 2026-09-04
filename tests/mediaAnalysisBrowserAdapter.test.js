@@ -3,6 +3,25 @@ import assert from 'node:assert/strict';
 
 import { createMediaAnalysisBrowserAdapter } from '../src/services/mediaAnalysisBrowserAdapter.js';
 
+test('remote analysis sends a fresh login token and rejects signed-out requests', async () => {
+  let token = 'first';
+  const headers = [];
+  const adapter = createMediaAnalysisBrowserAdapter({
+    apiBaseUrl: 'https://example.com/media-analysis',
+    getAccessToken: async () => token,
+    fetchImpl: async (_url, options) => {
+      headers.push(options.headers.Authorization);
+      return { ok: true, json: async () => ({}) };
+    }
+  });
+  await adapter.getResult('dQw4w9WgXcQ');
+  token = 'renewed';
+  await adapter.createJob('dQw4w9WgXcQ');
+  token = '';
+  await assert.rejects(adapter.createJob('dQw4w9WgXcQ'), { code: 'unauthenticated' });
+  assert.deepEqual(headers, ['Bearer first', 'Bearer renewed']);
+});
+
 test('browser adapter uses the configured origin and JSON request contract', async () => {
   const calls = [];
   const adapter = createMediaAnalysisBrowserAdapter({

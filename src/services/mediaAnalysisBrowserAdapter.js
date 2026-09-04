@@ -21,6 +21,7 @@ function normalizeBaseUrl(value) {
 
 export function createMediaAnalysisBrowserAdapter({
   apiBaseUrl = '',
+  getAccessToken,
   fetchImpl = globalThis.fetch?.bind(globalThis)
 } = {}) {
   const baseUrl = normalizeBaseUrl(apiBaseUrl);
@@ -32,10 +33,21 @@ export function createMediaAnalysisBrowserAdapter({
       });
     }
     let response;
+    const headers = body ? { 'Content-Type': 'application/json' } : {};
+    if (getAccessToken) {
+      const token = await getAccessToken();
+      if (!token) {
+        throw new MediaAnalysisRequestError('로그인 후 다시 분석해 주세요.', {
+          status: 401,
+          code: 'unauthenticated'
+        });
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
     try {
       response = await fetchImpl(`${baseUrl}${path}`, {
         method,
-        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        headers,
         body: body ? JSON.stringify(body) : undefined,
         signal
       });
