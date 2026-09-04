@@ -8,11 +8,14 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
   const label = root.getElementById('workMusicPrecisionLabel');
   const overview = root.getElementById('workMusicDrumLane');
   if (!panel || !lane || !range) return { render() {} };
+  // The zoom occupies the existing waveform viewport, never another row below it.
+  overview?.appendChild(panel);
   const win = doc?.defaultView;
   let state,
     activeKey = '',
     drag = null,
     svg = null,
+    green = null,
     frame = null;
   let zoomStart = 0,
     zoomEnd = 0;
@@ -39,6 +42,8 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
     doc.removeEventListener?.('keydown', escape);
   }
   function position() {
+    green?.setAttribute('x', String(state.draft.drumStart));
+    green?.setAttribute('width', String(Math.max(0, state.draft.drumEnd - state.draft.drumStart)));
     range.value = String(value());
     range.setAttribute('aria-label', `${LABELS[activeKey]} 정밀 위치`);
     range.setAttribute('aria-valuetext', time(value()));
@@ -47,7 +52,7 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
       '--precision-position',
       `${((value() - zoomStart) / (zoomEnd - zoomStart)) * 100}%`
     );
-    label.textContent = `${LABELS[activeKey]} ${time(value())} · 상세 음파 ${time(zoomStart)}–${time(zoomEnd)}`;
+    label.textContent = `${LABELS[activeKey]} ${time(value())} · 확대 ${time(zoomStart)}–${time(zoomEnd)}`;
   }
   function draw(animate) {
     win?.cancelAnimationFrame?.(frame);
@@ -71,6 +76,12 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
     path.setAttribute('d', `M ${top} L ${bottom} Z`);
     path.setAttribute('fill', '#cce8db');
     svg.appendChild(path);
+    green = createSvg('rect');
+    green.setAttribute('y', '0');
+    green.setAttribute('height', '100');
+    green.setAttribute('fill', '#4ec48e');
+    green.setAttribute('fill-opacity', '0.25');
+    svg.appendChild(green);
     lane.appendChild(svg);
     const target = () => svg.setAttribute('viewBox', `${zoomStart} 0 ${zoomEnd - zoomStart} 100`);
     if (
@@ -108,8 +119,6 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller }) {
     range.min = String(zoomStart);
     range.max = String(zoomEnd);
     panel.hidden = false;
-    overview?.style.setProperty('--zoom-start', `${(zoomStart / duration) * 100}%`);
-    overview?.style.setProperty('--zoom-end', `${(zoomEnd / duration) * 100}%`);
     draw(animate);
     position();
     doc.addEventListener?.('keydown', escape);

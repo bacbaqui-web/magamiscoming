@@ -41,6 +41,7 @@ function setup() {
       element()
     ])
   );
+  elements.workMusicDrumLane = element();
   const root = {
     ...element(),
     getElementById: (id) => elements[id],
@@ -105,6 +106,7 @@ test('pointerdown opens immediately without a position jump; detailed range save
   f.inputs.verseEnd.fire('pointerdown', { button: 0, clientX: 100, clientY: 20 });
   const range = f.elements.workMusicPrecisionRange;
   assert.equal(f.elements.workMusicPrecisionPanel.hidden, false);
+  assert.ok(f.elements.workMusicDrumLane.children.includes(f.elements.workMusicPrecisionPanel));
   assert.equal(range.min, '40');
   assert.equal(range.max, '60');
   assert.equal(range.value, '50');
@@ -149,7 +151,7 @@ test('original handle drag uses the zoomed scale and commits once on release', (
   f.root.fire('pointerup');
   assert.equal(f.commits(), 1);
   assert.equal(f.elements.workMusicPrecisionWaveform.children.length, 1);
-  assert.equal(f.elements.workMusicPrecisionWaveform.children[0].children.length, 1);
+  assert.equal(f.elements.workMusicPrecisionWaveform.children[0].children.length, 2);
 });
 
 test('zoom window clamps to song ends and closes on song switch', () => {

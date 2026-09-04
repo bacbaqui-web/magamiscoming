@@ -1840,35 +1840,44 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .workmusic-precision-panel {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border: 1px solid #777;
-  border-radius: 5px;
-  background: #1b1b1b;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #252525;
 }
 .workmusic-precision-panel[hidden] {
   display: none;
 }
 .workmusic-precision-header {
+  position: absolute;
+  inset: 4px 6px auto;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #000;
 }
 .workmusic-precision-header button {
   padding: 4px 8px;
   font-size: 0.75rem;
+  pointer-events: auto;
 }
 .workmusic-precision-track {
-  position: relative;
-  margin: 8px 9px 22px;
+  position: absolute;
+  inset: 0;
+  margin: 0;
 }
 .workmusic-precision-waveform {
   position: relative;
   overflow: hidden;
-  height: 220px;
+  height: 100%;
   background: #252525;
 }
 .workmusic-precision-waveform svg {
@@ -1876,29 +1885,9 @@ body {
   height: 100%;
   display: block;
 }
-.workmusic-analysis-timeline:has(.workmusic-precision-panel:not([hidden]))
-  .workmusic-analysis-markers {
-  height: 80px;
-}
-.workmusic-analysis-markers {
-  transition: height 280ms ease;
-}
-.workmusic-analysis-timeline:has(.workmusic-precision-panel:not([hidden]))
-  .workmusic-drum-lane::after {
-  content: '';
-  position: absolute;
-  left: var(--zoom-start);
-  right: calc(100% - var(--zoom-end));
-  top: 0;
-  bottom: 0;
-  border: 1px solid #fff;
-  background: #ffffff18;
-  pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .workmusic-analysis-markers {
-    transition: none;
-  }
+.workmusic-drum-lane:has(.workmusic-precision-panel:not([hidden]))
+  > :not(.workmusic-precision-panel) {
+  visibility: hidden;
 }
 .workmusic-precision-line {
   position: absolute;
