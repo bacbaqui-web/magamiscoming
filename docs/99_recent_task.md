@@ -1,5 +1,58 @@
 # Recent Task
 
+## 최신: 곡별 분석 큐·대기 수 표시
+
+- 분석 버튼은 기존 단일 FIFO 서버 큐에 등록한다. 다른 곡으로 이동해 추가 등록할 수 있으며,
+  이미 진행 중인 같은 곡은 버튼·Controller·서버에서 중복을 방지한다. 10분 초과 거부는 유지한다.
+- 메인과 Lab에 `서버 전체: 분석 중 N곡 · 대기 M곡`을 표시한다. 서버 SQLite의 활성 작업만
+  집계하고, 조회 실패는 0곡으로 오인시키지 않는다. 현재 선택하지 않은 곡은 polling을 늦춰 요청 수를 줄인다.
+- 곡 전환으로 제출·추적을 취소하지 않는다. 새로고침·재선택 시 해당 곡의 서버 활성 작업을
+  이어서 추적한다. 서버는 브라우저와 별개로 순서대로 처리하며 결과 cache를 유지한다.
+- `GET /v1/jobs/queue` 계약을 로컬·Oracle 서비스에 추가했다. 기존 Firebase 인증·재생·자동 분석값
+  미적용·기본 Oracle 주소는 유지한다. 로컬 사용 주소는 `https://magamiscom.ing/?mediaAnalysis=local`다.
+- 검증: 프런트엔드 94개 테스트, backend 65개 테스트. FIFO 동시 실행 최대 1, 중복·취소 집계,
+  곡 전환 중 POST 유지·결과 오염 방지·활성 작업 복원·큐 오류 안내·View 버튼 상태를 확인했다.
+  로컬 실제 API에서 health·큐 조회와 기존 성공 결과의 cache 재사용을 확인했다.
+- ESLint·Prettier·Ruff·쉘 문법·diff 검사를 실행했다. 실제 로그인 브라우저 클릭·시각 QA는 남아 있다.
+  Oracle YouTube 접근 제한은 이번 큐 기능과 별개로 남아 있다.
+- 로컬·Oracle에 반영했다. Oracle에서도 테스트 65개·Ruff가 통과했고 공개 health 200,
+  큐 API의 비로그인 요청 401·OpenAPI 계약을 확인했다. 기존 5개 서비스는 모두 active다.
+- 이번 커밋에는 이전 로컬 실행·다운로더 환경 수정까지 포함한다.
+  사용자 파일 `current_task 2.md`는 수정·stage하지 않는다.
+
+## 이전: Mac 로컬 분석 실행·두 곡 성공
+
+- 사용자가 먼저 로컬에서 사용하도록 요청했다. 기존 운영 URL/Oracle 서비스는 변경하지 않고
+  `https://magamiscom.ing/?mediaAnalysis=local`를 사용한다. Edge에 이 주소를 열어두었다.
+- `media-analysis-service/scripts/run-local.sh`로 `127.0.0.1:8000`에만 바인딩한다.
+  정확한 운영·개발 Origin을 CORS로 허용하며 로컬 모드에서는 원격 Firebase 토큰을 요구하지 않는다.
+- 기존 프로젝트 Python bytecode 읽기 지연을 피해 Mac Application Support 아래에 전용
+  가상환경을 설치했다. 기존 `.venv`와 SQLite 결과는 보존했다. 스크립트는 이 환경이 있으면 우선 사용한다.
+- Oracle에서 실패했던 두 곡이 로컬 API batch에서 모두 성공했다.
+  `qa83rUNYZTM`: 268.636초, BPM 96.99, confidence 0.326, 작업 약 13초.
+  `L0b8hTHXHho`: 247.173초, BPM 117.91, confidence 0.211, 작업 약 8초.
+- health 200, 운영 Origin의 CORS preflight 200, 결과 조회를 확인했다.
+  Mac backend 테스트 64개, Ruff lint·format 통과. 테스트 bytecode cache도 동기화 폴더 밖에서 실행했다.
+- 로컬 서버를 실행 중으로 유지했다. Mac 또는 프로세스가 꺼지면 사용할 수 없다.
+  브라우저에서 로컬 네트워크 권한 요청이 나타나면 사용자가 허용해야 한다.
+- 기존 계정으로 로그인한 브라우저에서 버튼 클릭까지의 최종 검증은 남아 있다.
+  실제 음원 분석 성공은 로컬 HTTP API로 검증했다. Oracle 공개 사용 안정화는 `97_next_sprint.md`의 후속 과제다.
+- 이번 변경은 커밋·푸시하지 않았다. 기존 `current_task 2.md`는 보존했다.
+
+## URL 다운로드 장애 조사·실행 환경 보완
+
+- 실패한 두 곡(`qa83rUNYZTM`, `L0b8hTHXHho`)을 Oracle에서 재현했다.
+- Node 22는 설치돼 있었지만 yt-dlp에 활성화되지 않았고 EJS 패키지가 누락돼 있었다.
+  `yt-dlp[default]` 의존성과 `--js-runtimes node`를 메타데이터·다운로드 양쪽에 적용했다.
+- health는 버전 출력뿐 아니라 EJS import와 Node 22 이상도 검사한다.
+- 보완 후에도 두 곡은 YouTube 로그인/봇 확인 응답으로 실패했다. 해당 곡 다운로드 해결은
+  미완료이며 성공으로 판정하지 않는다. 쿠키 복사·프록시·접근 제한 우회는 하지 않았다.
+- `youtube_auth_required`를 일반 다운로드 실패와 분리한다. 기존 UI는 서버의 안전한 안내를
+  표시하므로 프런트 코드 배포 없이 적용할 수 있다. raw stderr·인증정보는 노출하지 않는다.
+- Oracle backend 테스트 64개, Ruff lint·format, 문서 Prettier·diff 검사, 설치 스크립트 문법
+  검사를 통과했다. 대기·실행 중 작업이 없는 상태에서 분석 서비스만 재시작해 반영했고,
+  기존 5개 서비스는 active를 유지했다. 이번 변경은 아직 커밋·푸시하지 않았다.
+
 ## 후속 변경: 모든 로그인 사용자 허용·10분 제한
 
 - 이메일 허용 목록을 제거했다. 마감이즈커밍 Firebase 프로젝트의 정상 ID 토큰이 있는

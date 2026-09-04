@@ -3,6 +3,26 @@ import assert from 'node:assert/strict';
 
 import { createMediaAnalysisBrowserAdapter } from '../src/services/mediaAnalysisBrowserAdapter.js';
 
+test('queue snapshot uses the authenticated queue route and optional video ID', async () => {
+  const calls = [];
+  const adapter = createMediaAnalysisBrowserAdapter({
+    apiBaseUrl: 'https://example.com/media-analysis',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, json: async () => ({ queuedCount: 2, runningCount: 1 }) };
+    }
+  });
+  assert.equal((await adapter.getQueue('dQw4w9WgXcQ')).queuedCount, 2);
+  await adapter.getQueue();
+  assert.equal(
+    calls[0].url,
+    'https://example.com/media-analysis/v1/jobs/queue?videoId=dQw4w9WgXcQ'
+  );
+  assert.equal(calls[1].url, 'https://example.com/media-analysis/v1/jobs/queue');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer token');
+});
+
 test('remote analysis sends a fresh login token and rejects signed-out requests', async () => {
   let token = 'first';
   const headers = [];

@@ -149,8 +149,8 @@ styles/
 - `features/workmusic/workMusicMetadataController.js`: YouTube 곡 메타데이터 요청 진입점
 - `features/workmusic/workMusicPlaylistController.js`: YouTube 재생목록 요청 진입점
 - `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 수동 분석 pair의 시작 시각, 고정 겹침 fallback, 대기 곡 cue, monitor, fade와 전환 완료 실행
-- `features/workmusic/workMusicAnalysisController.js`: 분석 작업 요청·poll·결과 cache, stale 차단과 수동 구간 저장 요청
-- `features/workmusic/workMusicAnalysisView.js`: 분석 상태·marker lane·드럼 구간 handle 렌더와 편집 이벤트
+- `features/workmusic/workMusicAnalysisController.js`: 곡별 큐 등록·백그라운드 추적·서버 큐 집계·활성 작업 복원, 결과 cache와 수동 구간 저장 요청
+- `features/workmusic/workMusicAnalysisView.js`: 분석 상태·서버 실행/대기 수·marker lane·드럼 구간 handle 렌더와 편집 이벤트
 - `features/workmusic/workMusicAnalysisHelper.js`: 분석 구간 검증과 수동·자동·고정 전환 계획 순수 계산
 - `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서 순수 계산
 - `features/clipviewer.js`: CLIP Engine·Composer·Controller와 외부 기능을 조립하고 공개 호환 계약을 연결하는 진입점
@@ -239,6 +239,7 @@ styles/
   - `tests/mediaAnalysisBrowserAdapter.test.js`: 분석 API 주소·JSON·비활성·연결 실패 계약
   - `tests/mediaAnalysisPort.test.js`: 엄격한 YouTube videoId 경계
   - `tests/workMusicAnalysisController.test.js`: 초기 빈 목록 상태, POST·poll·result, stale 차단과 수동 저장 시점
+  - `tests/workMusicAnalysisView.test.js`: 서버 큐 표시·현재 곡 중복 등록 방지 버튼 상태
   - `tests/workMusicAnalysisHelper.test.js`: 수동 우선·신뢰도·고정 이어듣기 fallback 계산
   - `tests/localWorkMusicStore.test.js`: Lab 목록·수동 구간 저장과 손상 데이터 복구 계약
   - `tests/localWorkMusicBatchStore.test.js`: batch 재개 상태 저장과 손상 데이터 복구 계약

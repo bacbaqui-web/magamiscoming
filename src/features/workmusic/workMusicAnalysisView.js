@@ -16,6 +16,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   const panel = root.getElementById('workMusicAnalysisPanel');
   const status = root.getElementById('workMusicAnalysisStatus');
   const message = root.getElementById('workMusicAnalysisMessage');
+  const queue = root.getElementById('workMusicAnalysisQueue');
   const analyzeButton = root.getElementById('workMusicAnalyzeBtn');
   const bpm = root.getElementById('workMusicAnalysisBpm');
   const confidence = root.getElementById('workMusicAnalysisConfidence');
@@ -67,6 +68,14 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     panel.dataset.phase = state.phase;
     if (status) status.textContent = STATUS_LABELS[state.phase] || state.phase;
     if (message) message.textContent = state.message || '';
+    if (queue) {
+      queue.hidden = !state.enabled;
+      queue.textContent = state.queueUnavailable
+        ? '서버 큐 현황을 확인할 수 없습니다. 다시 확인 중...'
+        : state.queue
+          ? `서버 전체: 분석 중 ${state.queue.runningCount}곡 · 대기 ${state.queue.queuedCount}곡`
+          : '서버 큐 확인 중...';
+    }
     if (analyzeButton) {
       analyzeButton.disabled =
         !state.enabled ||

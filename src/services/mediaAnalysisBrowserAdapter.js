@@ -74,6 +74,10 @@ export function createMediaAnalysisBrowserAdapter({
 
   return {
     enabled: !!baseUrl,
+    getQueue: (videoId = '', { signal } = {}) =>
+      request(`/v1/jobs/queue${videoId ? `?videoId=${encodeURIComponent(videoId)}` : ''}`, {
+        signal
+      }),
     createJob: (videoId, { signal } = {}) =>
       request('/v1/jobs', { method: 'POST', body: { videoId }, signal }),
     createBatch: (videoIds, { signal } = {}) =>

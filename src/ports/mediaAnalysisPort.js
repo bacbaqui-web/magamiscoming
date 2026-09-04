@@ -15,6 +15,9 @@ export function createMediaAnalysisPort({ adapter } = {}) {
 
   return {
     enabled,
+    getQueue(videoId, options) {
+      return adapter.getQueue(videoId ? requireVideoId(videoId) : '', options);
+    },
     createJob(videoId, options) {
       return adapter.createJob(requireVideoId(videoId), options);
     },

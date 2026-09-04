@@ -15,6 +15,118 @@ const result = {
   confidence: 0.8
 };
 
+const notFound = () => Promise.reject(Object.assign(new Error('not found'), { status: 404 }));
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+test('submitted jobs survive song switches, prevent duplicates and cache background results', async () => {
+  let releasePost;
+  let releaseWait;
+  let postedSignal;
+  let posts = 0;
+  const other = { id: 'other', videoId: 'bbbbbbbbbbb' };
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: {
+      enabled: true,
+      getQueue: async () => ({ queuedCount: 1, runningCount: 1 }),
+      createJob: async (videoId, { signal }) => {
+        posts += 1;
+        if (videoId === other.videoId) return { status: 'succeeded' };
+        postedSignal = signal;
+        return new Promise((resolve) => {
+          releasePost = resolve;
+        });
+      },
+      getJob: async () => ({ status: 'succeeded' }),
+      getResult: async (videoId) => ({ ...result, videoId })
+    },
+    wait: () =>
+      new Promise((resolve) => {
+        releaseWait = resolve;
+      })
+  });
+  try {
+    await controller.selectSong(song);
+    const first = controller.analyzeCurrent();
+    await controller.selectSong(other);
+    assert.equal(postedSignal.aborted, false);
+    assert.equal(await controller.analyzeCurrent(), true);
+    releasePost({ jobId: 'first', status: 'queued' });
+    await flush();
+    await controller.selectSong(song);
+    assert.equal(controller.getState().phase, 'queued');
+    assert.equal(await controller.analyzeCurrent(), false);
+    assert.equal(posts, 2);
+    assert.deepEqual(controller.getState().queue, { queuedCount: 1, runningCount: 1 });
+    await controller.selectSong(other);
+    releaseWait();
+    assert.equal(await first, true);
+    assert.equal(controller.getState().detected.videoId, other.videoId);
+    await controller.selectSong(song);
+    assert.equal(controller.getState().phase, 'succeeded');
+    assert.equal(controller.getState().detected.videoId, song.videoId);
+  } finally {
+    controller.destroy();
+  }
+});
+
+test('selecting a song resumes an existing server job without another POST', async () => {
+  let releaseWait;
+  let finished = false;
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: {
+      enabled: true,
+      getQueue: async () => ({
+        queuedCount: 0,
+        runningCount: finished ? 0 : 1,
+        activeJob: finished ? null : { jobId: 'existing', status: 'running' }
+      }),
+      createJob: async () => {
+        assert.fail('must not submit recovered job');
+      },
+      getJob: async () => {
+        finished = true;
+        return { status: 'succeeded' };
+      },
+      getResult: () => (finished ? Promise.resolve(result) : notFound())
+    },
+    wait: () =>
+      new Promise((resolve) => {
+        releaseWait = resolve;
+      })
+  });
+  try {
+    await controller.selectSong(song);
+    await flush();
+    assert.equal(controller.getState().phase, 'running');
+    releaseWait();
+    await flush();
+    assert.equal(controller.getState().phase, 'succeeded');
+    assert.equal(controller.getState().queue.runningCount, 0);
+  } finally {
+    controller.destroy();
+  }
+});
+
+test('queue lookup failure is not reported as an empty queue', async () => {
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: {
+      enabled: true,
+      getResult: notFound,
+      getQueue: async () => {
+        throw new Error('offline');
+      }
+    }
+  });
+  try {
+    await controller.selectSong(song);
+    await flush();
+    assert.equal(controller.getState().queue, null);
+    assert.equal(controller.getState().queueUnavailable, true);
+  } finally {
+    controller.destroy();
+  }
+});
+
 test('analysis rejects over ten minutes but accepts exactly ten minutes', async () => {
   let calls = 0;
   const controller = createWorkMusicAnalysisController({

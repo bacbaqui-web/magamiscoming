@@ -12,6 +12,12 @@ export function createWorkMusicAnalysisController({
   wait = waitDefault
 } = {}) {
   const detectedByVideoId = new Map();
+  const operations = new Map();
+  const lifetime = new AbortController();
+  let queue = null;
+  let queueUnavailable = false;
+  let queueTimer = null;
+  let queueRequest = null;
   let selectionVersion = 0;
   let selectionKey = null;
   let currentSong = null;
@@ -29,6 +35,9 @@ export function createWorkMusicAnalysisController({
 
   const snapshot = () => ({
     ...state,
+    ...operations.get(currentSong?.videoId)?.state,
+    queue: clone(queue),
+    queueUnavailable,
     enabled: !!mediaAnalysisPort?.enabled,
     videoId: currentSong?.videoId || '',
     songId: currentSong?.id ?? null,
@@ -36,13 +45,55 @@ export function createWorkMusicAnalysisController({
     manual: clone(state.manual),
     draft: clone(state.draft)
   });
-  const publish = () => onChange(snapshot());
+  const publish = () => {
+    if (!lifetime.signal.aborted) onChange(snapshot());
+  };
   const isCurrent = (version, videoId) =>
     version === selectionVersion && videoId === currentSong?.videoId;
   const manualForSong = (song) =>
     normalizeAnalysisRange(song?.mediaAnalysisManual, song?.durationSeconds);
   const draftFrom = (manual, detected) =>
     clone(manual || normalizeAnalysisRange(detected, detected?.durationSeconds));
+
+  async function refreshQueue() {
+    if (!mediaAnalysisPort?.getQueue || lifetime.signal.aborted) return;
+    if (queueRequest) {
+      await queueRequest.catch(() => {});
+      return;
+    }
+    const videoId = currentSong?.videoId || '';
+    const request = mediaAnalysisPort.getQueue(videoId, { signal: lifetime.signal });
+    queueRequest = request;
+    try {
+      const next = await request;
+      if (lifetime.signal.aborted) return;
+      queue = { queuedCount: next.queuedCount, runningCount: next.runningCount };
+      queueUnavailable = false;
+      if (next.activeJob && !operations.has(videoId)) {
+        void followJob(videoId, next.activeJob);
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') queueUnavailable = true;
+    } finally {
+      if (queueRequest === request) queueRequest = null;
+      publish();
+      clearTimeout(queueTimer);
+      if (
+        !lifetime.signal.aborted &&
+        (videoId !== (currentSong?.videoId || '') ||
+          operations.size ||
+          queueUnavailable ||
+          queue?.queuedCount ||
+          queue?.runningCount)
+      ) {
+        queueTimer = setTimeout(
+          () => void refreshQueue(),
+          queueUnavailable ? Math.max(5000, pollIntervalMs) : pollIntervalMs
+        );
+        queueTimer.unref?.();
+      }
+    }
+  }
 
   function applyDetected(result) {
     detectedByVideoId.set(result.videoId, { ...result });
@@ -117,6 +168,7 @@ export function createWorkMusicAnalysisController({
       dirty: false
     };
     publish();
+    if (mediaAnalysisPort?.enabled) void refreshQueue();
     if (!mediaAnalysisPort?.enabled || !nextSong || detected) return;
     abortController = new AbortController();
     await loadExisting(selectionVersion, nextSong.videoId, abortController.signal);
@@ -129,54 +181,71 @@ export function createWorkMusicAnalysisController({
       publish();
       return false;
     }
-    const version = selectionVersion;
     const videoId = currentSong.videoId;
+    if (operations.has(videoId)) return false;
     abortController?.abort();
-    abortController = new AbortController();
-    const { signal } = abortController;
-    state = { ...state, phase: 'submitting', message: '분석 요청 중...' };
+    return followJob(videoId);
+  }
+
+  async function followJob(videoId, existingJob) {
+    const operation = {
+      state: { phase: existingJob?.status || 'submitting', message: '분석 큐에 등록 중...' }
+    };
+    operations.set(videoId, operation);
+    const { signal } = lifetime;
+    const update = (patch) => {
+      operation.state = patch;
+      if (currentSong?.videoId === videoId) state = { ...state, ...patch };
+      publish();
+    };
     publish();
     try {
-      let job = await mediaAnalysisPort.createJob(videoId, { signal });
+      let job = existingJob || (await mediaAnalysisPort.createJob(videoId, { signal }));
+      void refreshQueue();
       for (let count = 0; ['queued', 'running'].includes(job.status); count += 1) {
-        if (!isCurrent(version, videoId)) return false;
+        if (signal.aborted) return false;
         if (count >= maxPolls) throw new Error('분석 대기 시간이 초과되었습니다.');
-        state = {
-          ...state,
+        update({
           phase: job.status,
-          message: job.status === 'queued' ? '분석 대기 중...' : '분석 중...'
-        };
-        publish();
-        await wait(pollIntervalMs);
-        if (!isCurrent(version, videoId)) return false;
+          message:
+            job.status === 'queued'
+              ? '큐에 등록되었습니다. 차례를 기다리는 중입니다.'
+              : '분석 중...'
+        });
+        // Background songs must not multiply requests beyond the shared API rate limit.
+        const delay = currentSong?.videoId === videoId ? 1 : Math.max(5, operations.size);
+        await wait(pollIntervalMs * delay);
+        if (signal.aborted) return false;
         job = await mediaAnalysisPort.getJob(job.jobId, { signal });
       }
-      if (!isCurrent(version, videoId)) return false;
+      if (signal.aborted) return false;
       if (job.status !== 'succeeded') {
-        state = {
-          ...state,
+        update({
           phase: job.status || 'failed',
           message:
             job.errorCode === 'download_failed'
               ? 'YouTube에서 음원을 가져오지 못했습니다. 접근 제한 또는 다운로드 오류일 수 있습니다.'
               : job.errorMessage || '분석에 실패했습니다.'
-        };
-        publish();
+        });
         return false;
       }
       const result = await mediaAnalysisPort.getResult(videoId, { signal });
-      if (!isCurrent(version, videoId)) return false;
-      applyDetected(result);
+      if (signal.aborted) return false;
+      detectedByVideoId.set(videoId, { ...result });
+      operations.delete(videoId);
+      if (currentSong?.videoId === videoId) applyDetected(result);
       return true;
     } catch (error) {
-      if (error?.name === 'AbortError' || !isCurrent(version, videoId)) return false;
-      state = {
-        ...state,
+      if (error?.name === 'AbortError' || signal.aborted) return false;
+      update({
         phase: 'unavailable',
         message: String(error?.message || '분석 서버에 연결할 수 없습니다.').slice(0, 240)
-      };
-      publish();
+      });
       return false;
+    } finally {
+      operations.delete(videoId);
+      publish();
+      void refreshQueue();
     }
   }
 
@@ -237,6 +306,8 @@ export function createWorkMusicAnalysisController({
     destroy() {
       selectionVersion += 1;
       abortController?.abort();
+      lifetime.abort();
+      clearTimeout(queueTimer);
     },
     detectedByVideoId,
     getTransitionPlan(current, next, fixedOverlapSeconds) {
