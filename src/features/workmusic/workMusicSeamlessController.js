@@ -211,9 +211,12 @@ export function createWorkMusicSeamlessController({
         const t =
           Number(getStandbyPlayer()?.getCurrentTime?.() || 0) - slots.transition.nextGreenStart;
         const { introSeconds, outroSeconds } = slots.transition;
-        const incoming = introSeconds > 0 ? Math.min(1, Math.max(0, 1 + t / introSeconds)) : 1;
-        const outgoing =
-          outroSeconds > 0 ? Math.min(1, Math.max(0, -t / outroSeconds)) : Number(t < 0);
+        const incomingProgress =
+          introSeconds > 0 ? Math.min(1, Math.max(0, 1 + t / introSeconds)) : 1;
+        const outgoingProgress =
+          outroSeconds > 0 ? Math.min(1, Math.max(0, 1 + t / outroSeconds)) : Number(t >= 0);
+        const incoming = incomingProgress * incomingProgress;
+        const outgoing = outroSeconds > 0 ? 1 - outgoingProgress * outgoingProgress : Number(t < 0);
         levels = {
           previous: volume() * outgoing,
           next: volume() * incoming,

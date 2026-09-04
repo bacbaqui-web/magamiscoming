@@ -24,8 +24,8 @@ test('both songs crossfade before green and hand off completely at green', async
   const level = f.engine.getSnapshot().volume;
   f.players[1].current = 5;
   tick();
-  assert.equal(f.players[0].volume, level / 2);
-  assert.equal(f.players[1].volume, level / 2);
+  assert.equal(f.players[0].volume, level * 0.75);
+  assert.equal(f.players[1].volume, level * 0.25);
   f.players[1].current = 10;
   tick();
   assert.equal(f.players[0].volume, 0);
