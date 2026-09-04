@@ -1868,8 +1868,37 @@ body {
 .workmusic-precision-waveform {
   position: relative;
   overflow: hidden;
-  height: 100px;
+  height: 220px;
   background: #252525;
+}
+.workmusic-precision-waveform svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.workmusic-analysis-timeline:has(.workmusic-precision-panel:not([hidden]))
+  .workmusic-analysis-markers {
+  height: 80px;
+}
+.workmusic-analysis-markers {
+  transition: height 280ms ease;
+}
+.workmusic-analysis-timeline:has(.workmusic-precision-panel:not([hidden]))
+  .workmusic-drum-lane::after {
+  content: '';
+  position: absolute;
+  left: var(--zoom-start);
+  right: calc(100% - var(--zoom-end));
+  top: 0;
+  bottom: 0;
+  border: 1px solid #fff;
+  background: #ffffff18;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .workmusic-analysis-markers {
+    transition: none;
+  }
 }
 .workmusic-precision-line {
   position: absolute;

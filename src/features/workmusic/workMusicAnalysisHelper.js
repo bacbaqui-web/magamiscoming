@@ -1,3 +1,5 @@
+import { findWaveformRepetitions } from './workMusicRepetitionHelper.js';
+
 export function normalizeAnalysisRange(value, durationSeconds = 0) {
   const start = Number(value?.drumStart);
   const end = Number(value?.drumEnd);
@@ -7,7 +9,7 @@ export function normalizeAnalysisRange(value, durationSeconds = 0) {
   const range = { drumStart: start, drumEnd: end };
   const verseEnd = Number(value?.verseEnd);
   if (value?.verseEnd != null && Number.isFinite(verseEnd))
-    range.verseEnd = Math.max(start, Math.min(end, verseEnd));
+    range.verseEnd = Math.max(0, Math.min(duration > 0 ? duration : Infinity, verseEnd));
   return range;
 }
 
@@ -38,9 +40,14 @@ export function isCurrentAnalysis(result) {
 export function suggestVerseEnd(result, range) {
   if (!range) return null;
   const { drumStart: start, drumEnd: end } = range;
-  const sections = (result?.sections || []).filter(
-    (s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end > s.start
-  );
+  const spectral = (result?.sections || []).filter((s) => s.label === 'chorus_candidate');
+  const waveformFallback = spectral.length < 2;
+  const repeated = waveformFallback ? findWaveformRepetitions(result) : [];
+  const sections = (
+    repeated.length >= 2
+      ? [...repeated, ...(result?.sections || []).filter((s) => s.label === 'intro')]
+      : result?.sections || []
+  ).filter((s) => Number.isFinite(s.start) && Number.isFinite(s.end) && s.end > s.start);
   const choruses = [];
   for (const section of sections
     .filter((s) => s.label === 'chorus_candidate')
@@ -51,17 +58,19 @@ export function suggestVerseEnd(result, range) {
     else choruses.push({ start: section.start, end: section.end });
   }
   const introEnd = Math.max(0, ...sections.filter((s) => s.label === 'intro').map((s) => s.end));
-  const opening = Math.max(start, introEnd);
+  // User's green edits must not change which chorus counts as the opening chorus.
+  const opening = Math.max(Number(result?.drumStart) || 0, introEnd);
   const first = choruses[0];
-  const chorusOpening = first && first.start <= opening + 8;
+  const openingWindow = Math.max(12, Math.min(30, Number(result?.durationSeconds || 0) * 0.12));
+  const chorusOpening = first && first.start <= opening + openingWindow;
   const selected = chorusOpening ? choruses[1] : first;
   const value = selected?.end ?? (start + end) / 2;
   return {
-    value: Math.max(start, Math.min(end, value)),
+    value: Math.max(0, Math.min(Number(result?.durationSeconds) || end, value)),
     reason: selected
       ? chorusOpening
-        ? '두 번째 후렴 끝 추정'
-        : '첫 번째 후렴 끝 추정'
+        ? `두 번째 후렴 끝 추정${repeated.length >= 2 ? ' · 음파 반복 후보' : ''}`
+        : `첫 번째 후렴 끝 추정${repeated.length >= 2 ? ' · 음파 반복 후보' : ''}`
       : '후렴 불확실 · 임시 중앙 위치'
   };
 }

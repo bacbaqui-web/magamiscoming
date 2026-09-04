@@ -302,10 +302,8 @@ export function createWorkMusicAnalysisController({
     if (boundary === 'drumEnd' && next.drumEnd <= next.drumStart) {
       next.drumEnd = Math.min(duration || next.drumStart + 0.1, next.drumStart + 0.1);
     }
-    next.verseEnd = Math.max(
-      next.drumStart,
-      Math.min(next.drumEnd, next.verseEnd ?? (next.drumStart + next.drumEnd) / 2)
-    );
+    next.verseEnd = current.verseEnd;
+    if (boundary === 'verseEnd') next.verseEnd = numeric;
     state = { ...state, draft: next, dirty: true };
     publish();
   }
@@ -316,7 +314,6 @@ export function createWorkMusicAnalysisController({
     const duration = Number(state.detected?.durationSeconds || song?.durationSeconds || 0);
     const manual = normalizeAnalysisRange(state.draft, duration);
     if (!song || !manual) return false;
-    if (!verseWasEdited && state.manual?.verseEnd == null) delete manual.verseEnd;
     await saveManual({ songId: song.id, videoId: song.videoId, manual });
     if (!isCurrent(version, song.videoId)) return false;
     currentSong = { ...currentSong, mediaAnalysisManual: manual };

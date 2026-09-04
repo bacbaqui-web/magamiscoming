@@ -114,7 +114,7 @@ test('verse suggestion chooses second chorus for chorus opening, first after a v
   assert.equal(isCurrentAnalysis(current('a')), true);
 });
 
-test('background upgrades preserve dirty edits and saved manual verse; automatic verse is not pinned by edge edits', async () => {
+test('background upgrades preserve dirty edits; edge saves pin the existing verse independently', async () => {
   let saved;
   const result = { ...current('a'), sections: [{ start: 40, end: 65, label: 'chorus_candidate' }] };
   const analysis = createWorkMusicAnalysisController({
@@ -130,7 +130,11 @@ test('background upgrades preserve dirty edits and saved manual verse; automatic
   assert.equal(analysis.getState().draft.drumStart, 15);
   assert.equal(analysis.getState().dirty, true);
   await analysis.commitDraft();
-  assert.equal(saved.verseEnd, undefined);
+  assert.equal(saved.verseEnd, 65);
+  analysis.updateDraft('drumStart', 80);
+  assert.equal(analysis.getState().draft.verseEnd, 65);
+  await analysis.commitDraft();
+  assert.equal(analysis.getState().draft.verseEnd, 65);
   analysis.updateDraft('verseEnd', 70);
   await analysis.commitDraft();
   analysis.acceptResult({

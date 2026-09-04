@@ -46,7 +46,7 @@ test('DJ uses displayed cached range, but saved edits take priority; verse is no
   assert.deepEqual(normalizeAnalysisRange({ drumStart: 10, drumEnd: 85, verseEnd: 200 }), {
     drumStart: 10,
     drumEnd: 85,
-    verseEnd: 85
+    verseEnd: 200
   });
   assert.deepEqual(normalizeAnalysisRange({ drumStart: 10, drumEnd: 85 }), {
     drumStart: 10,

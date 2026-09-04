@@ -100,15 +100,9 @@ function setup() {
   };
 }
 
-test('hold opens after three motionless seconds; inset has narrower time scale without changing original value', () => {
+test('pointerdown opens immediately without a position jump; detailed range saves precisely', () => {
   const f = setup();
   f.inputs.verseEnd.fire('pointerdown', { button: 0, clientX: 100, clientY: 20 });
-  f.advance(2500);
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
-  f.root.fire('pointermove', { clientX: 101, clientY: 20 });
-  f.advance(2500);
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
-  f.advance(500);
   const range = f.elements.workMusicPrecisionRange;
   assert.equal(f.elements.workMusicPrecisionPanel.hidden, false);
   assert.equal(range.min, '40');
@@ -129,7 +123,7 @@ test('hold opens after three motionless seconds; inset has narrower time scale w
   assert.equal(f.inputs.verseEnd.focused, true);
 });
 
-test('release, cancellation, blur and song change cancel pending holds', () => {
+test('release/cancel/blur end drag and leave detail visible; song change closes it', () => {
   for (const stop of ['pointerup', 'pointercancel', 'blur', 'song']) {
     const f = setup();
     f.inputs.drumStart.fire('pointerdown', { button: 0, clientX: 0, clientY: 0 });
@@ -139,8 +133,23 @@ test('release, cancellation, blur and song change cancel pending holds', () => {
     else f.root.fire(stop);
     f.advance(100);
     assert.equal(f.pending.size, 0);
-    assert.equal(f.elements.workMusicPrecisionPanel.hidden, true, stop);
+    assert.equal(f.elements.workMusicPrecisionPanel.hidden, stop === 'song', stop);
+    const original = f.state().draft.drumStart;
+    f.root.fire('pointermove', { clientX: 300 });
+    assert.equal(f.state().draft.drumStart, original);
   }
+});
+
+test('original handle drag uses the zoomed scale and commits once on release', () => {
+  const f = setup();
+  f.inputs.verseEnd.fire('pointerdown', { button: 0, clientX: 100 });
+  f.root.fire('pointermove', { clientX: 140 });
+  assert.equal(f.state().draft.verseEnd, 51);
+  assert.equal(f.state().draft.drumStart, 10);
+  f.root.fire('pointerup');
+  assert.equal(f.commits(), 1);
+  assert.equal(f.elements.workMusicPrecisionWaveform.children.length, 1);
+  assert.equal(f.elements.workMusicPrecisionWaveform.children[0].children.length, 1);
 });
 
 test('zoom window clamps to song ends and closes on song switch', () => {

@@ -1,4 +1,5 @@
 import { createWorkMusicPrecisionEditor } from './workMusicPrecisionEditor.js';
+import { findWaveformRepetitions } from './workMusicRepetitionHelper.js';
 
 const STATUS_LABELS = {
   disabled: '분석 꺼짐',
@@ -66,10 +67,15 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     const fragment = documentFactory?.createDocumentFragment();
     if (!fragment) return;
     const waveform = Array.isArray(result?.waveform) ? result.waveform.slice(0, 1000) : [];
-    const sections = duration > 0 && Array.isArray(result?.sections) ? result.sections : [];
+    let sections = duration > 0 && Array.isArray(result?.sections) ? result.sections : [];
+    const repetition =
+      sections.filter((s) => s.label === 'chorus_candidate').length < 2
+        ? findWaveformRepetitions(result)
+        : [];
+    if (repetition.length >= 2) sections = repetition;
     const labels = { intro: '인트로 후보', outro: '아웃트로 후보', chorus_candidate: '후렴 후보' };
-    sections.forEach((section, index) => {
-      if (section.label === 'intro' || section.label === 'outro') return;
+    sections.forEach((section) => {
+      if (section.label !== 'chorus_candidate') return;
       const start = Math.max(0, Number(section.start));
       const end = Math.min(duration, Number(section.end));
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
@@ -78,7 +84,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
       region.className = `workmusic-analysis-section ${kind}`;
       region.style.left = `${(start / duration) * 100}%`;
       region.style.width = `${((end - start) / duration) * 100}%`;
-      region.textContent = labels[kind] || `구간 ${index + 1}`;
+      region.textContent = repetition.length >= 2 ? '반복 후렴 후보' : labels[kind] || '';
       region.title = `${region.textContent} ${formatSeconds(start)}–${formatSeconds(end)} · 추정 신뢰도 ${Math.round(Number(section.confidence || 0) * 100)}%`;
       fragment.appendChild(region);
     });
@@ -176,12 +182,13 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
       if (!input) return;
       input.disabled = !hasDraft;
       input.max = String(duration || 1);
+      input.step = '0.01';
     });
     if (hasDraft) {
       const verse = Math.max(
-        draft.drumStart,
+        0,
         Math.min(
-          draft.drumEnd,
+          duration,
           Number.isFinite(draft.verseEnd) ? draft.verseEnd : (draft.drumStart + draft.drumEnd) / 2
         )
       );
