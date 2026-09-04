@@ -23,6 +23,9 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   const source = root.getElementById('workMusicAnalysisSource');
   const markerLane = root.getElementById('workMusicAnalysisMarkers');
   const playbackLabel = root.getElementById('workMusicAnalysisPlayback');
+  const structureLabel = root.getElementById('workMusicAnalysisStructure');
+  let playhead = null;
+  let renderedResult;
   let selectedVideoId = '';
   let analysisDuration = 0;
   let playback = null;
@@ -41,26 +44,52 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
 
   function renderMarkers(result) {
     if (!markerLane) return;
+    if (renderedResult === result && playhead) return;
+    renderedResult = result;
     markerLane.replaceChildren();
     const duration = Number(result?.durationSeconds || 0);
-    if (duration <= 0) return;
     const fragment = documentFactory?.createDocumentFragment();
     if (!fragment) return;
-    const beats = Array.isArray(result?.beats) ? result.beats : [];
-    const step = Math.max(1, Math.ceil(beats.length / 240));
-    beats.forEach((time, index) => {
-      if (index % step) return;
-      const marker = documentFactory.createElement('span');
-      marker.className = 'workmusic-analysis-marker beat';
-      marker.style.left = `${Math.min(100, (Number(time) / duration) * 100)}%`;
-      fragment.appendChild(marker);
+    const waveform = Array.isArray(result?.waveform) ? result.waveform.slice(0, 1000) : [];
+    const sections = duration > 0 && Array.isArray(result?.sections) ? result.sections : [];
+    const labels = { intro: '인트로 후보', outro: '아웃트로 후보', chorus_candidate: '후렴 후보' };
+    sections.forEach((section, index) => {
+      const start = Math.max(0, Number(section.start));
+      const end = Math.min(duration, Number(section.end));
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+      const region = documentFactory.createElement('span');
+      const kind = Object.hasOwn(labels, section.label) ? section.label : 'section';
+      region.className = `workmusic-analysis-section ${kind}`;
+      region.style.left = `${(start / duration) * 100}%`;
+      region.style.width = `${((end - start) / duration) * 100}%`;
+      region.textContent = labels[kind] || `구간 ${index + 1}`;
+      region.title = `${region.textContent} ${formatSeconds(start)}–${formatSeconds(end)} · 추정 신뢰도 ${Math.round(Number(section.confidence || 0) * 100)}%`;
+      fragment.appendChild(region);
     });
-    (Array.isArray(result?.bars) ? result.bars : []).forEach((time) => {
-      const marker = documentFactory.createElement('span');
-      marker.className = 'workmusic-analysis-marker bar';
-      marker.style.left = `${Math.min(100, (Number(time) / duration) * 100)}%`;
-      fragment.appendChild(marker);
+    waveform.forEach((value, index) => {
+      const sample = documentFactory.createElement('span');
+      sample.className = 'workmusic-waveform-sample';
+      sample.style.left = `${(index / waveform.length) * 100}%`;
+      sample.style.width = `${100 / waveform.length}%`;
+      sample.style.height = `${Math.max(1, Math.min(1, Number(value) || 0) * 70)}%`;
+      fragment.appendChild(sample);
     });
+    if (!waveform.length) {
+      const empty = documentFactory.createElement('span');
+      empty.className = 'workmusic-waveform-empty';
+      empty.textContent = result
+        ? '전체 음파를 보려면 다시 분석해 주세요.'
+        : '분석하면 전체 음파와 구간이 표시됩니다.';
+      fragment.appendChild(empty);
+    }
+    if (structureLabel)
+      structureLabel.textContent = waveform.length
+        ? '구간은 자동 추정입니다. 인트로·아웃트로는 드럼 앞뒤 후보이며 후렴은 직접 들어 확인해 주세요.'
+        : '';
+    playhead = documentFactory.createElement('span');
+    playhead.className = 'workmusic-analysis-playhead';
+    playhead.hidden = true;
+    fragment.appendChild(playhead);
     markerLane.appendChild(fragment);
   }
 
@@ -76,6 +105,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
       duration > 0 &&
       Number.isFinite(time);
     markerLane.dataset.playback = String(valid);
+    if (playhead) playhead.hidden = !valid;
     const current = valid ? Math.max(0, Math.min(duration, time)) : 0;
     markerLane.style.setProperty(
       '--playback-position',

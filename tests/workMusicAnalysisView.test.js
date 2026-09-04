@@ -2,6 +2,66 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWorkMusicAnalysisView } from '../src/features/workmusic/workMusicAnalysisView.js';
 
+test('timeline renders actual waveform and tentative sections, not beat markers; legacy results request reanalysis', () => {
+  const element = () => ({
+    style: {},
+    children: [],
+    appendChild(child) {
+      this.children.push(child);
+    }
+  });
+  const lane = {
+    ...element(),
+    dataset: {},
+    replaceChildren() {
+      this.children = [];
+    }
+  };
+  lane.style.setProperty = () => {};
+  const elements = {
+    workMusicAnalysisPanel: { dataset: {} },
+    workMusicAnalysisMarkers: lane,
+    workMusicAnalysisStructure: {}
+  };
+  const view = createWorkMusicAnalysisView({
+    root: {
+      getElementById: (id) => elements[id],
+      createElement: element,
+      createDocumentFragment: element
+    },
+    controller: {}
+  });
+  const detected = {
+    durationSeconds: 100,
+    waveform: [0, 0.5, 1],
+    beats: [1, 2],
+    bars: [1],
+    sections: [
+      { start: 0, end: 10, label: 'intro', confidence: 0.7 },
+      { start: 30, end: 50, label: 'chorus_candidate', confidence: 0.6 }
+    ]
+  };
+  view.render({ videoId: 'a', detected, phase: 'succeeded' });
+  const children = lane.children[0].children;
+  assert.equal(
+    children.filter((child) => child.className === 'workmusic-waveform-sample').length,
+    3
+  );
+  assert.equal(children.filter((child) => child.className?.includes('marker')).length, 0);
+  assert.equal(children[1].textContent, '후렴 후보');
+  assert.equal(children[1].style.left, '30%');
+  assert.equal(children[1].style.width, '20%');
+  const head = children.at(-1);
+  assert.equal(head.hidden, true);
+  view.renderPlayback({ videoId: 'a', currentTime: 20, duration: 100 });
+  assert.equal(head.hidden, false);
+  view.render({ videoId: 'a', detected, phase: 'succeeded' });
+  assert.equal(lane.children[0].children.at(-1), head);
+  view.render({ videoId: 'b', detected: { durationSeconds: 100 }, phase: 'succeeded' });
+  assert.match(lane.children[0].children[0].textContent, /다시 분석/);
+  assert.equal(lane.children[0].children.at(-1).hidden, true);
+});
+
 test('playhead follows playback and seeking without rebuilding markers, hides on song change', () => {
   const properties = {};
   let rebuilds = 0;

@@ -2,6 +2,7 @@ import { downloadTextFile, openTabSettings, renderManagedTab } from '../tabSetti
 import { createWorkMusicEngine } from './workMusicEngine.js';
 import { createWorkMusicAnalysisController } from './workMusicAnalysisController.js';
 import { createWorkMusicAnalysisView } from './workMusicAnalysisView.js';
+import { getWorkMusicPlaybackVideoId } from './workMusicPlaybackIdentity.js';
 import { createWorkMusicListController } from './workMusicListController.js';
 import { createWorkMusicMetadataController } from './workMusicMetadataController.js';
 import { createWorkMusicPlaybackController } from './workMusicPlaybackController.js';
@@ -681,7 +682,7 @@ export function createWorkMusicComposer({
     try {
       elapsed = Number(getWorkMusicRuntimePlayer()?.getCurrentTime?.() || 0);
       playerDuration = Number(getWorkMusicRuntimePlayer()?.getDuration?.() || 0);
-      playerVideoId = String(getWorkMusicRuntimePlayer()?.getVideoData?.()?.video_id || '');
+      playerVideoId = getWorkMusicPlaybackVideoId(getWorkMusicRuntimePlayer());
     } catch (_) {
       elapsed = 0;
       playerDuration = 0;

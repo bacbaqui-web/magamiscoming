@@ -1,5 +1,6 @@
 import { createWorkMusicAnalysisController } from '../features/workmusic/workMusicAnalysisController.js';
 import { createWorkMusicAnalysisView } from '../features/workmusic/workMusicAnalysisView.js';
+import { getWorkMusicPlaybackVideoId } from '../features/workmusic/workMusicPlaybackIdentity.js';
 import { createWorkMusicBatchAnalysisController } from '../features/workmusic/workMusicBatchAnalysisController.js';
 import { createWorkMusicEngine } from '../features/workmusic/workMusicEngine.js';
 import {
@@ -416,7 +417,7 @@ elements.batchResume.addEventListener('click', () => batchAnalysisController.res
 setInterval(() => {
   const currentTime = playbackController.getCurrentTime();
   const duration = playbackController.getDuration();
-  const videoId = playbackController.getPlayer()?.getVideoData?.()?.video_id || '';
+  const videoId = getWorkMusicPlaybackVideoId(playbackController.getPlayer());
   analysisView?.renderPlayback({ videoId, currentTime, duration });
   elements.seek.max = String(Math.max(1, duration));
   elements.seek.value = String(Math.min(duration || 0, currentTime));
