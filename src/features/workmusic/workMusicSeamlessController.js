@@ -186,11 +186,20 @@ export function createWorkMusicSeamlessController({
     if (!slots?.transitioning || slots.fadeStarted || slot !== slots.transition?.nextSlot)
       return false;
     slots.fadeStarted = true;
-    report('디제잉: 비초록 구간 페이드 전환 중');
+    const timing = slots.transition;
+    if (timing.boundarySeconds != null && !timing.aligned) {
+      const aligned =
+        timing.nextGreenStart +
+        Number(getActivePlayer()?.getCurrentTime?.() || 0) -
+        timing.boundarySeconds;
+      getStandbyPlayer()?.seekTo?.(Math.max(0, aligned), true);
+      timing.aligned = true;
+    }
+    report('디제잉: 초록 경계 연결 · 인트로/아웃트로 페이드');
     clear(fadeTimer);
     const update = () => {
       if (!slots?.transitioning) return;
-      const levels = volumesAt({
+      let levels = volumesAt({
         elapsedSeconds: Math.max(
           0,
           Number(getStandbyPlayer()?.getCurrentTime?.() || 0) - slots.transition.nextStartSeconds
@@ -198,6 +207,19 @@ export function createWorkMusicSeamlessController({
         overlapSeconds: slots.transition.crossfadeSeconds,
         targetVolume: volume()
       });
+      if (slots.transition.boundarySeconds != null) {
+        const t =
+          Number(getStandbyPlayer()?.getCurrentTime?.() || 0) - slots.transition.nextGreenStart;
+        const { introSeconds, outroSeconds } = slots.transition;
+        const incoming = introSeconds > 0 ? Math.min(1, Math.max(0, 1 + t / introSeconds)) : 1;
+        const outgoing =
+          outroSeconds > 0 ? Math.min(1, Math.max(0, 1 - t / outroSeconds)) : Number(t < 0);
+        levels = {
+          previous: volume() * outgoing,
+          next: volume() * incoming,
+          complete: t >= outroSeconds
+        };
+      }
       setVolume(slots.players[slots.transition.previousSlot], levels.previous);
       setVolume(slots.players[slots.transition.nextSlot], levels.next);
       if (levels.complete || slots.transition.crossfadeSeconds <= 0) {
@@ -218,6 +240,10 @@ export function createWorkMusicSeamlessController({
       previousSlot: slots.activeSlot,
       nextSlot: slots.standbySlot,
       nextIndex: target,
+      boundarySeconds: timing?.boundarySeconds,
+      nextGreenStart: timing?.nextGreenStart,
+      introSeconds: timing?.introSeconds,
+      outroSeconds: timing?.outroSeconds,
       // Explicit Next skips without overlapping any unplayed green section.
       crossfadeSeconds: timing?.crossfadeSeconds || 0,
       nextStartSeconds: timing?.nextStartSeconds || 0
@@ -260,14 +286,14 @@ export function createWorkMusicSeamlessController({
       duration - currentTime <= overlap
     );
   }
-  function getTriggerTiming({ currentSong, nextSong, duration, overlapSeconds, currentTime }) {
+  function getTriggerTiming({ currentSong, nextSong, duration, currentTime }) {
     return calculateDjTransitionPlan({
       currentSong,
       nextSong,
       duration,
       currentTime,
       detectedByVideoId,
-      maximumFadeSeconds: overlapSeconds
+      verseMode: engine.getSnapshot().djVerseMode
     });
   }
   function monitor() {
@@ -300,7 +326,7 @@ export function createWorkMusicSeamlessController({
     });
     report(
       timing.mode === 'dj'
-        ? `디제잉: ${timing.triggerAtSeconds.toFixed(1)}초부터 최대 ${timing.crossfadeSeconds.toFixed(1)}초 페이드`
+        ? `디제잉${state.djVerseMode ? ' 1절' : ''}: ${timing.boundarySeconds.toFixed(1)}초에서 초록 연결 · 앞뒤 최대 10초 페이드`
         : '디제잉: 구간 정보가 없는 곡이 있어 곡 끝에서 순차 전환합니다.'
     );
     return (

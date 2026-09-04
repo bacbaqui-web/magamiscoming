@@ -7,7 +7,7 @@ import {
   normalizeAnalysisRange
 } from '../src/features/workmusic/workMusicAnalysisHelper.js';
 
-test('DJ fades only inside the non-green tail and head, including subsecond and late starts', () => {
+test('DJ aligns green boundaries and caps independent fades at ten seconds', () => {
   for (const outro of [0, 0.15, 1, 12, 30]) {
     for (const intro of [0, 0.25, 3, 15, 40]) {
       for (const late of [0, 0.5, 10]) {
@@ -18,11 +18,11 @@ test('DJ fades only inside the non-green tail and head, including subsecond and 
           currentTime: 100 - outro + late,
           maximumFadeSeconds: 10
         });
-        assert.equal(plan.triggerAtSeconds, 100 - outro);
-        assert.ok(plan.crossfadeSeconds <= Math.max(0, outro - late) + 1e-9);
-        assert.ok(plan.crossfadeSeconds <= intro);
-        assert.ok(plan.crossfadeSeconds <= 10);
-        assert.equal(plan.nextStartSeconds + plan.crossfadeSeconds, intro);
+        assert.equal(plan.boundarySeconds, 100 - outro);
+        assert.equal(plan.triggerAtSeconds + plan.introSeconds, plan.boundarySeconds);
+        assert.ok(plan.introSeconds <= intro && plan.introSeconds <= 10);
+        assert.ok(plan.outroSeconds <= outro + 1e-9 && plan.outroSeconds <= 10);
+        assert.equal(plan.nextStartSeconds - intro, late);
       }
     }
   }
@@ -39,9 +39,10 @@ test('DJ uses displayed cached range, but saved edits take priority; verse is no
     duration: 100,
     detectedByVideoId
   };
-  assert.equal(calculateDjTransitionPlan(input).triggerAtSeconds, 80);
+  assert.equal(calculateDjTransitionPlan(input).boundarySeconds, 80);
   input.currentSong.mediaAnalysisManual = { drumStart: 10, drumEnd: 85, verseEnd: 40 };
-  assert.equal(calculateDjTransitionPlan(input).triggerAtSeconds, 85);
+  assert.equal(calculateDjTransitionPlan(input).boundarySeconds, 85);
+  assert.equal(calculateDjTransitionPlan({ ...input, verseMode: true }).boundarySeconds, 40);
   assert.deepEqual(normalizeAnalysisRange({ drumStart: 10, drumEnd: 85, verseEnd: 200 }), {
     drumStart: 10,
     drumEnd: 85,

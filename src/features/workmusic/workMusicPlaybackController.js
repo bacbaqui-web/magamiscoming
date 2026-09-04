@@ -205,6 +205,21 @@ export function createWorkMusicPlaybackController({
     }
   }
 
+  async function cycleDjMode() {
+    const state = engine.getSnapshot();
+    if (!state.seamlessEnabled) {
+      engine.setState('djVerseMode', false);
+      await setSeamlessSeconds(10);
+    } else if (!state.djVerseMode) {
+      seamlessController?.cancelTransition?.();
+      engine.setState('djVerseMode', true);
+      render();
+    } else {
+      engine.setState('djVerseMode', false);
+      await setSeamlessSeconds(0);
+    }
+  }
+
   function handleFailure({ code = '', failedIndex, order, tabId, standby = false }) {
     const snapshot = engine.getSnapshot();
     const songs = activeSongs();
@@ -295,6 +310,7 @@ export function createWorkMusicPlaybackController({
     setPlayerVolume,
     setSeamlessController,
     setSeamlessSeconds,
+    cycleDjMode,
     setVolume,
     toggle,
     toggleMute

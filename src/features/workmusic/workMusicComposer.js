@@ -79,10 +79,6 @@ export function createWorkMusicComposer({
   const workMusicSeekHoverTime = document.getElementById('workMusicSeekHoverTime');
   const workMusicModeBtn = document.getElementById('workMusicModeBtn');
   const workMusicSeamlessBtn = document.getElementById('workMusicSeamlessBtn');
-  const workMusicSeamlessControl = workMusicSeamlessBtn?.closest('.slider-control');
-  const workMusicSeamlessRange = document.getElementById('workMusicSeamlessRange');
-  const workMusicSeamlessSeconds = document.getElementById('workMusicSeamlessSeconds');
-  const workMusicSeamlessBadge = document.getElementById('workMusicSeamlessBadge');
   const workMusicMuteBtn = document.getElementById('workMusicMuteBtn');
   const workMusicVolumeControl = workMusicMuteBtn?.closest('.slider-control');
   const workMusicVolumeRange = document.getElementById('workMusicVolumeRange');
@@ -123,10 +119,6 @@ export function createWorkMusicComposer({
   );
   const workMusicRemoteModeBtn = document.getElementById('workMusicRemoteModeBtn');
   const workMusicRemoteSeamlessBtn = document.getElementById('workMusicRemoteSeamlessBtn');
-  const workMusicRemoteSeamlessControl = workMusicRemoteSeamlessBtn?.closest('.slider-control');
-  const workMusicRemoteSeamlessRange = document.getElementById('workMusicRemoteSeamlessRange');
-  const workMusicRemoteSeamlessSeconds = document.getElementById('workMusicRemoteSeamlessSeconds');
-  const workMusicRemoteSeamlessBadge = document.getElementById('workMusicRemoteSeamlessBadge');
   const workMusicRemoteMuteBtn = document.getElementById('workMusicRemoteMuteBtn');
   const workMusicRemoteVolumeControl = workMusicRemoteMuteBtn?.closest('.slider-control');
   const workMusicRemoteVolumeRange = document.getElementById('workMusicRemoteVolumeRange');
@@ -328,29 +320,17 @@ export function createWorkMusicComposer({
   }
 
   function renderWorkMusicSeamlessButton() {
-    const seconds = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
-    window.workMusicSeamlessOverlapSeconds = seconds;
-    window.workMusicSeamlessEnabled = seconds > 0;
-    const enabled = seconds > 0;
-    if (workMusicSeamlessBtn) {
-      const label = enabled ? `디제잉 켜짐, 최대 ${seconds}초 페이드` : '디제잉 꺼짐';
-      workMusicSeamlessBtn.classList.toggle('enabled', enabled);
-      workMusicSeamlessBtn.title = label;
-      workMusicSeamlessBtn.setAttribute('aria-label', label);
+    const state = engine.getSnapshot();
+    const label = state.seamlessEnabled ? (state.djVerseMode ? 'DJ 1절' : 'DJ') : 'DJ 꺼짐';
+    for (const button of [workMusicSeamlessBtn, workMusicRemoteSeamlessBtn]) {
+      if (!button) continue;
+      button.classList.toggle('enabled', state.seamlessEnabled);
+      button.setAttribute('aria-pressed', String(state.seamlessEnabled));
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      const text = button.querySelector('.workmusic-dj-button-label');
+      if (text) text.textContent = state.djVerseMode && state.seamlessEnabled ? 'DJ 1절' : 'DJ';
     }
-    if (workMusicSeamlessRange) workMusicSeamlessRange.value = String(seconds);
-    if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = String(seconds);
-    if (workMusicSeamlessBadge) workMusicSeamlessBadge.textContent = String(seconds);
-    if (workMusicRemoteSeamlessBtn) {
-      const label = enabled ? `디제잉 켜짐, 최대 ${seconds}초 페이드` : '디제잉 꺼짐';
-      workMusicRemoteSeamlessBtn.classList.toggle('enabled', enabled);
-      workMusicRemoteSeamlessBtn.title = label;
-      workMusicRemoteSeamlessBtn.setAttribute('aria-label', label);
-    }
-    if (workMusicRemoteSeamlessRange) workMusicRemoteSeamlessRange.value = String(seconds);
-    if (workMusicRemoteSeamlessSeconds)
-      workMusicRemoteSeamlessSeconds.textContent = String(seconds);
-    if (workMusicRemoteSeamlessBadge) workMusicRemoteSeamlessBadge.textContent = String(seconds);
   }
 
   function updateWorkMusicRemoteUI() {
@@ -1865,9 +1845,7 @@ export function createWorkMusicComposer({
     workMusicRemotePlayBtn?.addEventListener('click', playbackController.toggle);
     workMusicRemotePrevBtn?.addEventListener('click', playbackController.previous);
     workMusicRemoteNextBtn?.addEventListener('click', playbackController.next);
-    bindSliderControlHoverState(workMusicSeamlessControl);
     bindSliderControlHoverState(workMusicVolumeControl);
-    bindSliderControlHoverState(workMusicRemoteSeamlessControl);
     bindSliderControlHoverState(workMusicRemoteVolumeControl);
     workMusicRemoteInfo?.addEventListener('click', () => showTab('workmusic'));
     const toggleWorkMusicMode = async () => {
@@ -1895,44 +1873,10 @@ export function createWorkMusicComposer({
     };
     workMusicModeBtn?.addEventListener('click', toggleWorkMusicMode);
     workMusicRemoteModeBtn?.addEventListener('click', toggleWorkMusicMode);
-    workMusicSeamlessBtn?.addEventListener('click', async () => {
-      const current = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
-      await playbackController.setSeamlessSeconds(current > 0 ? 0 : 10);
-    });
-    workMusicRemoteSeamlessBtn?.addEventListener('click', async () => {
-      const current = normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds);
-      await playbackController.setSeamlessSeconds(current > 0 ? 0 : 10);
-    });
+    workMusicSeamlessBtn?.addEventListener('click', playbackController.cycleDjMode);
+    workMusicRemoteSeamlessBtn?.addEventListener('click', playbackController.cycleDjMode);
     workMusicMuteBtn?.addEventListener('click', playbackController.toggleMute);
     workMusicRemoteMuteBtn?.addEventListener('click', playbackController.toggleMute);
-    workMusicSeamlessRange?.addEventListener('input', async (e) => {
-      await playbackController.setSeamlessSeconds(Number(e.target.value || 0));
-    });
-    workMusicRemoteSeamlessRange?.addEventListener('input', async (e) => {
-      await playbackController.setSeamlessSeconds(Number(e.target.value || 0));
-    });
-    const handleSeamlessWheel = async (e) => {
-      if (!workMusicSeamlessRange) return;
-      if (e.deltaY === 0) return;
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? 1 : -1;
-      const next = Number(workMusicSeamlessRange.value || 0) + delta;
-      await playbackController.setSeamlessSeconds(next);
-    };
-    workMusicSeamlessControl?.addEventListener('wheel', handleSeamlessWheel, { passive: false });
-    workMusicRemoteSeamlessControl?.addEventListener('wheel', handleSeamlessWheel, {
-      passive: false
-    });
-    const handleSeamlessKey = async (e) => {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      e.preventDefault();
-      const delta = e.key === 'ArrowRight' ? 1 : -1;
-      await playbackController.setSeamlessSeconds(
-        normalizeWorkMusicSeamlessSeconds(window.workMusicSeamlessOverlapSeconds) + delta
-      );
-    };
-    workMusicSeamlessRange?.addEventListener('keydown', handleSeamlessKey);
-    workMusicRemoteSeamlessRange?.addEventListener('keydown', handleSeamlessKey);
     workMusicVolumeRange?.addEventListener('input', async (e) => {
       await playbackController.setVolume(Number(e.target.value || 0));
     });

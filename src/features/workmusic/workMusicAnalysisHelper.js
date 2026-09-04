@@ -66,13 +66,13 @@ export function suggestVerseEnd(result, range) {
   };
 }
 
-// Only the unselected tail/head may overlap. Unknown boundaries never authorize a fade.
+// Join green boundaries; fade the incoming head before and outgoing tail after the join.
 export function calculateDjTransitionPlan({
   currentSong,
   nextSong,
   duration,
   detectedByVideoId,
-  maximumFadeSeconds = 10,
+  verseMode = false,
   currentTime = 0
 } = {}) {
   const seconds = Number(duration);
@@ -88,14 +88,27 @@ export function calculateDjTransitionPlan({
       nextStartSeconds: 0,
       crossfadeSeconds: 0
     };
-  const remaining = Math.max(0, seconds - Math.max(current.drumEnd, Number(currentTime) || 0));
-  const fade = Math.max(0, Math.min(remaining, next.drumStart, Number(maximumFadeSeconds) || 0));
+  const boundary = verseMode
+    ? (current.verseEnd ??
+      suggestVerseEnd(detectedByVideoId?.get?.(currentSong.videoId), current).value)
+    : current.drumEnd;
+  const intro = Math.min(10, next.drumStart, Math.max(0, boundary - current.drumStart));
+  const outro = Math.min(
+    10,
+    Math.max(0, seconds - boundary),
+    Math.max(0, next.drumEnd - next.drumStart)
+  );
+  const trigger = boundary - intro;
+  const late = Math.max(0, Number(currentTime) - trigger);
   return {
     mode: 'dj',
-    triggerAtSeconds: current.drumEnd,
-    nextStartSeconds: next.drumStart - fade,
+    triggerAtSeconds: trigger,
+    boundarySeconds: boundary,
+    introSeconds: intro,
+    outroSeconds: outro,
+    nextStartSeconds: next.drumStart - intro + late,
     nextGreenStart: next.drumStart,
-    crossfadeSeconds: fade
+    crossfadeSeconds: intro + outro
   };
 }
 

@@ -94,10 +94,13 @@ test('SeamlessController는 두 곡 수동 구간으로 실제 전환 시작 시
     }),
     {
       mode: 'dj',
-      triggerAtSeconds: 80,
+      triggerAtSeconds: 70,
+      boundarySeconds: 80,
+      introSeconds: 10,
+      outroSeconds: 10,
       nextStartSeconds: 0,
       nextGreenStart: 10,
-      crossfadeSeconds: 10
+      crossfadeSeconds: 20
     }
   );
 });
@@ -333,14 +336,14 @@ test('SeamlessController가 monitor, standby 재생과 fade 완료를 실행한�
   seamless.resume();
   players[1].options.events.onStateChange({ data: 1 });
   assert.equal(players[1].player.volume, fadingVolume);
-  players[1].player.current = 10;
+  players[1].player.current = 20;
   intervalCallbacks.at(-1)();
   assert.equal(engine.getSnapshot().currentIndex, 1);
   assert.equal(players[0].player.stopped, true);
   assert.equal(players[1].player.volume, 80);
 });
 
-test('zero-head DJ stops the outgoing player before immediate next playback; seek cancels a fade', async () => {
+test('zero-head DJ starts next green immediately while the outgoing tail fades; seek cancels', async () => {
   const players = [];
   const engine = createWorkMusicEngine({
     initialState: {
@@ -393,14 +396,11 @@ test('zero-head DJ stops the outgoing player before immediate next playback; see
   });
   await controller.create(0, true);
   assert.equal(controller.monitor(), true);
-  assert.equal(players[0].paused, true);
-  assert.equal(engine.getSnapshot().currentIndex, 1);
+  assert.equal(players[0].paused, undefined);
+  assert.equal(engine.getSnapshot().currentIndex, 0);
   assert.equal(players[1].volume, 80);
-  // The next pair has a nonzero head, so seeking cancels an active transition.
-  players[1].current = 90;
-  assert.equal(controller.monitor(), true);
   assert.equal(controller.getState().transitioning, true);
   controller.cancelTransition();
   assert.equal(controller.getState().transitioning, false);
-  assert.equal(players[1].volume, 80);
+  assert.equal(players[0].volume, 80);
 });

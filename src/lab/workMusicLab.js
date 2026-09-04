@@ -61,8 +61,6 @@ const elements = {
   duration: root.getElementById('workMusicDurationTime'),
   volume: root.getElementById('workMusicVolumeRange'),
   volumeLabel: root.getElementById('workMusicVolumePercent'),
-  seamless: root.getElementById('workMusicSeamlessRange'),
-  seamlessLabel: root.getElementById('workMusicSeamlessSeconds'),
   batchPanel: root.getElementById('workMusicBatchAnalysisPanel'),
   batchStatus: root.getElementById('workMusicBatchAnalysisStatus'),
   batchMessage: root.getElementById('workMusicBatchAnalysisMessage'),
@@ -196,12 +194,14 @@ function render() {
   elements.next.disabled = songs.length < 2;
   elements.volume.value = String(state.volume);
   elements.volumeLabel.textContent = `${state.volume}%`;
-  elements.seamless.value = String(state.seamlessOverlapSeconds);
-  elements.seamlessLabel.textContent = `${state.seamlessOverlapSeconds}초`;
   const djButton = root.getElementById('workMusicSeamlessBtn');
   if (djButton) {
     djButton.setAttribute('aria-pressed', String(state.seamlessOverlapSeconds > 0));
-    djButton.textContent = state.seamlessOverlapSeconds > 0 ? '디제잉 켜짐' : '디제잉 꺼짐';
+    djButton.textContent = state.seamlessEnabled
+      ? state.djVerseMode
+        ? 'DJ 1절'
+        : 'DJ'
+      : 'DJ 꺼짐';
   }
   analysisController.selectSong(song);
   autoAnalysis?.sync(songs);
@@ -426,14 +426,9 @@ elements.seek.addEventListener('input', () => playbackController.seek(elements.s
 elements.volume.addEventListener('input', () =>
   playbackController.setVolume(elements.volume.value)
 );
-elements.seamless.addEventListener('change', () =>
-  playbackController.setSeamlessSeconds(elements.seamless.value)
-);
 root
   .getElementById('workMusicSeamlessBtn')
-  ?.addEventListener('click', () =>
-    playbackController.setSeamlessSeconds(engine.getSnapshot().seamlessOverlapSeconds > 0 ? 0 : 10)
-  );
+  ?.addEventListener('click', playbackController.cycleDjMode);
 elements.batchTest.addEventListener('click', () =>
   batchAnalysisController.start(
     engine

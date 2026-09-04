@@ -40,6 +40,7 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
     isMuted: !!initialState.isMuted,
     seamlessOverlapSeconds: normalizeSeamlessSeconds(initialState.seamlessOverlapSeconds),
     seamlessEnabled: false,
+    djVerseMode: false,
     isPlaying: !!initialState.isPlaying,
     playOrder: Array.isArray(initialState.playOrder) ? [...initialState.playOrder] : []
   };
