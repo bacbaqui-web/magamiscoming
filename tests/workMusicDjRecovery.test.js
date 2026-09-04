@@ -30,11 +30,11 @@ test('green boundary joins exactly, with independent incoming and outgoing envel
   tick();
   assert.equal(f.players[0].volume, level);
   assert.equal(f.players[1].volume, level);
-  f.players[1].current = 15;
+  f.players[1].current = 12;
   tick();
   assert.equal(f.players[0].volume, level / 2);
   assert.equal(f.players[1].volume, level);
-  f.players[1].current = 20;
+  f.players[1].current = 14;
   tick();
   assert.equal(f.engine.getSnapshot().currentIndex, 1);
   f.controller.destroy();
@@ -148,7 +148,7 @@ test('DJ preloads server results without selecting next song or posting a new an
   assert.deepEqual(calls, ['a', 'b']);
   f.players[0].current = 80;
   assert.equal(f.controller.monitor(), true);
-  assert.equal(f.controller.getState().transition.crossfadeSeconds, 20);
+  assert.equal(f.controller.getState().transition.crossfadeSeconds, 14);
   f.controller.destroy();
   analysis.destroy();
 });

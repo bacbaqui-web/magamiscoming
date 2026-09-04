@@ -97,10 +97,10 @@ test('SeamlessController는 두 곡 수동 구간으로 실제 전환 시작 시
       triggerAtSeconds: 70,
       boundarySeconds: 80,
       introSeconds: 10,
-      outroSeconds: 10,
+      outroSeconds: 4,
       nextStartSeconds: 0,
       nextGreenStart: 10,
-      crossfadeSeconds: 20
+      crossfadeSeconds: 14
     }
   );
 });

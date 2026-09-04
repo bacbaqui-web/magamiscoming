@@ -326,7 +326,7 @@ export function createWorkMusicSeamlessController({
     });
     report(
       timing.mode === 'dj'
-        ? `디제잉${state.djVerseMode ? ' 1절' : ''}: ${timing.boundarySeconds.toFixed(1)}초에서 초록 연결 · 앞뒤 최대 10초 페이드`
+        ? `디제잉${state.djVerseMode ? ' 1절' : ''}: ${timing.boundarySeconds.toFixed(1)}초에서 초록 연결 · 진입 최대 10초 · 퇴장 최대 4초`
         : '디제잉: 구간 정보가 없는 곡이 있어 곡 끝에서 순차 전환합니다.'
     );
     return (

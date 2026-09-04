@@ -136,7 +136,7 @@ export function calculateDjTransitionPlan({
     : current.drumEnd;
   const intro = Math.min(10, next.drumStart, Math.max(0, boundary - current.drumStart));
   const outro = Math.min(
-    10,
+    4,
     Math.max(0, seconds - boundary),
     Math.max(0, next.drumEnd - next.drumStart)
   );
