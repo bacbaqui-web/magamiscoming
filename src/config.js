@@ -1,8 +1,6 @@
 (function () {
-  const isLocalDevelopment = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   const useLocalMediaAnalysis =
-    isLocalDevelopment ||
-    new URLSearchParams(window.location.search).get('mediaAnalysis') === 'local';
+    new URLSearchParams(window.location.search).get('mediaAnalysis') !== 'oracle';
   window.APP_CONFIG = Object.freeze({
     googleClientId: '75399802933-ob5opqbukj1enr6v069rocbjo9508b35.apps.googleusercontent.com',
     youtubeApiKey: 'AIzaSyAxMNbkyUocpD_r-jnvQH_fiuYtxL952CY',

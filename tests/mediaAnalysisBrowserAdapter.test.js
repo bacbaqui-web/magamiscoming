@@ -3,6 +3,22 @@ import assert from 'node:assert/strict';
 
 import { createMediaAnalysisBrowserAdapter } from '../src/services/mediaAnalysisBrowserAdapter.js';
 
+test('local connection failure explains the local server and browser permission', async () => {
+  const adapter = createMediaAnalysisBrowserAdapter({
+    apiBaseUrl: 'http://127.0.0.1:8000',
+    fetchImpl: async () => {
+      throw new Error('offline');
+    }
+  });
+  await assert.rejects(
+    adapter.createJob('dQw4w9WgXcQ'),
+    (error) =>
+      error.code === 'unavailable' &&
+      /로컬 분석 서버/.test(error.message) &&
+      /로컬 네트워크/.test(error.message)
+  );
+});
+
 test('queue snapshot uses the authenticated queue route and optional video ID', async () => {
   const calls = [];
   const adapter = createMediaAnalysisBrowserAdapter({

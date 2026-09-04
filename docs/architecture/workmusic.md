@@ -34,8 +34,10 @@ YouTube 기반 노동요 목록, 재생, 이어듣기와 저장 데이터의 현
 - AppComposer가 YouTube Adapter와 Port를 만들고 노동요 기능에 주입한다.
 - AppComposer는 `APP_CONFIG.mediaAnalysis.apiBaseUrl`로 Media Analysis Browser Adapter를 만들고,
   `MediaAnalysisPort`를 거쳐 `WorkMusicAnalysisController`에 주입한다.
-- 로컬 호스트와 `?mediaAnalysis=local`에서는 로컬 분석 API를 사용한다. 운영 설정은
-  `https://insight.magamiscom.ing/media-analysis`의 Oracle E2 API를 사용한다.
+- 비공개 개인 사용 단계에서는 일반 운영 주소도 `http://127.0.0.1:8000` 로컬 분석 API를
+  기본으로 사용한다. 별도 쿼리는 필요 없다. `?mediaAnalysis=oracle`을 명시한 경우에만
+  `https://insight.magamiscom.ing/media-analysis`의 Oracle E2 API와 Firebase 토큰을 사용한다.
+  로컬 서버 연결 실패 시 서버 실행·브라우저 로컬 네트워크 권한을 안내하며 Oracle로 자동 전환하지 않는다.
 - 원격 분석 요청은 기존 Firebase 로그인에서 갱신한 ID 토큰을 Authorization 헤더로 보낸다.
   토큰을 별도 저장하지 않는다. 서버는 서명·만료·프로젝트를 확인하며 해당 Firebase 프로젝트에
   로그인한 모든 사용자가 이용할 수 있다. 이메일 허용 목록은 없다. Lab은 기존 로컬 검증 경로를 유지한다.

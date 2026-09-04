@@ -11,15 +11,27 @@ function loadConfig({ hostname, search = '' }) {
   return window.APP_CONFIG;
 }
 
-test('media analysis uses localhost by default only on local origins', () => {
-  assert.equal(
-    loadConfig({ hostname: '127.0.0.1' }).mediaAnalysis.apiBaseUrl,
-    'http://127.0.0.1:8000'
-  );
-  const remote = loadConfig({ hostname: 'bacbaqui-web.github.io' }).mediaAnalysis;
+test('all app origins use local analysis by default without a special URL', () => {
+  for (const hostname of [
+    '127.0.0.1',
+    'localhost',
+    'magamiscom.ing',
+    'www.magamiscom.ing',
+    'bacbaqui-web.github.io'
+  ]) {
+    const config = loadConfig({ hostname }).mediaAnalysis;
+    assert.equal(config.apiBaseUrl, 'http://127.0.0.1:8000');
+    assert.equal(config.requireAuth, false);
+  }
+});
+
+test('Oracle analysis requires an explicit query option and Firebase token', () => {
+  const remote = loadConfig({
+    hostname: 'magamiscom.ing',
+    search: '?mediaAnalysis=oracle'
+  }).mediaAnalysis;
   assert.equal(remote.apiBaseUrl, 'https://insight.magamiscom.ing/media-analysis');
   assert.equal(remote.requireAuth, true);
-  assert.equal(loadConfig({ hostname: '127.0.0.1' }).mediaAnalysis.requireAuth, false);
 });
 
 test('production can explicitly opt into the local media analysis server', () => {

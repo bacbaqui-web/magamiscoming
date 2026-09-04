@@ -53,9 +53,15 @@ export function createMediaAnalysisBrowserAdapter({
       });
     } catch (error) {
       if (error?.name === 'AbortError') throw error;
-      throw new MediaAnalysisRequestError('분석 서버에 연결할 수 없습니다.', {
-        code: 'unavailable'
-      });
+      const local = ['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname);
+      throw new MediaAnalysisRequestError(
+        local
+          ? '이 컴퓨터의 로컬 분석 서버에 연결할 수 없습니다. 서버를 실행하고 브라우저의 로컬 네트워크 접근을 허용해 주세요.'
+          : '분석 서버에 연결할 수 없습니다.',
+        {
+          code: 'unavailable'
+        }
+      );
     }
     let payload = null;
     try {
