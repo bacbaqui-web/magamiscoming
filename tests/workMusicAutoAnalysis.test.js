@@ -10,6 +10,7 @@ const current = (videoId) => ({
   videoId,
   analyzerVersion: '0.3.0',
   structureVersion: '1.0',
+  waveformDetailVersion: '1.0',
   durationSeconds: 200,
   waveform: [0, 0.5, 1],
   sections: [],

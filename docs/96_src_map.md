@@ -151,7 +151,7 @@ styles/
 - `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 비초록 DJ 전환, 기존 결과 준비, 실패 후보 제외·standby 복구, monitor·fade·상태 안내
 - `features/workmusic/workMusicAnalysisController.js`: 곡별 큐 등록·백그라운드 추적·서버 큐 집계·활성 작업 복원, 결과 cache와 수동 구간 저장 요청
 - `features/workmusic/workMusicAnalysisView.js`: 분석 상태·큐·음파·후렴 후보·재생 위치선·초록 시작/끝과 흰 1절 핸들 렌더·편집 이벤트
-- `features/workmusic/workMusicPrecisionEditor.js`: 기존 음파 자리의 즉시 확대·정밀 드래그, 전체 보기 복귀와 곡 전환 정리
+- `features/workmusic/workMusicPrecisionEditor.js`: 버튼/휠 확대·구간 이동, 실제 PCM viewport 요청과 SVG 렌더, 상세 시간축 핸들·곡 전환 정리
 - `features/workmusic/workMusicPlaybackIdentity.js`: 실제 Player 정보·공개 영상 URL에서 재생 videoId를 조회하는 순수 경계
 - `features/workmusic/workMusicAnalysisHelper.js`: 분석 호환성·독립 1절 검증, 후렴 후보와 초록 경계 정렬·전후 독립 DJ 페이드 계획
 - `features/workmusic/workMusicRepetitionHelper.js`: 기존 음파의 먼 구간 반복 비교와 후보 경계 추정, 단조 패턴 제외

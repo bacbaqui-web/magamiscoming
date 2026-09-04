@@ -147,6 +147,23 @@
               <span id="workMusicAnalysisSource">구간 없음</span>
             </div>
             <div class="workmusic-analysis-timeline">
+              <div class="workmusic-zoom-controls" aria-label="음파 확대와 이동">
+                <button id="workMusicZoomOut" type="button" aria-label="음파 축소" disabled>
+                  −
+                </button>
+                <span id="workMusicZoomLabel">1×</span>
+                <button id="workMusicZoomIn" type="button" aria-label="음파 확대" disabled>
+                  ＋
+                </button>
+                <button id="workMusicZoomReset" type="button">전체 보기</button>
+                <button id="workMusicZoomLeft" type="button" aria-label="이전 구간" disabled>
+                  ◀
+                </button>
+                <button id="workMusicZoomRight" type="button" aria-label="다음 구간" disabled>
+                  ▶
+                </button>
+              </div>
+              <p id="workMusicPrecisionLabel" class="workmusic-analysis-legend" role="status"></p>
               <p class="workmusic-analysis-legend">
                 초록: 재생 구간 · 흰색: 1절 끝 · 보라: 후렴 후보 · 주황 선: 현재 위치
               </p>
@@ -199,32 +216,11 @@
                 />
               </div>
               <span id="workMusicDrumLabel" class="workmusic-drum-label">드럼 구간 —</span>
-              <section
-                id="workMusicPrecisionPanel"
-                class="workmusic-precision-panel"
-                aria-label="음파 정밀 조절"
-                hidden
-              >
-                <div class="workmusic-precision-header">
-                  <span id="workMusicPrecisionLabel"></span>
-                  <button id="workMusicPrecisionClose" type="button">전체 보기</button>
-                </div>
-                <div class="workmusic-precision-track">
-                  <div id="workMusicPrecisionWaveform" class="workmusic-precision-waveform"></div>
-                  <span class="workmusic-precision-line" aria-hidden="true"></span>
-                  <input
-                    id="workMusicPrecisionRange"
-                    class="workmusic-drum-handle"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    aria-label="정밀 위치"
-                  />
-                </div>
-              </section>
+              <div id="workMusicPrecisionPanel" class="workmusic-precision-panel" hidden>
+                <div id="workMusicPrecisionWaveform" class="workmusic-precision-waveform"></div>
+              </div>
               <p class="workmusic-analysis-legend">
-                삼각형을 잡으면 확대되고 손을 떼면 전체 음파로 돌아갑니다.
+                ＋/− 또는 음파 위 휠로 확대·축소합니다. 배율은 유지되며 ◀/▶로 구간을 이동합니다.
               </p>
               <p id="workMusicAnalysisPlayback" class="workmusic-analysis-legend">재생 위치 —</p>
               <p id="workMusicAnalysisStructure" class="workmusic-analysis-legend"></p>

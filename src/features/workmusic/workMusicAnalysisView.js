@@ -116,6 +116,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   }
 
   function renderPlayback(next) {
+    precisionEditor.renderPlayback?.(next);
     playback = next;
     if (!markerLane) return;
     const duration = analysisDuration || Number(next?.duration || 0);

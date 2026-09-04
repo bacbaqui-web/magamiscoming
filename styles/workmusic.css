@@ -1842,37 +1842,27 @@ body {
 .workmusic-precision-panel {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 1;
   margin: 0;
   padding: 0;
   border: 0;
   background: #252525;
+  pointer-events: none;
 }
 .workmusic-precision-panel[hidden] {
   display: none;
 }
-.workmusic-precision-header {
-  position: absolute;
-  inset: 4px 6px auto;
-  z-index: 2;
+.workmusic-zoom-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  pointer-events: none;
-  text-shadow: 0 1px 3px #000;
 }
-.workmusic-precision-header button {
+.workmusic-zoom-controls button {
   padding: 4px 8px;
   font-size: 0.75rem;
-  pointer-events: auto;
-}
-.workmusic-precision-track {
-  position: absolute;
-  inset: 0;
-  margin: 0;
 }
 .workmusic-precision-waveform {
   position: relative;
@@ -1885,27 +1875,15 @@ body {
   height: 100%;
   display: block;
 }
-.workmusic-drum-lane:has(.workmusic-precision-panel:not([hidden]))
-  > :not(.workmusic-precision-panel) {
+.workmusic-drum-lane:has(.workmusic-precision-panel:not([hidden])) > .workmusic-analysis-markers {
   visibility: hidden;
 }
-.workmusic-precision-line {
-  position: absolute;
-  inset-block: 0;
-  left: var(--precision-position);
-  width: 1px;
-  transform: translateX(-50%);
-  background: #4ec48e;
-  pointer-events: none;
+.workmusic-drum-lane[data-zoomed='true'] > .workmusic-edit-region {
+  visibility: hidden;
 }
-.workmusic-precision-panel[data-boundary='verseEnd'] .workmusic-precision-line {
-  background: #fff;
-}
-.workmusic-precision-panel[data-boundary='verseEnd'] input::-webkit-slider-thumb {
-  background: #fff;
-}
-.workmusic-precision-panel[data-boundary='verseEnd'] input::-moz-range-thumb {
-  background: #fff;
+.workmusic-drum-lane:has(.workmusic-precision-panel:not([hidden])) > .workmusic-drum-highlight,
+.workmusic-drum-lane[data-verse-visible='false'] > .workmusic-verse-line {
+  visibility: hidden;
 }
 .workmusic-analysis-actions {
   justify-content: flex-end;

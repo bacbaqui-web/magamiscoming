@@ -41,6 +41,19 @@ export function createMediaAnalysisPort({ adapter } = {}) {
     },
     getResult(videoId, options) {
       return adapter.getResult(requireVideoId(videoId), options);
+    },
+    getWaveform(videoId, { start, end, pixels = 1000, signal } = {}) {
+      if (
+        !Number.isFinite(start) ||
+        !Number.isFinite(end) ||
+        start < 0 ||
+        end <= start ||
+        !Number.isInteger(pixels) ||
+        pixels < 1 ||
+        pixels > 2048
+      )
+        throw new TypeError('유효한 파형 구간과 해상도가 필요합니다.');
+      return adapter.getWaveform(requireVideoId(videoId), { start, end, pixels, signal });
     }
   };
 }

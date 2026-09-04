@@ -2,170 +2,184 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWorkMusicPrecisionEditor } from '../src/features/workmusic/workMusicPrecisionEditor.js';
 
-function setup() {
-  const element = () => ({
-    listeners: {},
-    children: [],
-    dataset: {},
+const flush = () => new Promise((r) => setImmediate(r));
+function setup(getWaveform) {
+  const el = () => ({
     hidden: true,
+    dataset: {},
+    children: [],
+    listeners: {},
     style: {
-      setProperty(key, value) {
-        this[key] = value;
+      setProperty(k, v) {
+        this[k] = v;
       }
     },
-    addEventListener(name, fn) {
-      (this.listeners[name] ||= new Set()).add(fn);
+    addEventListener(k, f) {
+      this.listeners[k] = f;
     },
-    removeEventListener(name, fn) {
-      this.listeners[name]?.delete(fn);
+    fire(k, e = {}) {
+      this.listeners[k]?.(e);
     },
-    fire(name, event = {}) {
-      for (const fn of this.listeners[name] || []) fn(event);
-    },
-    appendChild(child) {
-      this.children.push(child);
+    appendChild(n) {
+      this.children.push(n);
     },
     replaceChildren() {
       this.children = [];
     },
-    setAttribute(name, value) {
-      this[name] = value;
+    setAttribute(k, v) {
+      this[k] = v;
     },
-    focus() {
-      this.focused = true;
-    }
+    getBoundingClientRect: () => ({ left: 0, width: 800 })
   });
-  const elements = Object.fromEntries(
-    ['Panel', 'Waveform', 'Range', 'Label', 'Close'].map((name) => [
-      `workMusicPrecision${name}`,
-      element()
-    ])
-  );
-  elements.workMusicDrumLane = element();
-  const root = {
-    ...element(),
-    getElementById: (id) => elements[id],
-    createElement: element,
-    createDocumentFragment: element,
-    defaultView: element()
-  };
-  const inputs = { drumStart: element(), drumEnd: element(), verseEnd: element() };
-  const pending = new Map();
-  let now = 0;
-  let id = 0;
-  let commits = 0;
-  let state = {
-    videoId: 'a',
-    detected: { durationSeconds: 100, waveform: Array(100).fill(0.5) },
-    draft: { drumStart: 10, drumEnd: 90, verseEnd: 50 }
-  };
+  const ids = [
+    'DrumLane',
+    'PrecisionPanel',
+    'PrecisionWaveform',
+    'PrecisionLabel',
+    'ZoomLabel',
+    'ZoomIn',
+    'ZoomOut',
+    'ZoomReset',
+    'ZoomLeft',
+    'ZoomRight'
+  ];
+  const elements = Object.fromEntries(ids.map((id) => [`workMusic${id}`, el()]));
+  const root = { getElementById: (id) => elements[id], createElement: el };
+  const inputs = { drumStart: el(), drumEnd: el(), verseEnd: el() };
+  const timers = new Map();
+  let timerId = 0;
+  const calls = [];
   const editor = createWorkMusicPrecisionEditor({
     root,
     inputs,
     timers: {
-      setTimeout(fn, delay) {
-        pending.set(++id, { fn, at: now + delay });
-        return id;
+      setTimeout(f) {
+        timers.set(++timerId, f);
+        return timerId;
       },
-      clearTimeout(key) {
-        pending.delete(key);
+      clearTimeout(id) {
+        timers.delete(id);
       }
     },
     controller: {
-      updateDraft(key, value) {
-        state = { ...state, draft: { ...state.draft, [key]: Number(value) } };
-        editor.render(state);
-      },
-      commitDraft() {
-        commits++;
+      getWaveform: async (id, options) => {
+        calls.push({ id, ...options });
+        if (getWaveform) return getWaveform(id, options);
+        return {
+          videoId: id,
+          startSeconds: options.start,
+          endSeconds: options.end,
+          resolutionSeconds: (options.end - options.start) / options.pixels,
+          min: Array(options.pixels).fill(-0.5),
+          max: Array(options.pixels).fill(0.75)
+        };
       }
     }
   });
+  const state = {
+    videoId: 'a',
+    detected: { durationSeconds: 100, waveformDetailVersion: '1.0' },
+    draft: { drumStart: 10, drumEnd: 90, verseEnd: 50 }
+  };
   editor.render(state);
   return {
-    root,
     inputs,
     elements,
-    pending,
     editor,
-    state: () => state,
-    commits: () => commits,
-    advance(ms) {
-      now += ms;
-      for (const [key, item] of pending)
-        if (item.at <= now) {
-          pending.delete(key);
-          item.fn();
-        }
+    state,
+    calls,
+    click: (key) => elements[`workMusicZoom${key}`].fire('click'),
+    async request() {
+      for (const [id, fn] of timers) {
+        timers.delete(id);
+        void fn();
+      }
+      await flush();
     }
   };
 }
 
-test('pointerdown opens immediately without a position jump; detailed range saves precisely', () => {
+test('buttons change viewport; clicking and releasing handles never changes zoom', async () => {
   const f = setup();
-  f.inputs.verseEnd.fire('pointerdown', { button: 0, clientX: 100, clientY: 20 });
-  const range = f.elements.workMusicPrecisionRange;
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, false);
-  assert.ok(f.elements.workMusicDrumLane.children.includes(f.elements.workMusicPrecisionPanel));
-  assert.equal(range.min, '40');
-  assert.equal(range.max, '60');
-  assert.equal(range.value, '50');
-  assert.equal(f.state().draft.verseEnd, 50);
-  f.root.fire('pointerup');
-  assert.equal(f.pending.size, 0);
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
-  f.inputs.verseEnd.fire('keydown', { key: 'Enter' });
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, false);
-  range.value = '50.01';
-  range.fire('input');
-  assert.equal(f.state().draft.verseEnd, 50.01);
-  assert.equal(f.commits(), 0);
-  range.fire('change');
-  assert.equal(f.commits(), 1);
-  f.root.fire('keydown', { key: 'Escape' });
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
-  assert.equal(f.inputs.verseEnd.focused, true);
+  await f.request();
+  f.inputs.verseEnd.fire('pointerdown');
+  f.inputs.verseEnd.fire('pointerup');
+  assert.match(f.elements.workMusicZoomLabel.textContent, /^1×/);
+  f.click('In');
+  await f.request();
+  assert.equal(f.inputs.verseEnd.min, '25');
+  assert.equal(f.inputs.verseEnd.max, '75');
+  assert.equal(f.inputs.drumStart.style.visibility, 'hidden');
+  f.inputs.verseEnd.fire('pointerup');
+  assert.match(f.elements.workMusicZoomLabel.textContent, /^2×/);
+  assert.equal(f.calls.at(-1).start, 25);
+  assert.equal(f.calls.at(-1).pixels, 800);
+  assert.equal(f.elements.workMusicPrecisionWaveform.children[0].children[0].d.includes('L'), true);
+  f.click('Reset');
+  await f.request();
+  assert.equal(f.inputs.drumStart.style.visibility, '');
+  assert.equal(f.inputs.verseEnd.min, '0');
+  assert.equal(f.inputs.verseEnd.max, '100');
 });
 
-test('release/cancel/blur and song change restore the full waveform', () => {
-  for (const stop of ['pointerup', 'pointercancel', 'blur', 'song']) {
-    const f = setup();
-    f.inputs.drumStart.fire('pointerdown', { button: 0, clientX: 0, clientY: 0 });
-    f.advance(2900);
-    if (stop === 'blur') f.root.defaultView.fire('blur');
-    else if (stop === 'song') f.editor.render({ ...f.state(), videoId: 'b' });
-    else f.root.fire(stop);
-    f.advance(100);
-    assert.equal(f.pending.size, 0);
-    assert.equal(f.elements.workMusicPrecisionPanel.hidden, true, stop);
-    const original = f.state().draft.drumStart;
-    f.root.fire('pointermove', { clientX: 300 });
-    assert.equal(f.state().draft.drumStart, original);
-  }
+test('wheel preserves mouse anchor, debounces requests and pan is bounded', async () => {
+  const f = setup();
+  await f.request();
+  let prevented = false;
+  f.elements.workMusicDrumLane.fire('wheel', {
+    clientX: 200,
+    deltaY: -1,
+    preventDefault() {
+      prevented = true;
+    }
+  });
+  assert.equal(prevented, true);
+  assert.equal(Number(f.inputs.verseEnd.min), 12.5);
+  f.elements.workMusicDrumLane.fire('wheel', { clientX: 200, deltaY: -1, preventDefault() {} });
+  await f.request();
+  assert.equal(f.calls.length, 2);
+  assert.ok(Math.abs(f.calls[1].start + (f.calls[1].end - f.calls[1].start) / 4 - 25) < 1e-6);
+  for (let i = 0; i < 10; i++) f.click('Right');
+  await f.request();
+  assert.equal(Number(f.inputs.verseEnd.max), 100);
 });
 
-test('original handle drag uses the zoomed scale and commits once on release', () => {
-  const f = setup();
-  f.inputs.verseEnd.fire('pointerdown', { button: 0, clientX: 100 });
-  f.root.fire('pointermove', { clientX: 140 });
-  assert.equal(f.state().draft.verseEnd, 51);
-  assert.equal(f.state().draft.drumStart, 10);
-  f.root.fire('pointerup');
-  assert.equal(f.commits(), 1);
-  assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
+test('stale waveform responses cannot replace a new song', async () => {
+  let resolve;
+  const f = setup(
+    (id, o) =>
+      new Promise((r) => {
+        resolve = () =>
+          r({
+            videoId: id,
+            startSeconds: o.start,
+            endSeconds: o.end,
+            resolutionSeconds: 100,
+            min: [-1],
+            max: [1]
+          });
+      })
+  );
+  await f.request();
+  const old = resolve;
+  f.editor.render({ ...f.state, videoId: 'b' });
+  old();
+  await flush();
+  assert.equal(f.elements.workMusicPrecisionWaveform.children.length, 0);
+  await f.request();
+  resolve();
+  await flush();
   assert.equal(f.elements.workMusicPrecisionWaveform.children.length, 1);
-  assert.equal(f.elements.workMusicPrecisionWaveform.children[0].children.length, 2);
 });
 
-test('zoom window clamps to song ends and closes on song switch', () => {
-  const f = setup();
-  f.editor.render({ ...f.state(), draft: { drumStart: 1, drumEnd: 99, verseEnd: 50 } });
-  f.inputs.drumStart.fire('pointerdown', { button: 0, clientX: 0, clientY: 0 });
-  f.advance(3000);
-  assert.equal(f.elements.workMusicPrecisionRange.min, '0');
-  assert.equal(f.elements.workMusicPrecisionRange.max, '20');
-  assert.equal(f.elements.workMusicPrecisionRange.value, '1');
-  f.editor.render({ ...f.state(), videoId: 'b' });
+test('missing detail shows reanalysis message and never stretches summary into detail', async () => {
+  const f = setup(async () => {
+    throw Object.assign(new Error('missing'), { status: 404 });
+  });
+  f.click('In');
+  await f.request();
+  assert.match(f.elements.workMusicPrecisionLabel.textContent, /고해상도 파형 없음/);
+  assert.equal(f.elements.workMusicPrecisionWaveform.children.length, 0);
+  f.editor.render({ ...f.state, videoId: 'b', detected: null, draft: null });
   assert.equal(f.elements.workMusicPrecisionPanel.hidden, true);
-  assert.equal(f.pending.size, 0);
 });

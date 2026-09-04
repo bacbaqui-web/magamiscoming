@@ -20,6 +20,7 @@ export function isCurrentAnalysis(result) {
   return (
     (version[0] > 0 || (version[0] === 0 && version[1] >= 3)) &&
     result?.structureVersion === '1.0' &&
+    result?.waveformDetailVersion === '1.0' &&
     Number(result.durationSeconds) > 0 &&
     Array.isArray(result.waveform) &&
     result.waveform.length > 0 &&

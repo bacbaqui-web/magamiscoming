@@ -98,6 +98,11 @@ export function createMediaAnalysisBrowserAdapter({
     getJob: (jobId, { signal } = {}) =>
       request(`/v1/jobs/${encodeURIComponent(jobId)}`, { signal }),
     getResult: (videoId, { signal } = {}) =>
-      request(`/v1/results/${encodeURIComponent(videoId)}`, { signal })
+      request(`/v1/results/${encodeURIComponent(videoId)}`, { signal }),
+    getWaveform: (videoId, { start, end, pixels = 1000, signal } = {}) =>
+      request(
+        `/v1/results/${encodeURIComponent(videoId)}/waveform?${new URLSearchParams({ start, end, pixels })}`,
+        { signal }
+      )
   };
 }

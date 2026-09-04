@@ -3,6 +3,26 @@ import assert from 'node:assert/strict';
 
 import { createMediaAnalysisBrowserAdapter } from '../src/services/mediaAnalysisBrowserAdapter.js';
 
+test('waveform viewport uses authenticated range route and abort signal', async () => {
+  const calls = [];
+  const signal = new AbortController().signal;
+  const adapter = createMediaAnalysisBrowserAdapter({
+    apiBaseUrl: 'https://example.com/media-analysis',
+    getAccessToken: async () => 'token',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, json: async () => ({ min: [-0.5], max: [0.7] }) };
+    }
+  });
+  await adapter.getWaveform('dQw4w9WgXcQ', { start: 10.5, end: 20, pixels: 800, signal });
+  assert.equal(
+    calls[0].url,
+    'https://example.com/media-analysis/v1/results/dQw4w9WgXcQ/waveform?start=10.5&end=20&pixels=800'
+  );
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer token');
+  assert.equal(calls[0].options.signal, signal);
+});
+
 test('local connection failure explains the local server and browser permission', async () => {
   const adapter = createMediaAnalysisBrowserAdapter({
     apiBaseUrl: 'http://127.0.0.1:8000',

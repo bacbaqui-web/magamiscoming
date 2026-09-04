@@ -368,6 +368,7 @@ export function createWorkMusicAnalysisController({
       });
     },
     getState: snapshot,
+    getWaveform: (videoId, options) => mediaAnalysisPort.getWaveform(videoId, options),
     prefetchExisting,
     restoreDetected,
     selectSong,
