@@ -1,14 +1,9 @@
+import { normalizeAnalysisRange } from '../features/workmusic/workMusicAnalysisHelper.js';
+
 const STORAGE_KEY = 'magamiscoming.workmusicLab.v1';
 
 function normalizeManual(value) {
-  const drumStart = Number(value?.drumStart);
-  const drumEnd = Number(value?.drumEnd);
-  return Number.isFinite(drumStart) &&
-    Number.isFinite(drumEnd) &&
-    drumStart >= 0 &&
-    drumEnd > drumStart
-    ? { drumStart, drumEnd }
-    : null;
+  return normalizeAnalysisRange(value);
 }
 
 function normalizeSong(value) {

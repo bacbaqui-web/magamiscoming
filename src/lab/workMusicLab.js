@@ -196,6 +196,11 @@ function render() {
   elements.volumeLabel.textContent = `${state.volume}%`;
   elements.seamless.value = String(state.seamlessOverlapSeconds);
   elements.seamlessLabel.textContent = `${state.seamlessOverlapSeconds}초`;
+  const djButton = root.getElementById('workMusicSeamlessBtn');
+  if (djButton) {
+    djButton.setAttribute('aria-pressed', String(state.seamlessOverlapSeconds > 0));
+    djButton.textContent = state.seamlessOverlapSeconds > 0 ? '디제잉 켜짐' : '디제잉 꺼짐';
+  }
   analysisController.selectSong(song);
   if (batchAnalysisController) renderBatchAnalysis(batchAnalysisController.getState());
 }
@@ -261,6 +266,7 @@ playbackController = createWorkMusicPlaybackController({
   }
 });
 seamlessController = createWorkMusicSeamlessController({
+  detectedByVideoId: analysisController.detectedByVideoId,
   engine,
   playbackController,
   youtubePort,
@@ -400,6 +406,11 @@ elements.volume.addEventListener('input', () =>
 elements.seamless.addEventListener('change', () =>
   playbackController.setSeamlessSeconds(elements.seamless.value)
 );
+root
+  .getElementById('workMusicSeamlessBtn')
+  ?.addEventListener('click', () =>
+    playbackController.setSeamlessSeconds(engine.getSnapshot().seamlessOverlapSeconds > 0 ? 0 : 10)
+  );
 elements.batchTest.addEventListener('click', () =>
   batchAnalysisController.start(
     engine

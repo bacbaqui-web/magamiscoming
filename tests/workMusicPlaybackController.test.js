@@ -92,25 +92,32 @@ test('SeamlessController는 두 곡 수동 구간으로 실제 전환 시작 시
       duration: 100,
       overlapSeconds: 10
     }),
-    { mode: 'manual', triggerAtSeconds: 70 }
+    {
+      mode: 'dj',
+      triggerAtSeconds: 80,
+      nextStartSeconds: 0,
+      nextGreenStart: 10,
+      crossfadeSeconds: 10
+    }
   );
 });
 
-test('SeamlessController는 수동 구간이 없거나 한쪽뿐이거나 범위를 벗어나면 기존 고정 시각을 보존한다', () => {
+test('DJ uses sequential playback when either range is missing or invalid', () => {
   const seamless = createWorkMusicSeamlessController({
     engine: createWorkMusicEngine(),
     playbackController: {},
     root: {},
     youtubePort: {}
   });
-  const fixed = { mode: 'fixed', triggerAtSeconds: 90 };
+  const fixed = {
+    mode: 'sequential',
+    triggerAtSeconds: 100,
+    nextStartSeconds: 0,
+    crossfadeSeconds: 0
+  };
   const cases = [
     [{}, {}],
     [{ mediaAnalysisManual: { drumStart: 5, drumEnd: 80 } }, {}],
-    [
-      { mediaAnalysisManual: { drumStart: 5, drumEnd: 8 } },
-      { mediaAnalysisManual: { drumStart: 10, drumEnd: 90 } }
-    ],
     [
       { mediaAnalysisManual: { drumStart: 5, drumEnd: 150 } },
       { mediaAnalysisManual: { drumStart: 10, drumEnd: 90 } }
@@ -184,7 +191,7 @@ test('SeamlessController monitor는 고정 겹침 전보다 수동 시작 시각
 
   await seamless.create(0, true);
   assert.equal(seamless.monitor(), false);
-  players[0].current = 70;
+  players[0].current = 80;
   assert.equal(seamless.monitor(), true);
   assert.equal(players[1].played, true);
 });
@@ -249,13 +256,12 @@ test('PlaybackController가 Player 생성, seek, pause, resume, 이전·다음�
 
 test('SeamlessController가 monitor, standby 재생과 fade 완료를 실행한다', async () => {
   const intervalCallbacks = [];
-  let clock = 0;
   const players = [];
   const engine = createWorkMusicEngine({
     initialState: {
       songs: [
-        { id: 'a', videoId: 'video-a' },
-        { id: 'b', videoId: 'video-b' }
+        { id: 'a', videoId: 'video-a', mediaAnalysisManual: { drumStart: 5, drumEnd: 90 } },
+        { id: 'b', videoId: 'video-b', mediaAnalysisManual: { drumStart: 10, drumEnd: 90 } }
       ],
       seamlessOverlapSeconds: 10,
       isPlaying: true,
@@ -272,6 +278,9 @@ test('SeamlessController가 monitor, standby 재생과 fade 완료를 실행한�
         volume: 0,
         getCurrentTime() {
           return this.current;
+        },
+        seekTo(value) {
+          this.current = value;
         },
         getDuration() {
           return this.duration;
@@ -308,15 +317,90 @@ test('SeamlessController가 monitor, standby 재생과 fade 완료를 실행한�
       intervalCallbacks.push(callback);
       return intervalCallbacks.length;
     },
-    clear() {},
-    now: () => clock
+    clear() {}
   });
   await seamless.create(0, true);
   assert.equal(seamless.monitor(), true);
   players[1].options.events.onStateChange({ data: 1 });
-  clock = 10000;
+  players[1].player.current = 5;
+  intervalCallbacks.at(-1)();
+  const fadingVolume = players[1].player.volume;
+  assert.ok(fadingVolume > 0 && fadingVolume < 80);
+  // Buffering (unchanged media time) must not advance the fade.
+  intervalCallbacks.at(-1)();
+  assert.equal(players[1].player.volume, fadingVolume);
+  seamless.pause();
+  seamless.resume();
+  players[1].options.events.onStateChange({ data: 1 });
+  assert.equal(players[1].player.volume, fadingVolume);
+  players[1].player.current = 10;
   intervalCallbacks.at(-1)();
   assert.equal(engine.getSnapshot().currentIndex, 1);
   assert.equal(players[0].player.stopped, true);
   assert.equal(players[1].player.volume, 80);
+});
+
+test('zero-head DJ stops the outgoing player before immediate next playback; seek cancels a fade', async () => {
+  const players = [];
+  const engine = createWorkMusicEngine({
+    initialState: {
+      songs: [
+        { id: 'a', videoId: 'a', mediaAnalysisManual: { drumStart: 5, drumEnd: 80 } },
+        { id: 'b', videoId: 'b', mediaAnalysisManual: { drumStart: 0, drumEnd: 90 } }
+      ],
+      isPlaying: true,
+      seamlessOverlapSeconds: 10,
+      volume: 80
+    }
+  });
+  const controller = createWorkMusicSeamlessController({
+    engine,
+    playbackController: {},
+    root: { getElementById: () => ({ classList: { add() {} } }) },
+    interval: () => 1,
+    clear() {},
+    youtubePort: {
+      ensureIframeApi: async () => {},
+      createPlayer(_id, options) {
+        const p = {
+          current: 80,
+          getCurrentTime() {
+            return this.current;
+          },
+          getDuration: () => 100,
+          setVolume(v) {
+            this.volume = v;
+          },
+          mute() {},
+          unMute() {},
+          stopVideo() {},
+          cueVideoById() {},
+          seekTo(v) {
+            this.current = v;
+          },
+          pauseVideo() {
+            this.paused = true;
+          },
+          playVideo() {
+            if (players.length === 2) options.events.onStateChange({ data: 1 });
+          }
+        };
+        players.push(p);
+        options.events.onReady({ target: p });
+        return p;
+      }
+    }
+  });
+  await controller.create(0, true);
+  assert.equal(controller.monitor(), true);
+  assert.equal(players[0].paused, true);
+  assert.equal(engine.getSnapshot().currentIndex, 1);
+  assert.equal(players[1].volume, 80);
+  // The next pair has a nonzero head, so seeking cancels an active transition.
+  players[1].current = 90;
+  assert.equal(controller.monitor(), true);
+  assert.equal(controller.getState().transitioning, true);
+  controller.cancelTransition();
+  assert.equal(controller.getState().transitioning, false);
+  assert.equal(players[1].volume, 80);
 });

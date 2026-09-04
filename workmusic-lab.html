@@ -104,8 +104,9 @@
                 />
               </svg>
             </button>
+            <button id="workMusicSeamlessBtn" type="button" aria-pressed="false">디제잉</button>
             <label>
-              이어듣기
+              최대 페이드 시간
               <input id="workMusicSeamlessRange" type="range" min="0" max="20" step="1" />
               <b id="workMusicSeamlessSeconds">0초</b>
             </label>
@@ -147,7 +148,7 @@
             </div>
             <div class="workmusic-analysis-timeline">
               <p class="workmusic-analysis-legend">
-                보라: 후렴 후보 · 초록 테두리: 드럼 구간 · 주황 선: 현재 위치
+                초록: 재생 구간 · 흰색: 1절 끝 · 보라: 후렴 후보 · 주황 선: 현재 위치
               </p>
               <div id="workMusicDrumLane" class="workmusic-drum-lane">
                 <div
@@ -156,6 +157,24 @@
                   aria-label="전체 음파와 자동 추정 구간"
                 ></div>
                 <div class="workmusic-drum-highlight" aria-hidden="true"></div>
+                <span class="workmusic-edit-region workmusic-edit-intro" aria-hidden="true"
+                  >인트로</span
+                >
+                <span class="workmusic-edit-region workmusic-edit-outro" aria-hidden="true"
+                  >아웃트로</span
+                >
+                <span class="workmusic-verse-line" aria-hidden="true"><span>1절</span></span>
+                <input
+                  id="workMusicVerseEnd"
+                  class="workmusic-drum-handle workmusic-verse-handle"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value="0.5"
+                  aria-label="1절 끝 위치"
+                  disabled
+                />
                 <input
                   id="workMusicDrumStart"
                   class="workmusic-drum-handle workmusic-drum-handle-start"
@@ -164,7 +183,7 @@
                   max="1"
                   step="0.1"
                   value="0"
-                  aria-label="드럼 시작 위치"
+                  aria-label="인트로 끝 위치"
                   disabled
                 />
                 <input
@@ -175,7 +194,7 @@
                   max="1"
                   step="0.1"
                   value="1"
-                  aria-label="드럼 종료 위치"
+                  aria-label="아웃트로 시작 위치"
                   disabled
                 />
               </div>

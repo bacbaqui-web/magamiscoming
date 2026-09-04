@@ -148,11 +148,11 @@ styles/
 - `features/workmusic/workMusicPlaybackController.js`: 일반 Player 생성·파괴, 재생·정지·seek·이전·다음·음량과 오류 곡 건너뛰기 실행
 - `features/workmusic/workMusicMetadataController.js`: YouTube 곡 메타데이터 요청 진입점
 - `features/workmusic/workMusicPlaylistController.js`: YouTube 재생목록 요청 진입점
-- `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 수동 분석 pair의 시작 시각, 고정 겹침 fallback, 대기 곡 cue, monitor, fade와 전환 완료 실행
+- `features/workmusic/workMusicSeamlessController.js`: 두 Player 슬롯, 비초록 영역 DJ 전환·구간 미확인 순차 재생, cue, monitor, 실제 재생 시각 기반 fade
 - `features/workmusic/workMusicAnalysisController.js`: 곡별 큐 등록·백그라운드 추적·서버 큐 집계·활성 작업 복원, 결과 cache와 수동 구간 저장 요청
-- `features/workmusic/workMusicAnalysisView.js`: 분석 상태·서버 실행/대기 수·전체 음파와 구간 후보·재생 위치선·드럼 구간 handle 렌더와 편집 이벤트
+- `features/workmusic/workMusicAnalysisView.js`: 분석 상태·큐·음파·후렴 후보·재생 위치선·초록 시작/끝과 흰 1절 핸들 렌더·편집 이벤트
 - `features/workmusic/workMusicPlaybackIdentity.js`: 실제 Player 정보·공개 영상 URL에서 재생 videoId를 조회하는 순수 경계
-- `features/workmusic/workMusicAnalysisHelper.js`: 분석 구간 검증과 수동·자동·고정 전환 계획 순수 계산
+- `features/workmusic/workMusicAnalysisHelper.js`: 분석 구간·1절 검증, 비초록 DJ 계획과 이전 후보 계획 호환 계산
 - `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서 순수 계산
 - `features/clipviewer.js`: CLIP Engine·Composer·Controller와 외부 기능을 조립하고 공개 호환 계약을 연결하는 진입점
 - `features/clipviewer/clipViewerEngine.js`: 페이지 목록, CMC 정렬 결과, 로컬 미리보기, 저장 manifest와 동기화 상태의 단일 소유자

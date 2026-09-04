@@ -26,7 +26,7 @@ test('local workmusic store preserves songs and manual boundaries only', () => {
           videoId: 'dQw4w9WgXcQ',
           title: '테스트 곡',
           durationSeconds: 200,
-          mediaAnalysisManual: { drumStart: 12, drumEnd: 188 },
+          mediaAnalysisManual: { drumStart: 12, drumEnd: 188, verseEnd: 96 },
           detected: { confidence: 0.9 }
         }
       ],
@@ -37,7 +37,11 @@ test('local workmusic store preserves songs and manual boundaries only', () => {
     storage
   );
 
-  assert.deepEqual(saved.songs[0].mediaAnalysisManual, { drumStart: 12, drumEnd: 188 });
+  assert.deepEqual(saved.songs[0].mediaAnalysisManual, {
+    drumStart: 12,
+    drumEnd: 188,
+    verseEnd: 96
+  });
   assert.equal('detected' in saved.songs[0], false);
   assert.deepEqual(loadLocalWorkMusicState(storage), saved);
 });

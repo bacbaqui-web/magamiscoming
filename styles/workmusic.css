@@ -1646,6 +1646,14 @@ body {
   border-radius: 5px;
   background: #252525;
 }
+.workmusic-dj-button-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+#workMusicSeamlessBtn svg,
+#workMusicRemoteSeamlessBtn svg {
+  display: none;
+}
 .workmusic-waveform-sample {
   position: absolute;
   top: 58%;
@@ -1667,10 +1675,6 @@ body {
 }
 .workmusic-analysis-section.chorus_candidate {
   background: #b16bba66;
-}
-.workmusic-analysis-section.intro,
-.workmusic-analysis-section.outro {
-  background: #428c8066;
 }
 .workmusic-waveform-empty {
   position: absolute;
@@ -1706,8 +1710,9 @@ body {
 .workmusic-drum-lane {
   --drum-start: 0%;
   --drum-end: 100%;
+  --verse-end: 50%;
   height: auto;
-  margin: 4px 6px 18px;
+  margin: 4px 9px 22px;
   overflow: visible;
 }
 .workmusic-drum-highlight {
@@ -1715,22 +1720,77 @@ body {
   inset-block: 0;
   left: var(--drum-start);
   width: calc(var(--drum-end) - var(--drum-start));
-  border-radius: 4px;
   box-sizing: border-box;
-  border: 2px solid #4ec48e;
-  background: rgba(78, 196, 142, 0.08);
+  background: rgba(78, 196, 142, 0.25);
   pointer-events: none;
   z-index: 1;
 }
-.workmusic-drum-lane:not([data-editable='true']) .workmusic-drum-highlight {
+.workmusic-drum-highlight::before,
+.workmusic-drum-highlight::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #4ec48e;
+  transform: translateX(-50%);
+}
+.workmusic-drum-highlight::before {
+  left: 0;
+}
+.workmusic-drum-highlight::after {
+  left: 100%;
+}
+.workmusic-edit-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 5px 3px;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #f2f4f3;
+  font-size: 0.7rem;
+  pointer-events: none;
+}
+.workmusic-edit-intro {
+  left: 0;
+  width: var(--drum-start);
+}
+.workmusic-edit-outro {
+  left: var(--drum-end);
+  right: 0;
+}
+.workmusic-verse-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--verse-end);
+  width: 1px;
+  background: #fff;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.workmusic-verse-line span {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  color: #fff;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.workmusic-drum-lane:not([data-editable='true']) .workmusic-drum-highlight,
+.workmusic-drum-lane:not([data-editable='true']) .workmusic-edit-region,
+.workmusic-drum-lane:not([data-editable='true']) .workmusic-verse-line {
   display: none;
 }
 .workmusic-drum-handle {
   position: absolute;
-  left: -6px;
-  bottom: -13px;
-  width: calc(100% + 12px);
-  height: 26px;
+  left: -9px;
+  bottom: -18px;
+  width: calc(100% + 18px);
+  height: 18px;
   margin: 0;
   pointer-events: none;
   appearance: none;
@@ -1745,10 +1805,11 @@ body {
   visibility: hidden;
 }
 .workmusic-drum-handle::-webkit-slider-thumb {
-  width: 12px;
-  height: 26px;
-  border: 2px solid #111;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
   background: #4ec48e;
   cursor: ew-resize;
   pointer-events: auto;
@@ -1756,13 +1817,20 @@ body {
 }
 .workmusic-drum-handle::-moz-range-thumb {
   box-sizing: border-box;
-  width: 12px;
-  height: 26px;
-  border: 2px solid #111;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
   background: #4ec48e;
   cursor: ew-resize;
   pointer-events: auto;
+}
+.workmusic-verse-handle::-webkit-slider-thumb {
+  background: #fff;
+}
+.workmusic-verse-handle::-moz-range-thumb {
+  background: #fff;
 }
 .workmusic-drum-label {
   display: block;

@@ -53,6 +53,7 @@ export function createWorkMusicPlaybackController({
     else target?.unMute?.();
   }
   function seek(seconds) {
+    seamlessController?.cancelTransition?.();
     const duration = getDuration();
     const target = Math.max(0, Math.min(duration || Number(seconds), Number(seconds) || 0));
     (seamlessController?.getActivePlayer?.() || player)?.seekTo?.(target, true);
@@ -141,6 +142,9 @@ export function createWorkMusicPlaybackController({
     render();
     const state = engine.getSnapshot();
     if (state.seamlessEnabled && state.seamlessOverlapSeconds > 0 && songs.length > 1) {
+      player?.destroy?.();
+      player = null;
+      playerElement = null;
       await seamlessController?.create?.(nextIndex, autoplay);
     } else {
       await createRegularPlayer(nextIndex, autoplay);
@@ -157,9 +161,8 @@ export function createWorkMusicPlaybackController({
   function resume() {
     const state = engine.getSnapshot();
     if (!player && !seamlessController?.getActivePlayer?.()) return playAt(state.currentIndex);
-    (seamlessController?.getActivePlayer?.() || player)?.playVideo?.();
     engine.setState('isPlaying', true);
-    seamlessController?.startMonitor?.();
+    if (!seamlessController?.resume?.()) player?.playVideo?.();
     render();
     return true;
   }
@@ -198,7 +201,7 @@ export function createWorkMusicPlaybackController({
     const state = engine.getSnapshot();
     if (refreshPlayer && before !== state.seamlessEnabled && activeSongs().length) {
       if (state.isPlaying) await playAt(state.currentIndex, { resetSkipSession: false });
-      else await createRegularPlayer(state.currentIndex, false);
+      else await loadAt(state.currentIndex, false);
     }
   }
 

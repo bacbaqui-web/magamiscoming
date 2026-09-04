@@ -547,7 +547,7 @@
               </div>
               <div class="workmusic-analysis-timeline">
                 <p class="workmusic-analysis-legend">
-                  보라: 후렴 후보 · 초록 테두리: 드럼 구간 · 주황 선: 현재 위치
+                  초록: 재생 구간 · 흰색: 1절 끝 · 보라: 후렴 후보 · 주황 선: 현재 위치
                 </p>
                 <div id="workMusicDrumLane" class="workmusic-drum-lane">
                   <div
@@ -556,6 +556,24 @@
                     aria-label="전체 음파와 자동 추정 구간"
                   ></div>
                   <div class="workmusic-drum-highlight" aria-hidden="true"></div>
+                  <span class="workmusic-edit-region workmusic-edit-intro" aria-hidden="true"
+                    >인트로</span
+                  >
+                  <span class="workmusic-edit-region workmusic-edit-outro" aria-hidden="true"
+                    >아웃트로</span
+                  >
+                  <span class="workmusic-verse-line" aria-hidden="true"><span>1절</span></span>
+                  <input
+                    id="workMusicVerseEnd"
+                    class="workmusic-drum-handle workmusic-verse-handle"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value="0.5"
+                    aria-label="1절 끝 위치"
+                    disabled
+                  />
                   <input
                     id="workMusicDrumStart"
                     class="workmusic-drum-handle workmusic-drum-handle-start"
@@ -564,7 +582,7 @@
                     max="1"
                     step="0.1"
                     value="0"
-                    aria-label="드럼 시작 위치"
+                    aria-label="인트로 끝 위치"
                     disabled
                   />
                   <input
@@ -575,7 +593,7 @@
                     max="1"
                     step="0.1"
                     value="1"
-                    aria-label="드럼 종료 위치"
+                    aria-label="아웃트로 시작 위치"
                     disabled
                   />
                 </div>
@@ -682,13 +700,14 @@
               <path d="M4 4l5 5" />
             </svg>
           </button>
-          <div class="slider-control" title="이어듣기">
+          <div class="slider-control" title="디제잉">
             <button
               id="workMusicSeamlessBtn"
               class="slider-icon-button"
-              title="이어듣기 전환"
-              aria-label="이어듣기 전환"
+              title="디제잉 전환"
+              aria-label="디제잉 전환"
             >
+              <span class="workmusic-dj-button-label" aria-hidden="true">DJ</span>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -707,7 +726,7 @@
                 <path d="M18 18 L13 23" />
               </svg>
             </button>
-            <div class="slider-popover" aria-label="이어듣기 겹침 시간">
+            <div class="slider-popover" aria-label="디제잉 최대 페이드 시간">
               <div class="slider-track-wrap">
                 <input
                   id="workMusicSeamlessRange"
@@ -1345,13 +1364,14 @@
             <path d="M4 4l5 5" />
           </svg>
         </button>
-        <div class="slider-control" title="이어듣기">
+        <div class="slider-control" title="디제잉">
           <button
             id="workMusicRemoteSeamlessBtn"
             class="slider-icon-button workmusic-remote-btn"
-            title="이어듣기 전환"
-            aria-label="이어듣기 전환"
+            title="디제잉 전환"
+            aria-label="디제잉 전환"
           >
+            <span class="workmusic-dj-button-label" aria-hidden="true">DJ</span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -1370,7 +1390,7 @@
               <path d="M18 18 L13 23" />
             </svg>
           </button>
-          <div class="slider-popover" aria-label="이어듣기 겹침 시간">
+          <div class="slider-popover" aria-label="디제잉 최대 페이드 시간">
             <div class="slider-track-wrap">
               <input
                 id="workMusicRemoteSeamlessRange"

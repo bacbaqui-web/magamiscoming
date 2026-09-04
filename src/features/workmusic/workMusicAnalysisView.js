@@ -32,6 +32,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   const drumLane = root.getElementById('workMusicDrumLane');
   const drumStart = root.getElementById('workMusicDrumStart');
   const drumEnd = root.getElementById('workMusicDrumEnd');
+  const verseEnd = root.getElementById('workMusicVerseEnd');
   const drumLabel = root.getElementById('workMusicDrumLabel');
   const saveButton = root.getElementById('workMusicAnalysisSaveBtn');
   const restoreButton = root.getElementById('workMusicAnalysisRestoreBtn');
@@ -61,6 +62,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     const sections = duration > 0 && Array.isArray(result?.sections) ? result.sections : [];
     const labels = { intro: '인트로 후보', outro: '아웃트로 후보', chorus_candidate: '후렴 후보' };
     sections.forEach((section, index) => {
+      if (section.label === 'intro' || section.label === 'outro') return;
       const start = Math.max(0, Number(section.start));
       const end = Math.min(duration, Number(section.end));
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
@@ -91,7 +93,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     }
     if (structureLabel)
       structureLabel.textContent = waveform.length
-        ? '구간은 자동 추정입니다. 인트로·아웃트로는 드럼 앞뒤 후보이며 후렴은 직접 들어 확인해 주세요.'
+        ? '초록 구간은 온전히 재생하고 양쪽은 디제잉 연결에 사용합니다. 후렴은 자동 추정이며, 1절 위치는 직접 정해 주세요.'
         : '';
     playhead = documentFactory.createElement('span');
     playhead.className = 'workmusic-analysis-playhead';
@@ -161,22 +163,34 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
 
     const hasDraft = !!draft && duration > 0;
     if (drumLane) drumLane.dataset.editable = String(hasDraft);
-    [drumStart, drumEnd].forEach((input) => {
+    [drumStart, drumEnd, verseEnd].forEach((input) => {
       if (!input) return;
       input.disabled = !hasDraft;
       input.max = String(duration || 1);
     });
     if (hasDraft) {
+      const verse = Math.max(
+        draft.drumStart,
+        Math.min(
+          draft.drumEnd,
+          Number.isFinite(draft.verseEnd) ? draft.verseEnd : (draft.drumStart + draft.drumEnd) / 2
+        )
+      );
       drumStart.value = String(draft.drumStart);
       drumEnd.value = String(draft.drumEnd);
       drumStart.setAttribute('aria-valuetext', formatSeconds(draft.drumStart));
       drumEnd.setAttribute('aria-valuetext', formatSeconds(draft.drumEnd));
+      if (verseEnd) {
+        verseEnd.value = String(verse);
+        verseEnd.setAttribute('aria-valuetext', formatSeconds(verse));
+      }
       drumLane?.style.setProperty('--drum-start', `${(draft.drumStart / duration) * 100}%`);
       drumLane?.style.setProperty('--drum-end', `${(draft.drumEnd / duration) * 100}%`);
+      drumLane?.style.setProperty('--verse-end', `${(verse / duration) * 100}%`);
       if (drumLabel) {
-        drumLabel.textContent = `${formatSeconds(draft.drumStart)}–${formatSeconds(draft.drumEnd)}`;
+        drumLabel.textContent = `인트로 끝 ${formatSeconds(draft.drumStart)} · 1절 ${formatSeconds(verse)} · 아웃트로 시작 ${formatSeconds(draft.drumEnd)}`;
       }
-    } else if (drumLabel) drumLabel.textContent = '드럼 구간 —';
+    } else if (drumLabel) drumLabel.textContent = '재생 구간 —';
     if (saveButton) saveButton.disabled = !hasDraft || !state.dirty;
     if (restoreButton) restoreButton.disabled = !state.manual;
   }
@@ -190,6 +204,10 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
   );
   drumStart?.addEventListener('change', () => controller.commitDraft());
   drumEnd?.addEventListener('change', () => controller.commitDraft());
+  verseEnd?.addEventListener('input', (event) =>
+    controller.updateDraft('verseEnd', event.target.value)
+  );
+  verseEnd?.addEventListener('change', () => controller.commitDraft());
   saveButton?.addEventListener('click', () => controller.commitDraft());
   restoreButton?.addEventListener('click', () => controller.restoreDetected());
 

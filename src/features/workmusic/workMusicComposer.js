@@ -331,7 +331,7 @@ export function createWorkMusicComposer({
     window.workMusicSeamlessEnabled = seconds > 0;
     const enabled = seconds > 0;
     if (workMusicSeamlessBtn) {
-      const label = enabled ? `이어듣기 켜짐, ${seconds}초 겹침` : '이어듣기 꺼짐';
+      const label = enabled ? `디제잉 켜짐, 최대 ${seconds}초 페이드` : '디제잉 꺼짐';
       workMusicSeamlessBtn.classList.toggle('enabled', enabled);
       workMusicSeamlessBtn.title = label;
       workMusicSeamlessBtn.setAttribute('aria-label', label);
@@ -340,7 +340,7 @@ export function createWorkMusicComposer({
     if (workMusicSeamlessSeconds) workMusicSeamlessSeconds.textContent = String(seconds);
     if (workMusicSeamlessBadge) workMusicSeamlessBadge.textContent = String(seconds);
     if (workMusicRemoteSeamlessBtn) {
-      const label = enabled ? `이어듣기 켜짐, ${seconds}초 겹침` : '이어듣기 꺼짐';
+      const label = enabled ? `디제잉 켜짐, 최대 ${seconds}초 페이드` : '디제잉 꺼짐';
       workMusicRemoteSeamlessBtn.classList.toggle('enabled', enabled);
       workMusicRemoteSeamlessBtn.title = label;
       workMusicRemoteSeamlessBtn.setAttribute('aria-label', label);
@@ -2034,6 +2034,7 @@ export function createWorkMusicComposer({
   });
   analysisView = createWorkMusicAnalysisView({ root, controller: analysisController });
   seamlessController = createWorkMusicSeamlessController({
+    detectedByVideoId: analysisController.detectedByVideoId,
     engine,
     playbackController,
     youtubePort,

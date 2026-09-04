@@ -52,8 +52,12 @@ export function createWorkMusicAnalysisController({
     version === selectionVersion && videoId === currentSong?.videoId;
   const manualForSong = (song) =>
     normalizeAnalysisRange(song?.mediaAnalysisManual, song?.durationSeconds);
-  const draftFrom = (manual, detected) =>
-    clone(manual || normalizeAnalysisRange(detected, detected?.durationSeconds));
+  const draftFrom = (manual, detected) => {
+    const range = clone(manual || normalizeAnalysisRange(detected, detected?.durationSeconds));
+    return range
+      ? { ...range, verseEnd: range.verseEnd ?? (range.drumStart + range.drumEnd) / 2 }
+      : null;
+  };
 
   async function refreshQueue() {
     if (!mediaAnalysisPort?.getQueue || lifetime.signal.aborted) return;
@@ -251,6 +255,7 @@ export function createWorkMusicAnalysisController({
   }
 
   function updateDraft(boundary, value) {
+    if (!['drumStart', 'drumEnd', 'verseEnd'].includes(boundary)) return;
     const duration = Number(state.detected?.durationSeconds || currentSong?.durationSeconds || 0);
     const current = state.draft || {
       drumStart: 0,
@@ -264,6 +269,10 @@ export function createWorkMusicAnalysisController({
     if (boundary === 'drumEnd' && next.drumEnd <= next.drumStart) {
       next.drumEnd = Math.min(duration || next.drumStart + 0.1, next.drumStart + 0.1);
     }
+    next.verseEnd = Math.max(
+      next.drumStart,
+      Math.min(next.drumEnd, next.verseEnd ?? (next.drumStart + next.drumEnd) / 2)
+    );
     state = { ...state, draft: next, dirty: true };
     publish();
   }

@@ -18,6 +18,33 @@ const result = {
 const notFound = () => Promise.reject(Object.assign(new Error('not found'), { status: 404 }));
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
+test('verse marker persists, stays inside green edits, and restores without altering detected results', async () => {
+  let saved;
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: { enabled: true, getResult: async () => result },
+    saveManual: async (value) => {
+      saved = value.manual;
+    }
+  });
+  await controller.selectSong(song);
+  assert.equal(controller.getState().draft.verseEnd, 100);
+  controller.updateDraft('verseEnd', 70);
+  await controller.commitDraft();
+  assert.equal(saved.verseEnd, 70);
+  await controller.selectSong({ id: 'other', videoId: 'bbbbbbbbbbb' });
+  await controller.selectSong({ ...song, mediaAnalysisManual: saved });
+  assert.equal(controller.getState().draft.verseEnd, 70);
+  controller.updateDraft('drumStart', 80);
+  assert.equal(controller.getState().draft.verseEnd, 80);
+  controller.updateDraft('verseEnd', 999);
+  assert.equal(controller.getState().draft.verseEnd, 190);
+  assert.equal(controller.getState().detected.drumStart, 10);
+  await controller.restoreDetected();
+  assert.equal(controller.getState().draft.verseEnd, 100);
+  assert.equal(saved, null);
+  controller.destroy();
+});
+
 test('submitted jobs survive song switches, prevent duplicates and cache background results', async () => {
   let releasePost;
   let releaseWait;
@@ -225,7 +252,7 @@ test('controller runs POST, poll, result and keeps detected values runtime-only'
   controller.updateDraft('drumStart', 14);
   assert.deepEqual(saved, []);
   await controller.commitDraft();
-  assert.deepEqual(saved[0].manual, { drumStart: 14, drumEnd: 190 });
+  assert.deepEqual(saved[0].manual, { drumStart: 14, drumEnd: 190, verseEnd: 100 });
   await controller.restoreDetected();
   assert.equal(saved[1].manual, null);
 });

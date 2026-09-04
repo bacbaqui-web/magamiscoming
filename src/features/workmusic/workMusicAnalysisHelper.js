@@ -4,7 +4,44 @@ export function normalizeAnalysisRange(value, durationSeconds = 0) {
   const duration = Number(durationSeconds || 0);
   if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) return null;
   if (duration > 0 && end > duration + 0.01) return null;
-  return { drumStart: start, drumEnd: end };
+  const range = { drumStart: start, drumEnd: end };
+  const verseEnd = Number(value?.verseEnd);
+  if (value?.verseEnd != null && Number.isFinite(verseEnd))
+    range.verseEnd = Math.max(start, Math.min(end, verseEnd));
+  return range;
+}
+
+// Only the unselected tail/head may overlap. Unknown boundaries never authorize a fade.
+export function calculateDjTransitionPlan({
+  currentSong,
+  nextSong,
+  duration,
+  detectedByVideoId,
+  maximumFadeSeconds = 10,
+  currentTime = 0
+} = {}) {
+  const seconds = Number(duration);
+  const rangeFor = (song, songDuration) =>
+    normalizeAnalysisRange(song?.mediaAnalysisManual, songDuration) ||
+    normalizeAnalysisRange(detectedByVideoId?.get?.(song?.videoId), songDuration);
+  const current = rangeFor(currentSong, seconds);
+  const next = rangeFor(nextSong, nextSong?.durationSeconds);
+  if (!Number.isFinite(seconds) || seconds <= 0 || !current || !next)
+    return {
+      mode: 'sequential',
+      triggerAtSeconds: seconds || 0,
+      nextStartSeconds: 0,
+      crossfadeSeconds: 0
+    };
+  const remaining = Math.max(0, seconds - Math.max(current.drumEnd, Number(currentTime) || 0));
+  const fade = Math.max(0, Math.min(remaining, next.drumStart, Number(maximumFadeSeconds) || 0));
+  return {
+    mode: 'dj',
+    triggerAtSeconds: current.drumEnd,
+    nextStartSeconds: next.drumStart - fade,
+    nextGreenStart: next.drumStart,
+    crossfadeSeconds: fade
+  };
 }
 
 export function calculateSmartTransitionPlan({

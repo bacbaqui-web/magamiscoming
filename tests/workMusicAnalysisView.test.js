@@ -1,6 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createWorkMusicAnalysisView } from '../src/features/workmusic/workMusicAnalysisView.js';
+
+test('main and lab share three native handles and draft-bound intro/outro regions', () => {
+  for (const file of ['index.html', 'workmusic-lab.html']) {
+    const html = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    for (const id of ['workMusicDrumStart', 'workMusicDrumEnd', 'workMusicVerseEnd']) {
+      assert.match(html, new RegExp(`<input\\s+id="${id}"[^>]+type="range"`));
+    }
+    assert.match(html, /workmusic-edit-intro/);
+    assert.match(html, /workmusic-edit-outro/);
+    assert.match(html, /workmusic-verse-line/);
+  }
+  const css = readFileSync(new URL('../styles/workmusic.css', import.meta.url), 'utf8');
+  assert.match(css, /\.workmusic-edit-intro\s*\{[^}]+width: var\(--drum-start\)/);
+  assert.match(css, /\.workmusic-edit-outro\s*\{[^}]+left: var\(--drum-end\)/);
+  assert.match(
+    css,
+    /\.workmusic-drum-highlight\s*\{[^}]+left: var\(--drum-start\);[^}]+width: calc\(var\(--drum-end\) - var\(--drum-start\)\)/
+  );
+  assert.match(css, /clip-path: polygon\(50% 0, 100% 100%, 0 100%\)/);
+});
 
 test('integrated waveform range follows input before commit and clears on song change', () => {
   const element = () => ({
@@ -32,6 +53,7 @@ test('integrated waveform range follows input before commit and clears on song c
       'workMusicDrumLane',
       'workMusicDrumStart',
       'workMusicDrumEnd',
+      'workMusicVerseEnd',
       'workMusicDrumLabel'
     ].map((id) => [id, element()])
   );
@@ -64,21 +86,30 @@ test('integrated waveform range follows input before commit and clears on song c
   view.render(state);
   const originalWaveform = elements.workMusicAnalysisMarkers.children[0];
   const start = elements.workMusicDrumStart;
+  const verse = elements.workMusicVerseEnd;
+  assert.equal(verse.value, '50');
   start.listeners.input({ target: { value: '25' } });
   assert.equal(elements.workMusicDrumLane.style['--drum-start'], '25%');
   assert.equal(elements.workMusicDrumLane.style['--drum-end'], '90%');
   assert.equal(start['aria-valuetext'], '0:25');
   assert.equal(elements.workMusicAnalysisMarkers.children[0], originalWaveform);
   assert.equal(commits, 0);
+  verse.listeners.input({ target: { value: '60' } });
+  assert.equal(elements.workMusicDrumLane.style['--verse-end'], '60%');
+  assert.equal(verse['aria-valuetext'], '1:00');
+  assert.equal(commits, 0);
+  verse.listeners.change();
+  assert.equal(commits, 1);
   elements.workMusicDrumEnd.listeners.input({ target: { value: '80' } });
   assert.equal(elements.workMusicDrumLane.style['--drum-end'], '80%');
   start.listeners.change();
-  assert.equal(commits, 1);
+  assert.equal(commits, 2);
   view.render({ ...state, draft: { drumStart: 10, drumEnd: 90 } });
   assert.equal(elements.workMusicDrumLane.style['--drum-start'], '10%');
   view.render({ videoId: 'b' });
   assert.equal(elements.workMusicDrumLane.dataset.editable, 'false');
   assert.equal(start.disabled, true);
+  assert.equal(verse.disabled, true);
 });
 
 test('timeline renders actual waveform and tentative sections, not beat markers; legacy results request reanalysis', () => {
@@ -127,9 +158,14 @@ test('timeline renders actual waveform and tentative sections, not beat markers;
     3
   );
   assert.equal(children.filter((child) => child.className?.includes('marker')).length, 0);
-  assert.equal(children[1].textContent, '후렴 후보');
-  assert.equal(children[1].style.left, '30%');
-  assert.equal(children[1].style.width, '20%');
+  assert.equal(children[0].textContent, '후렴 후보');
+  assert.equal(children[0].style.left, '30%');
+  assert.equal(children[0].style.width, '20%');
+  assert.equal(
+    children.some((child) => /intro|outro/.test(child.className)),
+    false
+  );
+  assert.equal(detected.sections[0].end, 10);
   const head = children.at(-1);
   assert.equal(head.hidden, true);
   view.renderPlayback({ videoId: 'a', currentTime: 20, duration: 100 });

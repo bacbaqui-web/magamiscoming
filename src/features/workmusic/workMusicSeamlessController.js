@@ -1,5 +1,5 @@
 import { normalizeSeamlessSeconds } from './workMusicHelper.js';
-import { calculateSmartTransitionPlan } from './workMusicAnalysisHelper.js';
+import { calculateDjTransitionPlan } from './workMusicAnalysisHelper.js';
 
 export function createWorkMusicSeamlessController({
   engine,
@@ -7,6 +7,7 @@ export function createWorkMusicSeamlessController({
   youtubePort,
   root = document,
   render = () => {},
+  detectedByVideoId,
   interval = setInterval,
   clear = clearInterval,
   now = Date.now,
@@ -62,10 +63,30 @@ export function createWorkMusicSeamlessController({
     stopTimers();
     if (slots?.players) Object.values(slots.players).forEach((player) => player?.pauseVideo?.());
   }
+  function resume() {
+    if (!slots) return false;
+    getActivePlayer()?.playVideo?.();
+    if (slots.transitioning) {
+      slots.fadeStarted = false;
+      slots.requestedAt = now();
+      getStandbyPlayer()?.playVideo?.();
+    }
+    startMonitor();
+    return true;
+  }
+  function cancelTransition() {
+    if (!slots?.transitioning) return;
+    clear(fadeTimer);
+    fadeTimer = null;
+    cueStandby(engine.getSnapshot().currentIndex);
+    applyVolume();
+  }
   function applyVolume() {
     if (!slots) return;
-    setVolume(getActivePlayer(), volume());
-    if (!slots.transitioning) setVolume(getStandbyPlayer(), 0);
+    if (!slots.transitioning) {
+      setVolume(getActivePlayer(), volume());
+      setVolume(getStandbyPlayer(), 0);
+    }
   }
   function cueStandby(fromIndex) {
     if (!slots) return;
@@ -99,7 +120,7 @@ export function createWorkMusicSeamlessController({
     cueStandby(target);
   }
   function volumesAt({ elapsedSeconds, overlapSeconds, targetVolume }) {
-    const duration = Math.max(0.001, normalizeSeamlessSeconds(overlapSeconds));
+    const duration = Math.max(0.001, Number(overlapSeconds) || 0);
     const progress = Math.min(1, Math.max(0, elapsedSeconds / duration));
     const eased = progress * progress;
     return {
@@ -112,54 +133,60 @@ export function createWorkMusicSeamlessController({
     if (!slots?.transitioning || slots.fadeStarted || slot !== slots.transition?.nextSlot)
       return false;
     slots.fadeStarted = true;
-    const startedAt = now();
     clear(fadeTimer);
     const update = () => {
       if (!slots?.transitioning) return;
       const levels = volumesAt({
-        elapsedSeconds: (now() - startedAt) / 1000,
+        elapsedSeconds: Math.max(
+          0,
+          Number(getStandbyPlayer()?.getCurrentTime?.() || 0) - slots.transition.nextStartSeconds
+        ),
         overlapSeconds: slots.transition.crossfadeSeconds,
         targetVolume: volume()
       });
       setVolume(slots.players[slots.transition.previousSlot], levels.previous);
       setVolume(slots.players[slots.transition.nextSlot], levels.next);
-      if (levels.complete) {
+      if (levels.complete || slots.transition.crossfadeSeconds <= 0) {
         clear(fadeTimer);
         fadeTimer = null;
         finishTransition();
       }
     };
     update();
-    fadeTimer = interval(update, fadeMs);
+    if (slots?.transitioning) fadeTimer = interval(update, fadeMs);
     return true;
   }
-  function createTransition() {
+  function createTransition(timing) {
     if (!slots || slots.transitionStarted) return null;
-    const state = engine.getSnapshot();
-    const crossfadeSeconds = normalizeSeamlessSeconds(state.seamlessOverlapSeconds);
     const target = Number(slots.standbyIndex);
-    if (crossfadeSeconds <= 0 || !engine.getActiveSongs()[target]?.videoId) return null;
+    if (!engine.getActiveSongs()[target]?.videoId) return null;
     const transition = {
       previousSlot: slots.activeSlot,
       nextSlot: slots.standbySlot,
       nextIndex: target,
-      crossfadeSeconds
+      // Explicit Next skips without overlapping any unplayed green section.
+      crossfadeSeconds: timing?.crossfadeSeconds || 0,
+      nextStartSeconds: timing?.nextStartSeconds || 0
     };
     if (!slots.players[transition.previousSlot] || !slots.players[transition.nextSlot]) return null;
     return transition;
   }
-  function transition() {
-    const context = createTransition();
+  function transition(timing) {
+    const context = createTransition(timing);
     if (!context) return false;
     slots.transition = context;
     slots.transitionStarted = true;
     slots.transitioning = true;
     slots.fadeStarted = false;
+    slots.requestedAt = now();
     const nextPlayer = slots.players[context.nextSlot];
     setVolume(nextPlayer, 0);
     try {
+      if (context.crossfadeSeconds <= 0) slots.players[context.previousSlot]?.pauseVideo?.();
+      nextPlayer.seekTo?.(context.nextStartSeconds, true);
+      engine.setState('isPlaying', true);
       nextPlayer.playVideo?.();
-      setVolume(nextPlayer, 0);
+      startMonitor();
       return true;
     } catch (_error) {
       slots.transition = null;
@@ -178,30 +205,31 @@ export function createWorkMusicSeamlessController({
       duration - currentTime <= overlap
     );
   }
-  function getTriggerTiming({ currentSong, nextSong, duration, overlapSeconds }) {
-    const normalizedDuration = Number(duration || 0);
-    const plan = calculateSmartTransitionPlan({
+  function getTriggerTiming({ currentSong, nextSong, duration, overlapSeconds, currentTime }) {
+    return calculateDjTransitionPlan({
       currentSong,
       nextSong,
-      fixedOverlapSeconds: overlapSeconds
+      duration,
+      currentTime,
+      detectedByVideoId,
+      maximumFadeSeconds: overlapSeconds
     });
-    const manualStart = Number(plan.startNextAtSeconds);
-    if (
-      plan.mode === 'smart' &&
-      plan.source === 'manual' &&
-      Number.isFinite(manualStart) &&
-      manualStart > 0 &&
-      manualStart < normalizedDuration
-    ) {
-      return { mode: 'manual', triggerAtSeconds: manualStart };
-    }
-    return {
-      mode: 'fixed',
-      triggerAtSeconds: normalizedDuration - normalizeSeamlessSeconds(overlapSeconds)
-    };
   }
   function monitor() {
     if (!slots || !engine.getSnapshot().isPlaying) return false;
+    if (slots.transitioning) {
+      if (!slots.fadeStarted && now() - slots.requestedAt > 15000) {
+        const failedIndex = slots.standbyIndex;
+        cancelTransition();
+        playbackController.handleFailure({
+          code: 'timeout',
+          failedIndex,
+          order: engine.getSnapshot().playOrder,
+          tabId: engine.getSnapshot().activeTabId
+        });
+      }
+      return false;
+    }
     const player = getActivePlayer();
     const state = engine.getSnapshot();
     const songs = engine.getActiveSongs();
@@ -209,30 +237,21 @@ export function createWorkMusicSeamlessController({
     const duration = Number(player?.getDuration?.() || 0);
     const timing = getTriggerTiming({
       currentSong: songs[state.currentIndex],
-      nextSong: songs[slots.standbyIndex],
+      nextSong: {
+        ...songs[slots.standbyIndex],
+        durationSeconds:
+          Number(getStandbyPlayer()?.getDuration?.()) || songs[slots.standbyIndex]?.durationSeconds
+      },
       duration,
+      currentTime,
       overlapSeconds: state.seamlessOverlapSeconds
     });
-    if (timing.mode === 'manual') {
-      return (
-        !slots.transitionStarted &&
-        normalizeSeamlessSeconds(state.seamlessOverlapSeconds) > 0 &&
-        duration > normalizeSeamlessSeconds(state.seamlessOverlapSeconds) + 1 &&
-        currentTime > 0 &&
-        currentTime >= timing.triggerAtSeconds &&
-        transition()
-      );
-    }
-    if (
-      shouldStart({
-        currentTime,
-        duration,
-        overlapSeconds: state.seamlessOverlapSeconds,
-        transitionStarted: slots.transitionStarted
-      })
-    )
-      return transition();
-    return false;
+    return (
+      !slots.transitionStarted &&
+      duration > 0 &&
+      currentTime >= timing.triggerAtSeconds &&
+      transition(timing)
+    );
   }
   function startMonitor() {
     clear(monitorTimer);
@@ -275,6 +294,8 @@ export function createWorkMusicSeamlessController({
       onStateChange(event) {
         if (slot === slots?.standbySlot && slots?.transitioning && event?.data === 1)
           beginFade(slot);
+        if (slot === slots?.activeSlot && event?.data === 0 && !slots.transitionStarted)
+          transition();
       },
       onError(event) {
         const failed =
@@ -308,6 +329,7 @@ export function createWorkMusicSeamlessController({
     applyVolume,
     beginFade,
     canManualTransition,
+    cancelTransition,
     create,
     createTransition,
     destroy,
@@ -316,6 +338,7 @@ export function createWorkMusicSeamlessController({
     getState: () => slots,
     monitor,
     pause,
+    resume,
     shouldStart,
     startMonitor,
     transition,
