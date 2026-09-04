@@ -48,5 +48,5 @@ test('DJ uses the same automatic green boundaries as the editor', () => {
     ])
   });
   assert.equal(plan.nextGreenStart, 25);
-  assert.equal(plan.triggerAtSeconds, 160);
+  assert.equal(plan.triggerAtSeconds, 155);
 });

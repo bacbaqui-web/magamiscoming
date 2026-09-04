@@ -134,8 +134,12 @@ export function calculateDjTransitionPlan({
     ? (current.verseEnd ??
       suggestVerseEnd(detectedByVideoId?.get?.(currentSong.videoId), current).value)
     : current.drumEnd;
-  const intro = Math.min(10, next.drumStart, Math.max(0, boundary - current.drumStart));
-  const outro = 0;
+  const intro = Math.min(15, next.drumStart, Math.max(0, boundary - current.drumStart));
+  const outro = Math.min(
+    2,
+    Math.max(0, seconds - boundary),
+    Math.max(0, next.drumEnd - next.drumStart)
+  );
   const trigger = boundary - intro;
   const late = Math.max(0, Number(currentTime) - trigger);
   return {

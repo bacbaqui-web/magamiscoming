@@ -195,7 +195,7 @@ export function createWorkMusicSeamlessController({
       getStandbyPlayer()?.seekTo?.(Math.max(0, aligned), true);
       timing.aligned = true;
     }
-    report('디제잉: 다음 초록 시작까지 진입 · 초록 시작에서 이전 곡 음소거');
+    report('디제잉: 다음 초록 시작까지 진입 · 초록 시작 후 2초 퇴장');
     clear(fadeTimer);
     const update = () => {
       if (!slots?.transitioning) return;
@@ -326,7 +326,7 @@ export function createWorkMusicSeamlessController({
     });
     report(
       timing.mode === 'dj'
-        ? `디제잉${state.djVerseMode ? ' 1절' : ''}: 다음 초록 전 최대 10초 진입 · 초록 시작에서 이전 곡 음소거`
+        ? `디제잉${state.djVerseMode ? ' 1절' : ''}: 다음 초록 전 최대 15초 진입 · 초록 시작 후 최대 2초 퇴장`
         : '디제잉: 구간 정보가 없는 곡이 있어 곡 끝에서 순차 전환합니다.'
     );
     return (
