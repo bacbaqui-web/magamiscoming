@@ -1,5 +1,6 @@
 import {
   calculateSmartTransitionPlan,
+  automaticPlaybackRange,
   normalizeAnalysisRange,
   suggestVerseEnd
 } from './workMusicAnalysisHelper.js';
@@ -63,7 +64,7 @@ export function createWorkMusicAnalysisController({
   const manualForSong = (song) =>
     normalizeAnalysisRange(song?.mediaAnalysisManual, song?.durationSeconds);
   const draftFrom = (manual, detected) => {
-    const range = clone(manual || normalizeAnalysisRange(detected, detected?.durationSeconds));
+    const range = clone(manual || automaticPlaybackRange(detected));
     return range
       ? { ...range, verseEnd: range.verseEnd ?? suggestVerseEnd(detected, range).value }
       : null;

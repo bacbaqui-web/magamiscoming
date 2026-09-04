@@ -18,6 +18,29 @@ const result = {
 const notFound = () => Promise.reject(Object.assign(new Error('not found'), { status: 404 }));
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
+test('automatic green handles follow structure edges while manual positions and raw drums remain intact', async () => {
+  const detected = {
+    ...result,
+    sections: [
+      { start: 0, end: 25, label: 'intro' },
+      { start: 170, end: 200, label: 'outro' }
+    ]
+  };
+  const controller = createWorkMusicAnalysisController({
+    mediaAnalysisPort: { enabled: true, getResult: async () => detected }
+  });
+  await controller.selectSong(song);
+  assert.equal(controller.getState().draft.drumStart, 25);
+  assert.equal(controller.getState().draft.drumEnd, 170);
+  assert.equal(controller.getState().detected.drumStart, 10);
+  await controller.selectSong({
+    ...song,
+    mediaAnalysisManual: { drumStart: 12, drumEnd: 180, verseEnd: 70 }
+  });
+  assert.deepEqual(controller.getState().draft, { drumStart: 12, drumEnd: 180, verseEnd: 70 });
+  controller.destroy();
+});
+
 test('verse marker persists independently of green edits and restores without altering detected results', async () => {
   let saved;
   const controller = createWorkMusicAnalysisController({

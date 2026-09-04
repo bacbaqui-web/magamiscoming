@@ -13,6 +13,30 @@ export function normalizeAnalysisRange(value, durationSeconds = 0) {
   return range;
 }
 
+export function automaticPlaybackRange(result, durationSeconds = result?.durationSeconds) {
+  const duration = Number(durationSeconds || 0);
+  const fallback = normalizeAnalysisRange(result, duration);
+  if (!(duration > 0)) return fallback;
+  const sections = (result?.sections || []).filter(
+    (s) =>
+      Number.isFinite(s.start) &&
+      Number.isFinite(s.end) &&
+      s.start >= 0 &&
+      s.end > s.start &&
+      s.end <= duration + 0.01
+  );
+  const intros = sections.filter((s) => s.label === 'intro');
+  const outros = sections.filter((s) => s.label === 'outro');
+  if (!intros.length && !outros.length) return fallback;
+  const drumStart = intros.length
+    ? Math.min(duration, Math.max(...intros.map((s) => s.end)))
+    : (fallback?.drumStart ?? 0);
+  const drumEnd = outros.length
+    ? Math.min(...outros.map((s) => s.start))
+    : (fallback?.drumEnd ?? duration);
+  return normalizeAnalysisRange({ drumStart, drumEnd }, duration) || fallback;
+}
+
 export function isCurrentAnalysis(result) {
   const version = String(result?.analyzerVersion || '')
     .split('.')
@@ -96,7 +120,7 @@ export function calculateDjTransitionPlan({
   const seconds = Number(duration);
   const rangeFor = (song, songDuration) =>
     normalizeAnalysisRange(song?.mediaAnalysisManual, songDuration) ||
-    normalizeAnalysisRange(detectedByVideoId?.get?.(song?.videoId), songDuration);
+    automaticPlaybackRange(detectedByVideoId?.get?.(song?.videoId), songDuration);
   const current = rangeFor(currentSong, seconds);
   const next = rangeFor(nextSong, nextSong?.durationSeconds);
   if (!Number.isFinite(seconds) || seconds <= 0 || !current || !next)
@@ -159,11 +183,11 @@ export function calculateSmartTransitionPlan({
 
   const currentDetected = detectedByVideoId?.get?.(currentSong?.videoId);
   const nextDetected = detectedByVideoId?.get?.(nextSong?.videoId);
-  const currentAutomatic = normalizeAnalysisRange(
+  const currentAutomatic = automaticPlaybackRange(
     currentDetected,
     currentDetected?.durationSeconds
   );
-  const nextAutomatic = normalizeAnalysisRange(nextDetected, nextDetected?.durationSeconds);
+  const nextAutomatic = automaticPlaybackRange(nextDetected, nextDetected?.durationSeconds);
   if (
     currentAutomatic &&
     nextAutomatic &&
