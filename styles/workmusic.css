@@ -1860,6 +1860,41 @@ body {
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
+.workmusic-auto-analysis-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.workmusic-auto-analysis-row p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.workmusic-auto-analysis-row button {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.workmusic-handle-time {
+  position: absolute;
+  color: #8bdab6;
+  text-align: center;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.workmusic-handle-time[hidden] {
+  display: none;
+}
+.workmusic-handle-time-verse {
+  color: #fff;
+}
 .workmusic-zoom-controls button {
   padding: 4px 8px;
   font-size: 0.75rem;

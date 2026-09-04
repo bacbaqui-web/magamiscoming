@@ -149,7 +149,10 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     const draft = state.draft;
     panel.dataset.phase = state.phase;
     if (status) status.textContent = STATUS_LABELS[state.phase] || state.phase;
-    if (message) message.textContent = state.message || '';
+    if (message) {
+      message.textContent = state.message || '';
+      message.hidden = !['failed', 'unavailable'].includes(state.phase) || !state.message;
+    }
     if (queue) {
       queue.hidden = !state.enabled;
       queue.textContent = state.queueUnavailable

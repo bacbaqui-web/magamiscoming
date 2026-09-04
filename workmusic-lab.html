@@ -117,35 +117,25 @@
             class="workmusic-analysis-panel"
             aria-label="곡 분석"
           >
-            <div class="workmusic-analysis-header">
-              <div>
-                <strong>곡 분석</strong>
-                <span id="workMusicAnalysisStatus" class="workmusic-analysis-status">준비 중</span>
-              </div>
-              <button id="workMusicAnalyzeBtn" class="workmusic-analysis-button" type="button">
-                분석
+            <div class="workmusic-auto-analysis-row">
+              <p id="workMusicAutoAnalysisStatus" class="workmusic-analysis-legend" role="status">
+                재생목록 자동 분석 준비
+              </p>
+              <button
+                id="workMusicAutoAnalysisToggle"
+                type="button"
+                aria-label="자동 분석 일시정지"
+                title="자동 분석 일시정지"
+              >
+                ⏸
               </button>
             </div>
             <p
               id="workMusicAnalysisMessage"
               class="workmusic-analysis-message"
               aria-live="polite"
+              hidden
             ></p>
-            <p
-              id="workMusicAnalysisQueue"
-              class="workmusic-analysis-message"
-              aria-live="polite"
-            ></p>
-            <p id="workMusicDjStatus" class="workmusic-analysis-legend" role="status"></p>
-            <p id="workMusicAutoAnalysisStatus" class="workmusic-analysis-legend" role="status">
-              재생목록 자동 분석 준비
-            </p>
-            <button id="workMusicAutoAnalysisToggle" type="button">자동 분석 일시정지</button>
-            <div class="workmusic-analysis-metrics" aria-label="분석 수치">
-              <span>BPM <b id="workMusicAnalysisBpm">—</b></span>
-              <span>신뢰도 <b id="workMusicAnalysisConfidence">—</b></span>
-              <span id="workMusicAnalysisSource">구간 없음</span>
-            </div>
             <div class="workmusic-analysis-timeline">
               <div class="workmusic-zoom-controls" aria-label="음파 확대와 이동">
                 <button id="workMusicZoomOut" type="button" aria-label="음파 축소" disabled>
@@ -163,10 +153,13 @@
                   ▶
                 </button>
               </div>
-              <p id="workMusicPrecisionLabel" class="workmusic-analysis-legend" role="status"></p>
-              <p class="workmusic-analysis-legend">
-                초록: 재생 구간 · 흰색: 1절 끝 · 보라: 후렴 후보 · 주황 선: 현재 위치
-              </p>
+              <p
+                hidden
+                id="workMusicPrecisionLabel"
+                class="workmusic-analysis-legend"
+                role="status"
+              ></p>
+
               <div id="workMusicDrumLane" class="workmusic-drum-lane">
                 <div
                   id="workMusicAnalysisMarkers"
@@ -180,7 +173,14 @@
                 <span class="workmusic-edit-region workmusic-edit-outro" aria-hidden="true"
                   >아웃트로</span
                 >
-                <span class="workmusic-verse-line" aria-hidden="true"><span>1절</span></span>
+                <span class="workmusic-verse-line" aria-hidden="true"></span>
+                <span id="workMusicDrumStartTime" class="workmusic-handle-time" hidden></span>
+                <span
+                  id="workMusicVerseEndTime"
+                  class="workmusic-handle-time workmusic-handle-time-verse"
+                  hidden
+                ></span>
+                <span id="workMusicDrumEndTime" class="workmusic-handle-time" hidden></span>
                 <input
                   id="workMusicVerseEnd"
                   class="workmusic-drum-handle workmusic-verse-handle"
@@ -215,7 +215,7 @@
                   disabled
                 />
               </div>
-              <span id="workMusicDrumLabel" class="workmusic-drum-label">드럼 구간 —</span>
+
               <div id="workMusicPrecisionPanel" class="workmusic-precision-panel" hidden>
                 <div id="workMusicPrecisionWaveform" class="workmusic-precision-waveform"></div>
               </div>
@@ -223,11 +223,6 @@
                 ＋/− 또는 음파 위 휠로 확대·축소합니다. 배율은 유지되며 ◀/▶로 구간을 이동합니다.
               </p>
               <p id="workMusicAnalysisPlayback" class="workmusic-analysis-legend">재생 위치 —</p>
-              <p id="workMusicAnalysisStructure" class="workmusic-analysis-legend"></p>
-            </div>
-            <div class="workmusic-analysis-actions">
-              <button id="workMusicAnalysisSaveBtn" type="button" disabled>수정 저장</button>
-              <button id="workMusicAnalysisRestoreBtn" type="button" disabled>자동값 복원</button>
             </div>
           </section>
 

@@ -248,9 +248,10 @@ autoAnalysis = createWorkMusicAutoAnalysisController({
   onChange: (state) => {
     root.getElementById('workMusicAutoAnalysisStatus').textContent =
       `${state.message} · ${state.done}/${state.total}`;
-    root.getElementById('workMusicAutoAnalysisToggle').textContent = state.paused
-      ? '자동 분석 재개'
-      : '자동 분석 일시정지';
+    const button = root.getElementById('workMusicAutoAnalysisToggle');
+    button.textContent = state.paused ? '▶' : '⏸';
+    button.title = state.paused ? '자동 분석 재개' : '자동 분석 일시정지';
+    button.setAttribute('aria-label', button.title);
   }
 });
 root

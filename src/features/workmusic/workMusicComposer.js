@@ -1987,7 +1987,11 @@ export function createWorkMusicComposer({
       const label = root.getElementById('workMusicAutoAnalysisStatus');
       if (label) label.textContent = `${state.message} · ${state.done}/${state.total}`;
       const button = root.getElementById('workMusicAutoAnalysisToggle');
-      if (button) button.textContent = state.paused ? '자동 분석 재개' : '자동 분석 일시정지';
+      if (button) {
+        button.textContent = state.paused ? '▶' : '⏸';
+        button.title = state.paused ? '자동 분석 재개' : '자동 분석 일시정지';
+        button.setAttribute('aria-label', button.title);
+      }
     }
   });
   root

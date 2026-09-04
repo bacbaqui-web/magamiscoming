@@ -8,6 +8,11 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
   const lane = root.getElementById('workMusicPrecisionWaveform');
   const label = root.getElementById('workMusicZoomLabel');
   const status = root.getElementById('workMusicPrecisionLabel');
+  const timeLabels = {
+    drumStart: [root.getElementById('workMusicDrumStartTime'), '인트로 끝'],
+    verseEnd: [root.getElementById('workMusicVerseEndTime'), '1절'],
+    drumEnd: [root.getElementById('workMusicDrumEndTime'), '아웃트로 시작']
+  };
   const buttons = Object.fromEntries(
     ['In', 'Out', 'Reset', 'Left', 'Right'].map((key) => [
       key,
@@ -41,6 +46,9 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
     overview.dataset.verseVisible = String(
       Number(state?.draft?.verseEnd) >= start && Number(state?.draft?.verseEnd) <= end
     );
+    const occupied = [];
+    const pixelWidth = overview.getBoundingClientRect?.().width || 800;
+    let rows = 1;
     for (const [key, input] of Object.entries(inputs)) {
       if (!input) continue;
       const value = Number(state?.draft?.[key] || 0);
@@ -50,7 +58,26 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
       input.value = String(value);
       input.style.visibility = value < start || value > end ? 'hidden' : '';
       overview.style.setProperty(KEYS[key], `${((value - start) / width) * 100}%`);
+      const [caption, name] = timeLabels[key] || [];
+      if (caption) {
+        caption.hidden = !state?.draft || value < start || value > end;
+        caption.textContent = `${name} ${time(value)}`;
+        const x = ((value - start) / width) * pixelWidth;
+        const labelWidth = Math.min(140, pixelWidth);
+        const left = Math.max(0, Math.min(pixelWidth - labelWidth, x - labelWidth / 2));
+        let row = 0;
+        while (occupied.some((item) => item.row === row && Math.abs(item.left - left) < labelWidth))
+          row++;
+        if (!caption.hidden) {
+          occupied.push({ row, left });
+          rows = Math.max(rows, row + 1);
+        }
+        caption.style.left = `${left}px`;
+        caption.style.width = `${labelWidth}px`;
+        caption.style.top = `calc(100% + ${22 + row * 20}px)`;
+      }
     }
+    overview.style.marginBottom = `${26 + rows * 20}px`;
     if (green) {
       const left = Math.max(0, Math.min(1, (Number(state?.draft?.drumStart || 0) - start) / width));
       const right = Math.max(
@@ -126,7 +153,10 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
     data = null;
     draw();
     panel.hidden = zoomIndex === 0 && state?.detected?.waveformDetailVersion !== '1.0';
-    if (status) status.textContent = '실제 파형 불러오는 중…';
+    if (status) {
+      status.hidden = true;
+      status.textContent = '';
+    }
     pending = timers.setTimeout(async () => {
       const abort = new AbortController();
       request = abort;
@@ -165,16 +195,17 @@ export function createWorkMusicPrecisionEditor({ root, inputs, controller, timer
           throw new Error('invalid waveform');
         data = result;
         panel.hidden = false;
-        if (status)
-          status.textContent = `실제 PCM 최소·최대 파형 · 표시 집계 간격 ${(result.resolutionSeconds * 1000).toFixed(2)}ms`;
+        if (status) status.hidden = true;
         draw();
       } catch (error) {
         if (token !== sequence || abort.signal.aborted) return;
-        if (status)
+        if (status) {
+          status.hidden = false;
           status.textContent =
             error.status === 404
               ? '고해상도 파형 없음 · 자동 재분석 완료 후 사용할 수 있습니다.'
               : '상세 파형을 불러오지 못했습니다. 서버 연결 후 확대 버튼으로 다시 시도하세요.';
+        }
       }
     }, 80);
     pending?.unref?.();

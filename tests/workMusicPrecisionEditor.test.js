@@ -41,7 +41,10 @@ function setup(getWaveform) {
     'ZoomOut',
     'ZoomReset',
     'ZoomLeft',
-    'ZoomRight'
+    'ZoomRight',
+    'DrumStartTime',
+    'DrumEndTime',
+    'VerseEndTime'
   ];
   const elements = Object.fromEntries(ids.map((id) => [`workMusic${id}`, el()]));
   const root = { getElementById: (id) => elements[id], createElement: el };
@@ -120,6 +123,23 @@ test('buttons change viewport; clicking and releasing handles never changes zoom
   assert.equal(f.inputs.drumStart.style.visibility, '');
   assert.equal(f.inputs.verseEnd.min, '0');
   assert.equal(f.inputs.verseEnd.max, '100');
+});
+
+test('time captions follow edits, avoid overlap and hide outside zoom', async () => {
+  const f = setup();
+  await f.request();
+  const start = f.elements.workMusicDrumStartTime;
+  const verse = f.elements.workMusicVerseEndTime;
+  assert.equal(start.textContent, '인트로 끝 0:10.00');
+  const previous = start.style.left;
+  f.editor.render({ ...f.state, draft: { drumStart: 49, verseEnd: 50, drumEnd: 51 } });
+  assert.notEqual(start.style.left, previous);
+  assert.notEqual(start.style.top, verse.style.top);
+  f.editor.render(f.state);
+  f.click('In');
+  assert.equal(start.hidden, true);
+  assert.equal(verse.hidden, false);
+  assert.equal(f.elements.workMusicPrecisionLabel.hidden, true);
 });
 
 test('wheel preserves mouse anchor, debounces requests and pan is bounded', async () => {
