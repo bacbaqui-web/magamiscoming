@@ -2,6 +2,85 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWorkMusicAnalysisView } from '../src/features/workmusic/workMusicAnalysisView.js';
 
+test('integrated waveform range follows input before commit and clears on song change', () => {
+  const element = () => ({
+    dataset: {},
+    style: {
+      setProperty(key, value) {
+        this[key] = value;
+      }
+    },
+    children: [],
+    listeners: {},
+    appendChild(child) {
+      this.children.push(child);
+    },
+    replaceChildren() {
+      this.children = [];
+    },
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    }
+  });
+  const elements = Object.fromEntries(
+    [
+      'workMusicAnalysisPanel',
+      'workMusicAnalysisMarkers',
+      'workMusicDrumLane',
+      'workMusicDrumStart',
+      'workMusicDrumEnd',
+      'workMusicDrumLabel'
+    ].map((id) => [id, element()])
+  );
+  let commits = 0;
+  let state = {
+    videoId: 'a',
+    detected: { durationSeconds: 100, waveform: [0.5] },
+    draft: { drumStart: 10, drumEnd: 90 }
+  };
+  const view = createWorkMusicAnalysisView({
+    root: {
+      getElementById: (id) => elements[id],
+      createElement: element,
+      createDocumentFragment: element
+    },
+    controller: {
+      updateDraft(key, value) {
+        state = {
+          ...state,
+          detected: { ...state.detected },
+          draft: { ...state.draft, [key]: Number(value) }
+        };
+        view.render(state);
+      },
+      commitDraft() {
+        commits += 1;
+      }
+    }
+  });
+  view.render(state);
+  const originalWaveform = elements.workMusicAnalysisMarkers.children[0];
+  const start = elements.workMusicDrumStart;
+  start.listeners.input({ target: { value: '25' } });
+  assert.equal(elements.workMusicDrumLane.style['--drum-start'], '25%');
+  assert.equal(elements.workMusicDrumLane.style['--drum-end'], '90%');
+  assert.equal(start['aria-valuetext'], '0:25');
+  assert.equal(elements.workMusicAnalysisMarkers.children[0], originalWaveform);
+  assert.equal(commits, 0);
+  elements.workMusicDrumEnd.listeners.input({ target: { value: '80' } });
+  assert.equal(elements.workMusicDrumLane.style['--drum-end'], '80%');
+  start.listeners.change();
+  assert.equal(commits, 1);
+  view.render({ ...state, draft: { drumStart: 10, drumEnd: 90 } });
+  assert.equal(elements.workMusicDrumLane.style['--drum-start'], '10%');
+  view.render({ videoId: 'b' });
+  assert.equal(elements.workMusicDrumLane.dataset.editable, 'false');
+  assert.equal(start.disabled, true);
+});
+
 test('timeline renders actual waveform and tentative sections, not beat markers; legacy results request reanalysis', () => {
   const element = () => ({
     style: {},

@@ -547,16 +547,14 @@
               </div>
               <div class="workmusic-analysis-timeline">
                 <p class="workmusic-analysis-legend">
-                  전체 음파 · 보라: 후렴 후보 · 초록: 인트로/아웃트로 후보 · 주황 선: 현재 위치
+                  보라: 후렴 후보 · 초록 테두리: 드럼 구간 · 주황 선: 현재 위치
                 </p>
-                <div
-                  id="workMusicAnalysisMarkers"
-                  class="workmusic-analysis-markers"
-                  aria-label="전체 음파와 자동 추정 구간"
-                ></div>
-                <p id="workMusicAnalysisStructure" class="workmusic-analysis-legend"></p>
-                <p id="workMusicAnalysisPlayback" class="workmusic-analysis-legend">재생 위치 —</p>
                 <div id="workMusicDrumLane" class="workmusic-drum-lane">
+                  <div
+                    id="workMusicAnalysisMarkers"
+                    class="workmusic-analysis-markers"
+                    aria-label="전체 음파와 자동 추정 구간"
+                  ></div>
                   <div class="workmusic-drum-highlight" aria-hidden="true"></div>
                   <input
                     id="workMusicDrumStart"
@@ -582,6 +580,8 @@
                   />
                 </div>
                 <span id="workMusicDrumLabel" class="workmusic-drum-label">드럼 구간 없음</span>
+                <p id="workMusicAnalysisPlayback" class="workmusic-analysis-legend">재생 위치 —</p>
+                <p id="workMusicAnalysisStructure" class="workmusic-analysis-legend"></p>
               </div>
               <div class="workmusic-analysis-actions">
                 <button id="workMusicAnalysisSaveBtn" type="button" disabled>수정 저장</button>

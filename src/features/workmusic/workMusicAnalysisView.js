@@ -44,7 +44,14 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
 
   function renderMarkers(result) {
     if (!markerLane) return;
-    if (renderedResult === result && playhead) return;
+    if (
+      playhead &&
+      renderedResult?.waveform === result?.waveform &&
+      renderedResult?.sections === result?.sections &&
+      renderedResult?.durationSeconds === result?.durationSeconds &&
+      !!renderedResult === !!result
+    )
+      return;
     renderedResult = result;
     markerLane.replaceChildren();
     const duration = Number(result?.durationSeconds || 0);
@@ -153,6 +160,7 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     renderPlayback(playback);
 
     const hasDraft = !!draft && duration > 0;
+    if (drumLane) drumLane.dataset.editable = String(hasDraft);
     [drumStart, drumEnd].forEach((input) => {
       if (!input) return;
       input.disabled = !hasDraft;
@@ -161,6 +169,8 @@ export function createWorkMusicAnalysisView({ root = document, controller }) {
     if (hasDraft) {
       drumStart.value = String(draft.drumStart);
       drumEnd.value = String(draft.drumEnd);
+      drumStart.setAttribute('aria-valuetext', formatSeconds(draft.drumStart));
+      drumEnd.setAttribute('aria-valuetext', formatSeconds(draft.drumEnd));
       drumLane?.style.setProperty('--drum-start', `${(draft.drumStart / duration) * 100}%`);
       drumLane?.style.setProperty('--drum-end', `${(draft.drumEnd / duration) * 100}%`);
       if (drumLabel) {

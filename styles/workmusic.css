@@ -1706,8 +1706,8 @@ body {
 .workmusic-drum-lane {
   --drum-start: 0%;
   --drum-end: 100%;
-  height: 16px;
-  margin-top: 4px;
+  height: auto;
+  margin: 4px 6px 18px;
   overflow: visible;
 }
 .workmusic-drum-highlight {
@@ -1716,17 +1716,33 @@ body {
   left: var(--drum-start);
   width: calc(var(--drum-end) - var(--drum-start));
   border-radius: 4px;
-  background: rgba(78, 196, 142, 0.35);
+  box-sizing: border-box;
+  border: 2px solid #4ec48e;
+  background: rgba(78, 196, 142, 0.08);
+  pointer-events: none;
+  z-index: 1;
+}
+.workmusic-drum-lane:not([data-editable='true']) .workmusic-drum-highlight {
+  display: none;
 }
 .workmusic-drum-handle {
   position: absolute;
-  inset: -5px 0;
-  width: 100%;
+  left: -6px;
+  bottom: -13px;
+  width: calc(100% + 12px);
   height: 26px;
   margin: 0;
   pointer-events: none;
   appearance: none;
   background: transparent;
+  z-index: 3;
+}
+.workmusic-drum-handle:focus-visible {
+  outline: 2px solid #ffbc4d;
+  outline-offset: 2px;
+}
+.workmusic-drum-handle:disabled {
+  visibility: hidden;
 }
 .workmusic-drum-handle::-webkit-slider-thumb {
   width: 12px;
@@ -1739,8 +1755,9 @@ body {
   appearance: none;
 }
 .workmusic-drum-handle::-moz-range-thumb {
-  width: 10px;
-  height: 22px;
+  box-sizing: border-box;
+  width: 12px;
+  height: 26px;
   border: 2px solid #111;
   border-radius: 4px;
   background: #4ec48e;
