@@ -321,7 +321,7 @@ export function createWorkMusicComposer({
 
   function renderWorkMusicSeamlessButton() {
     const state = engine.getSnapshot();
-    const label = state.seamlessEnabled ? (state.djVerseMode ? 'DJ 1절' : 'DJ') : 'DJ 꺼짐';
+    const label = state.seamlessEnabled ? (state.djVerseMode ? '1절' : 'DJ') : 'DJ 꺼짐';
     for (const button of [workMusicSeamlessBtn, workMusicRemoteSeamlessBtn]) {
       if (!button) continue;
       button.classList.toggle('enabled', state.seamlessEnabled);
@@ -329,7 +329,7 @@ export function createWorkMusicComposer({
       button.setAttribute('aria-label', label);
       button.title = label;
       const text = button.querySelector('.workmusic-dj-button-label');
-      if (text) text.textContent = state.djVerseMode && state.seamlessEnabled ? 'DJ 1절' : 'DJ';
+      if (text) text.textContent = state.djVerseMode && state.seamlessEnabled ? '1절' : 'DJ';
     }
   }
 

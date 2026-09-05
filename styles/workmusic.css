@@ -1650,6 +1650,16 @@ body {
   font-size: 0.8rem;
   font-weight: 800;
 }
+#workMusicSeamlessBtn.slider-icon-button,
+#workMusicRemoteSeamlessBtn.slider-icon-button {
+  border: 1px solid #444;
+  background: #2f2f2f;
+}
+#workMusicSeamlessBtn.slider-icon-button:hover,
+#workMusicRemoteSeamlessBtn.slider-icon-button:hover {
+  border-color: #555;
+  background: #3a3a3a;
+}
 #workMusicSeamlessBtn svg,
 #workMusicRemoteSeamlessBtn svg {
   display: none;

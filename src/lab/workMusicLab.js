@@ -197,11 +197,7 @@ function render() {
   const djButton = root.getElementById('workMusicSeamlessBtn');
   if (djButton) {
     djButton.setAttribute('aria-pressed', String(state.seamlessOverlapSeconds > 0));
-    djButton.textContent = state.seamlessEnabled
-      ? state.djVerseMode
-        ? 'DJ 1절'
-        : 'DJ'
-      : 'DJ 꺼짐';
+    djButton.textContent = state.seamlessEnabled ? (state.djVerseMode ? '1절' : 'DJ') : 'DJ 꺼짐';
   }
   analysisController.selectSong(song);
   autoAnalysis?.sync(songs);
