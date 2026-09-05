@@ -69,6 +69,7 @@ export function createWorkMusicComposer({
   const workMusicFlowPrev = document.getElementById('workMusicFlowPrev');
   const workMusicFlowCurrent = document.getElementById('workMusicFlowCurrent');
   const workMusicFlowNext = document.getElementById('workMusicFlowNext');
+  const workMusicReplaceNextBtn = document.getElementById('workMusicReplaceNextBtn');
   const workMusicFlowNextTwo = document.getElementById('workMusicFlowNextTwo');
   const workMusicNowTitle = document.getElementById('workMusicNowTitle');
   const workMusicNowArtist = document.getElementById('workMusicNowArtist');
@@ -281,6 +282,13 @@ export function createWorkMusicComposer({
   }
 
   function renderWorkMusicPlayButton() {
+    const noPrevious = engine.getPreviousIndex() < 0;
+    if (workMusicPrevBtn) workMusicPrevBtn.disabled = noPrevious;
+    if (workMusicRemotePrevBtn) workMusicRemotePrevBtn.disabled = noPrevious;
+    if (workMusicReplaceNextBtn) {
+      workMusicReplaceNextBtn.disabled =
+        getActiveWorkMusicSongs().length < 3 || !!seamlessController?.getState?.()?.transitioning;
+    }
     if (workMusicPlayBtn) {
       workMusicPlayBtn.innerHTML = window.workMusicIsPlaying ? workMusicPauseSvg : workMusicPlaySvg;
       workMusicPlayBtn.title = window.workMusicIsPlaying ? '일시정지' : '재생';
@@ -496,10 +504,7 @@ export function createWorkMusicComposer({
 
   function getWorkMusicAdjacentIndex(step = 1, songs = getActiveWorkMusicSongs()) {
     if (!songs.length) return -1;
-    const cur = Math.max(0, Number(window.workMusicCurrentIndex || 0));
-    const order = getWorkMusicDisplayOrder(songs);
-    const currentPosition = Math.max(0, order.indexOf(cur));
-    return order[(currentPosition + step + order.length) % order.length];
+    return playbackController.getAdjacentIndex(step);
   }
 
   function getWorkMusicPreviewIndex(step = 1, songs = getActiveWorkMusicSongs()) {
@@ -574,6 +579,7 @@ export function createWorkMusicComposer({
     if (!image) return;
     const source = getWorkMusicFlowCover(song);
     const cover = image.closest('.workmusic-flow-cover');
+    cover?.classList.toggle('is-absent', !song);
     cover?.classList.toggle('is-empty', !source);
     if (source) {
       if (image.src !== source) image.src = source;
@@ -590,9 +596,7 @@ export function createWorkMusicComposer({
     if (!songs.length) return [null, null, null, null, null];
     const atOffset = (offset) => {
       if (offset === 0) return songs[Number(window.workMusicCurrentIndex || 0)] || null;
-      return songs.length > Math.abs(offset)
-        ? songs[getWorkMusicPreviewIndex(offset, songs)] || null
-        : null;
+      return songs[getWorkMusicPreviewIndex(offset, songs)] || null;
     };
     return [-2, -1, 0, 1, 2].map(atOffset);
   }
@@ -803,23 +807,10 @@ export function createWorkMusicComposer({
   }
 
   function getWorkMusicDisplayOrder(songs) {
-    const count = songs.length;
-    if (!count) return [];
+    if (!songs.length) return [];
     if (window.workMusicMode !== 'random') return songs.map((_, i) => i);
-    const activeTabId = getActiveWorkMusicTabId();
-    const idsKey = songs.map((s) => s.id || s.videoId || '').join('|');
-    const cache = window.__workMusicDisplayShuffle || {};
-    const cached = cache[activeTabId];
-    if (
-      cached &&
-      cached.idsKey === idsKey &&
-      Array.isArray(cached.order) &&
-      cached.order.length === count
-    ) {
-      return cached.order.filter((i) => i >= 0 && i < count);
-    }
-    const pinnedIndex = window.workMusicIsPlaying ? Number(window.workMusicCurrentIndex || 0) : -1;
-    return createWorkMusicDisplayShuffle(songs, pinnedIndex);
+    engine.getUpcomingIndices();
+    return engine.getSnapshot().playOrder;
   }
 
   function createWorkMusicDisplayShuffle(songs, pinnedIndex = -1) {
@@ -835,6 +826,7 @@ export function createWorkMusicComposer({
     const idsKey = songs.map((song) => song.id || song.videoId || '').join('|');
     const cache = window.__workMusicDisplayShuffle || {};
     window.__workMusicDisplayShuffle = { ...cache, [activeTabId]: { idsKey, order } };
+    engine.setState('playOrder', order);
     return order;
   }
 
@@ -846,6 +838,7 @@ export function createWorkMusicComposer({
   function resetWorkMusicDisplayShuffle(tabId = getActiveWorkMusicTabId()) {
     window.__workMusicDisplayShuffle = window.__workMusicDisplayShuffle || {};
     delete window.__workMusicDisplayShuffle[tabId];
+    if (tabId === getActiveWorkMusicTabId()) engine.rebuildPlayOrder();
   }
 
   function renderWorkMusicVolumeUI() {
@@ -872,15 +865,10 @@ export function createWorkMusicComposer({
 
   function syncWorkMusicFromPlayer() {
     try {
-      if (
-        !getWorkMusicRuntimePlayer() ||
-        typeof getWorkMusicRuntimePlayer().getPlaylistIndex !== 'function'
-      )
-        return;
-      const ytIndex = Number(getWorkMusicRuntimePlayer().getPlaylistIndex());
-      const order = window.workMusicCurrentPlayOrder || [];
-      const mapped = Number.isFinite(ytIndex) ? order[ytIndex] : undefined;
+      if (!getWorkMusicRuntimePlayer()) return;
       const songs = getActiveWorkMusicSongs();
+      const videoId = getWorkMusicPlaybackVideoId(getWorkMusicRuntimePlayer());
+      const mapped = songs.findIndex((song) => song.videoId === videoId);
       if (
         Number.isInteger(mapped) &&
         mapped >= 0 &&
@@ -1806,6 +1794,11 @@ export function createWorkMusicComposer({
     workMusicPlayBtn?.addEventListener('click', playbackController.toggle);
     workMusicPrevBtn?.addEventListener('click', playbackController.previous);
     workMusicNextBtn?.addEventListener('click', playbackController.next);
+    workMusicReplaceNextBtn?.addEventListener('click', () => {
+      if (workMusicReplaceNextBtn.disabled) return;
+      finishWorkMusicFlowAnimation();
+      playbackController.replaceNext();
+    });
     workMusicRemotePlayBtn?.addEventListener('click', playbackController.toggle);
     workMusicRemotePrevBtn?.addEventListener('click', playbackController.previous);
     workMusicRemoteNextBtn?.addEventListener('click', playbackController.next);

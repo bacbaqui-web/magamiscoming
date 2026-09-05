@@ -239,6 +239,11 @@ test('PlaybackController가 Player 생성, seek, pause, resume, 이전·다음�
       ensureIframeApi: async () => {},
       createPlayer(_id, options) {
         const player = makePlayer();
+        const play = player.playVideo;
+        player.playVideo = function () {
+          play.call(this);
+          options.events.onStateChange({ target: this, data: 1 });
+        };
         players.push(player);
         created.push(options.videoId);
         options.events.onReady({ target: player });
@@ -247,6 +252,7 @@ test('PlaybackController가 Player 생성, seek, pause, resume, 이전·다음�
     }
   });
   await controller.loadAt(0, false);
+  assert.equal(controller.previous(), false);
   assert.equal(controller.seek(30), 30);
   controller.resume();
   controller.pause();

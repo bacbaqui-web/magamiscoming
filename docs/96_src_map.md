@@ -142,7 +142,7 @@ styles/
 - `features/bookmarks/bookmarksHelper.js`: URL 종류·도메인·안전한 열기와 YouTube 미리보기 순수 계산
 - `features/workmusic.js`: WorkMusicComposer만 호출하는 얇은 노동요 진입점
 - `features/workmusic/workMusicComposer.js`: 노동요 DOM 조회·렌더·이벤트와 Engine·Controller 조립
-- `features/workmusic/workMusicEngine.js`: 곡·탭·현재 곡·순서·볼륨·이어듣기 상태의 단일 소유자와 기존 전역 프록시
+- `features/workmusic/workMusicEngine.js`: 곡·탭·현재 곡·순서·볼륨·이어듣기 상태, 세션 재생 이력·다음 후보 교체의 단일 소유자와 기존 전역 프록시
 - `features/workmusic/workMusicTabsController.js`: 노동요 탭 CRUD와 저장 요청
 - `features/workmusic/workMusicListController.js`: 곡 목록 추가·수정·삭제 요청
 - `features/workmusic/workMusicPlaybackController.js`: 일반 Player 생성·파괴, 재생·정지·seek·이전·다음·음량과 오류 곡 건너뛰기 실행
@@ -237,6 +237,7 @@ styles/
   - `tests/firebaseMetadataAdapter.test.js`: 기존 Firestore 문서·컬렉션 경로 계약
   - `tests/filePort.test.js`: 기존 Drive Compatibility 호출의 Adapter 전달과 UI Lifecycle 비소유 계약
   - `tests/workMusicEngine.test.js`: 노동요 상태 소유권, 인덱스 정규화와 공개 전역 프록시 계약
+  - `tests/workMusicNavigation.test.js`: 첫 곡의 빈 이전 이력, 삭제/탭 변경, 순차·랜덤 다음 후보 교체와 세션 전용 상태
   - `tests/workMusicHelper.test.js`: YouTube URL·ID·재생 시간·순서 순수 계산 계약
   - `tests/workMusicPlaybackController.test.js`: 빈 목록 비재귀 load, 가짜 Player의 생성·seek·재생·정지·이전·다음·오류 skip과 두 Player monitor·fade 계약
   - `tests/youtubePort.test.js`: YouTube Port의 Adapter 전달 계약

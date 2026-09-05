@@ -53,6 +53,91 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
     state.songs.filter((song) => (song.workMusicTabId || 'default') === state.activeTabId);
 
   const activeSongs = () => cloneItems(activeSongRefs());
+  const songKey = (song) => String(song?.id || song?.videoId || '');
+  let historyTab = state.activeTabId;
+  let history = [];
+  let historyCursor = -1;
+  let pendingHistoryCursor = null;
+  let nextOverride = null;
+
+  function checkHistoryTab() {
+    if (historyTab === state.activeTabId) return;
+    historyTab = state.activeTabId;
+    history = [];
+    historyCursor = -1;
+    pendingHistoryCursor = null;
+    nextOverride = null;
+  }
+  function recordPlayed(index) {
+    checkHistoryTab();
+    const key = songKey(activeSongRefs()[index]);
+    if (!key) return false;
+    if (pendingHistoryCursor != null && history[pendingHistoryCursor] === key) {
+      historyCursor = pendingHistoryCursor;
+      pendingHistoryCursor = null;
+      return true;
+    }
+    pendingHistoryCursor = null;
+    if (history[historyCursor] === key) return false;
+    history = history.slice(0, historyCursor + 1);
+    history.push(key);
+    historyCursor = history.length - 1;
+    return true;
+  }
+  function previousEntry(distance = 1) {
+    checkHistoryTab();
+    const songs = activeSongRefs();
+    const currentKey = songKey(songs[state.currentIndex]);
+    let cursor = pendingHistoryCursor ?? historyCursor;
+    if (history[cursor] === currentKey || pendingHistoryCursor != null) cursor--;
+    for (; cursor >= 0; cursor--) {
+      const index = songs.findIndex((song) => songKey(song) === history[cursor]);
+      if (index >= 0 && --distance === 0) return { index, cursor };
+    }
+    return { index: -1, cursor: null };
+  }
+  function requestPrevious() {
+    const previous = previousEntry();
+    pendingHistoryCursor = previous.cursor;
+    return previous.index;
+  }
+  function getUpcomingIndices(fromIndex = state.currentIndex) {
+    checkHistoryTab();
+    const songs = activeSongRefs();
+    if (!songs.length) return [];
+    if (state.playOrder.length !== songs.length) {
+      state.playOrder = createPlayOrder(songs.length, state.mode);
+    }
+    const order = state.mode === 'random' ? state.playOrder : songs.map((_, i) => i);
+    const override = songs.findIndex((song) => songKey(song) === nextOverride);
+    const start =
+      state.mode === 'sequential' && fromIndex === state.currentIndex && override >= 0
+        ? order.indexOf(override)
+        : order.indexOf(fromIndex) + 1;
+    return Array.from(
+      { length: Math.max(0, songs.length - 1) },
+      (_, i) => order[(start + i + order.length) % order.length]
+    );
+  }
+  function replaceNext(random = Math.random, excludedIndex = getUpcomingIndices()[0]) {
+    const songs = activeSongRefs();
+    const candidates = songs
+      .map((_, i) => i)
+      .filter(
+        (index) => index !== state.currentIndex && index !== excludedIndex && songs[index].videoId
+      );
+    if (!candidates.length) return -1;
+    const chosen =
+      candidates[Math.min(candidates.length - 1, Math.floor(random() * candidates.length))];
+    if (state.mode === 'random') {
+      const order = [...state.playOrder];
+      const nextPosition = (order.indexOf(state.currentIndex) + 1) % order.length;
+      const chosenPosition = order.indexOf(chosen);
+      [order[nextPosition], order[chosenPosition]] = [order[chosenPosition], order[nextPosition]];
+      state.playOrder = order;
+    } else nextOverride = songKey(songs[chosen]);
+    return chosen;
+  }
 
   function normalizeCurrentIndex() {
     const length = activeSongRefs().length;
@@ -73,9 +158,14 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
       state.activeTabId = state.tabs.some((tab) => tab.id === value)
         ? value
         : state.tabs[0]?.id || 'default';
-    } else if (key === 'mode') state.mode = value === 'random' ? 'random' : 'sequential';
-    else if (key === 'currentIndex') state.currentIndex = Math.max(0, Number(value || 0));
-    else if (key === 'volume' || key === 'lastVolume') state[key] = normalizeVolume(value);
+    } else if (key === 'mode') {
+      state.mode = value === 'random' ? 'random' : 'sequential';
+      nextOverride = null;
+    } else if (key === 'currentIndex') {
+      const next = Math.max(0, Number(value || 0));
+      if (next !== state.currentIndex) nextOverride = null;
+      state.currentIndex = next;
+    } else if (key === 'volume' || key === 'lastVolume') state[key] = normalizeVolume(value);
     else if (key === 'seamlessOverlapSeconds') {
       state.seamlessOverlapSeconds = normalizeSeamlessSeconds(value);
       state.seamlessEnabled = state.seamlessOverlapSeconds > 0;
@@ -96,6 +186,11 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
   setState('playOrder', state.playOrder);
 
   return {
+    recordPlayed,
+    getPreviousIndex: (distance = 1) => previousEntry(distance).index,
+    requestPrevious,
+    getUpcomingIndices,
+    replaceNext,
     getSnapshot: () => ({
       ...state,
       songs: cloneItems(state.songs),

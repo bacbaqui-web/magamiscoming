@@ -155,6 +155,52 @@
 .workmusic-flow-cover.is-empty img {
   opacity: 0;
 }
+.workmusic-flow-cover.is-absent {
+  visibility: hidden;
+  pointer-events: none;
+}
+.workmusic-replace-next {
+  position: absolute;
+  z-index: 1;
+  right: 8px;
+  top: 8px;
+  width: 36px;
+  height: 36px;
+  padding: 7px;
+  border-radius: 50%;
+  border: 1px solid #777;
+  background: #222e;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.workmusic-replace-next svg {
+  width: 100%;
+  height: 100%;
+}
+.workmusic-flow-cover-next-one:hover .workmusic-replace-next,
+.workmusic-flow-cover-next-one:focus-within .workmusic-replace-next {
+  opacity: 1;
+}
+.workmusic-replace-next:disabled {
+  visibility: hidden;
+}
+.workmusic-replace-next:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.workmusic-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+@media (hover: none) {
+  .workmusic-replace-next {
+    opacity: 1;
+    width: 44px;
+    height: 44px;
+  }
+}
 .workmusic-flow-cover-current {
   z-index: 3;
   width: var(--workmusic-flow-current-size);

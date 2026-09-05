@@ -30,12 +30,13 @@ export function createWorkMusicPlaybackController({
     for (const watch of watches.values()) clearTimer(watch.timer);
     watches.clear();
   }
-  function observePlayback(target, state, index) {
+  function observePlayback(target, state, index, recordHistory = true) {
     if (!target) return;
     const songs = activeSongs();
     const videoId = target.getVideoData?.()?.video_id;
     const song = videoId ? songs.find((item) => item.videoId === videoId) : songs[index];
     if (!song) return;
+    if (state === 1 && recordHistory && engine.recordPlayed(songs.indexOf(song))) render();
     let watch = watches.get(target);
     if (!watch || watch.id !== song.id) {
       if (watch) clearTimer(watch.timer);
@@ -92,6 +93,7 @@ export function createWorkMusicPlaybackController({
   let failureTimer = null;
   let failureSession = null;
   let seamlessController = null;
+  let playerGeneration = 0;
   const activeSongs = () => engine.getActiveSongs();
   const songKey = (song, index) => String(song?.id || song?.videoId || `index:${index}`);
   const volume = () => {
@@ -103,6 +105,7 @@ export function createWorkMusicPlaybackController({
     seamlessController = controller;
   }
   function destroy() {
+    playerGeneration++;
     clearWatches();
     clearTimer(failureTimer);
     failureTimer = null;
@@ -138,15 +141,20 @@ export function createWorkMusicPlaybackController({
     return (seamlessController?.getActivePlayer?.() || player)?.getPlayerState?.();
   }
   function getAdjacentIndex(step) {
-    const state = engine.getSnapshot();
-    const songs = activeSongs();
-    if (!songs.length) return -1;
-    const order =
-      state.playOrder.length === songs.length ? state.playOrder : songs.map((_song, i) => i);
-    const position = Math.max(0, order.indexOf(state.currentIndex));
-    return order[(position + step + order.length) % order.length];
+    if (step < 0) return engine.getPreviousIndex(-step);
+    const upcoming = seamlessController?.getUpcomingIndices?.() ?? engine.getUpcomingIndices();
+    return upcoming[step - 1] ?? -1;
+  }
+  function replaceNext() {
+    if (seamlessController?.getState?.()?.transitioning) return false;
+    const chosen = engine.replaceNext(Math.random, getAdjacentIndex(1));
+    if (chosen < 0) return false;
+    seamlessController?.refreshNext?.(chosen);
+    render();
+    return true;
   }
   async function createRegularPlayer(index, autoplay) {
+    const creating = ++playerGeneration;
     const songs = activeSongs();
     const song = songs[index];
     const box = root.getElementById('workMusicPlayerBox');
@@ -160,10 +168,7 @@ export function createWorkMusicPlaybackController({
     box.classList.remove('seamless');
     box.innerHTML = '<div id="workMusicYoutubeIframe" style="width:100%;height:100%"></div>';
     await youtubePort.ensureIframeApi();
-    const state = engine.getSnapshot();
-    const order =
-      state.playOrder.length === songs.length ? state.playOrder : songs.map((_item, i) => i);
-    const playlist = order.map((itemIndex) => songs[itemIndex]?.videoId).filter(Boolean);
+    if (creating !== playerGeneration) return null;
     player = youtubePort.createPlayer('workMusicYoutubeIframe', {
       width: '100%',
       height: '100%',
@@ -172,11 +177,11 @@ export function createWorkMusicPlaybackController({
         autoplay: autoplay ? 1 : 0,
         playsinline: 1,
         rel: 0,
-        modestbranding: 1,
-        playlist: playlist.join(',')
+        modestbranding: 1
       },
       events: {
         onReady(event) {
+          if (creating !== playerGeneration) return;
           player = event.target;
           playerElement = root.getElementById('workMusicYoutubeIframe');
           setPlayerVolume(event.target);
@@ -184,10 +189,16 @@ export function createWorkMusicPlaybackController({
           actions.onReady?.(event.target, index, autoplay);
         },
         onStateChange(event) {
+          if (creating !== playerGeneration) return;
           actions.onStateChange?.(event, index);
-          observePlayback(event.target || player, event.data, engine.getSnapshot().currentIndex);
+          observePlayback(event.target || player, event.data, index);
+          if (event.data === 0) {
+            if (activeSongs().length === 1) void playAt(index);
+            else void next();
+          }
         },
         onError(event) {
+          if (creating !== playerGeneration) return;
           handleFailure({
             code: event?.data || '',
             failedIndex: index,
@@ -213,6 +224,7 @@ export function createWorkMusicPlaybackController({
     render();
     const state = engine.getSnapshot();
     if (state.seamlessEnabled && state.seamlessOverlapSeconds > 0 && songs.length > 1) {
+      playerGeneration++;
       player?.destroy?.();
       player = null;
       playerElement = null;
@@ -241,10 +253,13 @@ export function createWorkMusicPlaybackController({
     return engine.getSnapshot().isPlaying ? pause() : resume();
   }
   function previous() {
-    return playAt(getAdjacentIndex(-1));
+    const index = engine.requestPrevious();
+    if (index < 0) return false;
+    return playAt(index);
   }
   function next() {
     const index = getAdjacentIndex(1);
+    if (index < 0) return false;
     if (seamlessController?.canManualTransition?.(index)) return seamlessController.transition();
     return playAt(index);
   }
@@ -367,6 +382,7 @@ export function createWorkMusicPlaybackController({
   }
 
   return {
+    replaceNext,
     stopObservingPlayback,
     observePlayback,
     createRegularPlayer,

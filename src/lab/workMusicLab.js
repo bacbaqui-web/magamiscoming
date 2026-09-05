@@ -190,7 +190,7 @@ function render() {
   elements.play.setAttribute('aria-label', state.isPlaying ? '일시정지' : '재생');
   elements.play.title = state.isPlaying ? '일시정지' : '재생';
   elements.play.disabled = !song;
-  elements.previous.disabled = songs.length < 2;
+  elements.previous.disabled = engine.getPreviousIndex() < 0;
   elements.next.disabled = songs.length < 2;
   elements.volume.value = String(state.volume);
   elements.volumeLabel.textContent = `${state.volume}%`;
@@ -276,8 +276,7 @@ playbackController = createWorkMusicPlaybackController({
   actions: {
     onReady: updateStoredDuration,
     onStateChange(event) {
-      if (event?.data === 0) playbackController.next();
-      else if (event?.data === 1 || event?.data === 2) {
+      if (event?.data === 1 || event?.data === 2) {
         engine.setState('isPlaying', event.data === 1);
         render();
       }

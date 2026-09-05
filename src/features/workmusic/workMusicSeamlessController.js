@@ -45,13 +45,8 @@ export function createWorkMusicSeamlessController({
     return slots?.players?.[slots.standbySlot] || null;
   }
   function nextIndex(fromIndex, verifyFailures = true) {
-    const state = engine.getSnapshot();
     const songs = engine.getActiveSongs();
-    const order =
-      state.playOrder.length === songs.length ? state.playOrder : songs.map((_song, i) => i);
-    const position = Math.max(0, order.indexOf(fromIndex));
-    for (let offset = 1; offset < order.length; offset += 1) {
-      const candidate = order[(position + offset) % order.length];
+    for (const candidate of engine.getUpcomingIndices(fromIndex)) {
       if (
         songs[candidate]?.videoId &&
         !rejectedCandidates.has(candidateKey(songs[candidate])) &&
@@ -60,6 +55,26 @@ export function createWorkMusicSeamlessController({
         return candidate;
     }
     return -1;
+  }
+  function getUpcomingIndices() {
+    if (!slots) return null;
+    const songs = engine.getActiveSongs();
+    if (slots.standbyIndex < 0) return [];
+    return [
+      slots.standbyIndex,
+      ...engine
+        .getUpcomingIndices(slots.standbyIndex)
+        .filter(
+          (index) =>
+            index !== engine.getSnapshot().currentIndex &&
+            !rejectedCandidates.has(candidateKey(songs[index]))
+        )
+    ];
+  }
+  function refreshNext(index) {
+    if (!slots || slots.transitioning) return;
+    rejectedCandidates.delete(candidateKey(engine.getActiveSongs()[index]));
+    cueStandby(engine.getSnapshot().currentIndex);
   }
   function stopTimers() {
     clear(monitorTimer);
@@ -146,6 +161,7 @@ export function createWorkMusicSeamlessController({
       report('디제잉: 다음 곡을 음소거로 5초 확인 중');
     }
     standby.cueVideoById?.(song.videoId);
+    render();
   }
   function prepareRanges(fromIndex, target) {
     const session = slots;
@@ -191,9 +207,10 @@ export function createWorkMusicSeamlessController({
     slots.transition = null;
     previous?.stopVideo?.();
     engine.setState('currentIndex', target);
+    engine.recordPlayed(target);
     applyVolume();
-    render();
     cueStandby(target);
+    render();
   }
   function volumesAt({ elapsedSeconds, overlapSeconds, targetVolume }) {
     const duration = Math.max(0.001, Number(overlapSeconds) || 0);
@@ -458,7 +475,8 @@ export function createWorkMusicSeamlessController({
         playbackController.observePlayback?.(
           event.target || slots.players[slot],
           event.data,
-          slot === slots.activeSlot ? engine.getSnapshot().currentIndex : slots.standbyIndex
+          slot === slots.activeSlot ? engine.getSnapshot().currentIndex : slots.standbyIndex,
+          slot === slots.activeSlot
         );
         if (slot === slots?.standbySlot && slots?.transitioning && event?.data === 1)
           beginFade(slot);
@@ -509,6 +527,8 @@ export function createWorkMusicSeamlessController({
   }
 
   return {
+    getUpcomingIndices,
+    refreshNext,
     applyVolume,
     beginFade,
     canManualTransition,
