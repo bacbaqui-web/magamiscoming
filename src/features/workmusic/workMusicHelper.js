@@ -1,5 +1,12 @@
 const DEFAULT_TAB = Object.freeze({ id: 'default', name: '기본', order: 0 });
 
+export function putFailedSongsLast(order, songs) {
+  return [...order].sort(
+    (a, b) =>
+      Number(songs[a]?.playbackStatus === 'error') - Number(songs[b]?.playbackStatus === 'error')
+  );
+}
+
 export function normalizeSeamlessSeconds(value) {
   return Math.max(0, Math.min(20, Math.round(Number(value || 0))));
 }

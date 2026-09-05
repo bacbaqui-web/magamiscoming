@@ -156,7 +156,7 @@ styles/
 - `features/workmusic/workMusicAnalysisHelper.js`: 분석 호환성·독립 1절 검증, 후렴 후보와 초록 경계 정렬·전후 독립 DJ 페이드 계획
 - `features/workmusic/workMusicRepetitionHelper.js`: 기존 음파의 먼 구간 반복 비교와 후보 경계 추정, 단조 패턴 제외
 - `features/workmusic/workMusicAutoAnalysisController.js`: 현재 목록 순차 분석, 구버전 갱신·일시정지·연결 재시도
-- `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서 순수 계산
+- `features/workmusic/workMusicHelper.js`: YouTube URL·ID·제목·시간·재생 순서와 실패 곡 하단 표시 순수 계산
 - `features/clipviewer.js`: CLIP Engine·Composer·Controller와 외부 기능을 조립하고 공개 호환 계약을 연결하는 진입점
 - `features/clipviewer/clipViewerEngine.js`: 페이지 목록, CMC 정렬 결과, 로컬 미리보기, 저장 manifest와 동기화 상태의 단일 소유자
 - `features/clipviewer/clipViewerComposer.js`: 기존 CLIP DOM 렌더와 폴더 선택·드롭 이벤트 조립

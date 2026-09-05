@@ -10,7 +10,7 @@ import { createWorkMusicPlaybackController } from './workMusicPlaybackController
 import { createWorkMusicPlaylistController } from './workMusicPlaylistController.js';
 import { createWorkMusicSeamlessController } from './workMusicSeamlessController.js';
 import { createWorkMusicTabsController } from './workMusicTabsController.js';
-import { cleanYoutubeTitle } from './workMusicHelper.js';
+import { cleanYoutubeTitle, putFailedSongsLast } from './workMusicHelper.js';
 
 export function createWorkMusicComposer({
   host = window,
@@ -964,7 +964,7 @@ export function createWorkMusicComposer({
     }
     const allAudioCards = songs.length > 0 && songs.every(isWorkMusicAudioCard);
     workMusicList.classList.toggle('music-compact-list', allAudioCards);
-    const displayOrder = getWorkMusicDisplayOrder(songs);
+    const displayOrder = putFailedSongsLast(getWorkMusicDisplayOrder(songs), songs);
     renderWorkMusicPlayerView();
     renderWorkMusicTrackPreviews();
     displayOrder.forEach((idx) => {
