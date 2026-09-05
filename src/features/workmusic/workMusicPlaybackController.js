@@ -18,8 +18,71 @@ export function createWorkMusicPlaybackController({
   render = () => {},
   save = () => {},
   setTimer = setTimeout,
-  clearTimer = clearTimeout
+  clearTimer = clearTimeout,
+  now = Date.now
 }) {
+  const watches = new Map();
+  function clearWatches() {
+    for (const watch of watches.values()) clearTimer(watch.timer);
+    watches.clear();
+  }
+  function observePlayback(target, state, index) {
+    if (!target) return;
+    const songs = activeSongs();
+    const videoId = target.getVideoData?.()?.video_id;
+    const song = videoId ? songs.find((item) => item.videoId === videoId) : songs[index];
+    if (!song) return;
+    let watch = watches.get(target);
+    if (!watch || watch.id !== song.id) {
+      if (watch) clearTimer(watch.timer);
+      watch = {
+        id: song.id,
+        videoId: song.videoId,
+        tabId: engine.getSnapshot().activeTabId,
+        elapsed: 0,
+        timer: null
+      };
+      watches.set(target, watch);
+    }
+    clearTimer(watch.timer);
+    watch.timer = null;
+    if (state !== 1 || song.playbackStatus !== 'error') return;
+    watch.position = Number(target.getCurrentTime?.() || 0);
+    watch.time = now();
+    const tick = () => {
+      if (watches.get(target) !== watch || target.getPlayerState?.() !== 1) return;
+      if (engine.getSnapshot().activeTabId !== watch.tabId) return;
+      const playingId = target.getVideoData?.()?.video_id;
+      if (playingId && playingId !== watch.videoId) return;
+      const position = Number(target.getCurrentTime?.() || 0);
+      const time = now();
+      const delta = position - watch.position;
+      const wall = (time - watch.time) / 1000;
+      if (delta > 0 && delta <= wall * 2 + 0.25) watch.elapsed += Math.min(delta, wall);
+      watch.position = position;
+      watch.time = time;
+      if (watch.elapsed >= 10) {
+        engine.setSongs(
+          engine.getSnapshot().songs.map((item) => {
+            if (item.id !== watch.id) return item;
+            const next = { ...item };
+            delete next.playbackStatus;
+            delete next.playbackErrorReason;
+            delete next.playbackErrorCode;
+            delete next.playbackErrorAt;
+            return next;
+          })
+        );
+        render();
+        void save();
+        return;
+      }
+      watch.timer = setTimer(tick, 250);
+      watch.timer?.unref?.();
+    };
+    watch.timer = setTimer(tick, 250);
+    watch.timer?.unref?.();
+  }
   let player = null;
   let playerElement = null;
   let failureTimer = null;
@@ -36,6 +99,7 @@ export function createWorkMusicPlaybackController({
     seamlessController = controller;
   }
   function destroy() {
+    clearWatches();
     clearTimer(failureTimer);
     failureTimer = null;
     seamlessController?.destroy?.();
@@ -53,6 +117,7 @@ export function createWorkMusicPlaybackController({
     else target?.unMute?.();
   }
   function seek(seconds) {
+    for (const watch of watches.values()) watch.position = NaN;
     seamlessController?.cancelTransition?.();
     const duration = getDuration();
     const target = Math.max(0, Math.min(duration || Number(seconds), Number(seconds) || 0));
@@ -116,6 +181,7 @@ export function createWorkMusicPlaybackController({
         },
         onStateChange(event) {
           actions.onStateChange?.(event, index);
+          observePlayback(event.target || player, event.data, engine.getSnapshot().currentIndex);
         },
         onError(event) {
           handleFailure({
@@ -130,6 +196,7 @@ export function createWorkMusicPlaybackController({
     return player;
   }
   async function loadAt(index, autoplay = false, { resetSkipSession = true } = {}) {
+    clearWatches();
     const songs = activeSongs();
     if (!songs.length) {
       notify('먼저 유튜브 링크를 추가해주세요.');
@@ -227,6 +294,11 @@ export function createWorkMusicPlaybackController({
     if (!failureSession || failureSession.tabId !== tabId)
       failureSession = { tabId, triedKeys: new Set() };
     const failedSong = songs[failedIndex];
+    for (const [target, watch] of watches) {
+      if (watch.id !== failedSong.id) continue;
+      clearTimer(watch.timer);
+      watches.delete(target);
+    }
     failureSession.triedKeys.add(songKey(failedSong, failedIndex));
     engine.setSongs(
       snapshot.songs.map((song) =>
@@ -291,6 +363,7 @@ export function createWorkMusicPlaybackController({
   }
 
   return {
+    observePlayback,
     createRegularPlayer,
     destroy,
     getAdjacentIndex,

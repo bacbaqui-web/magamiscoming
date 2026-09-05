@@ -773,32 +773,6 @@ export function createWorkMusicComposer({
     workMusicAutoSkipSession = null;
   }
 
-  function clearWorkMusicPlaybackError(index) {
-    const songs = getActiveWorkMusicSongs();
-    const song = songs[index];
-    if (
-      !song ||
-      (song.playbackStatus !== 'error' &&
-        !song.playbackErrorReason &&
-        !song.playbackErrorCode &&
-        !song.playbackErrorAt)
-    ) {
-      return false;
-    }
-    listController.replace(
-      engine.getSnapshot().songs.map((item) => {
-        if (item.id !== song.id) return item;
-        const next = { ...item };
-        delete next.playbackStatus;
-        delete next.playbackErrorReason;
-        delete next.playbackErrorCode;
-        delete next.playbackErrorAt;
-        return next;
-      })
-    );
-    return true;
-  }
-
   function _getNextWorkMusicIndexAfterFailure(failedIndex) {
     const songs = getActiveWorkMusicSongs();
     if (songs.length <= 1) return -1;
@@ -945,11 +919,7 @@ export function createWorkMusicComposer({
       resetWorkMusicAutoSkipSession();
       window.workMusicIsPlaying = true;
       syncWorkMusicFromPlayer();
-      const clearedPlaybackError = clearWorkMusicPlaybackError(
-        Number(window.workMusicCurrentIndex || 0)
-      );
-      if (clearedPlaybackError) renderWorkMusic();
-      else renderWorkMusicPlaybackState();
+      renderWorkMusicPlaybackState();
       startWorkMusicSyncTimer();
     } else if (
       window.YT &&

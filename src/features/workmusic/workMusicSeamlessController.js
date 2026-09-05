@@ -383,6 +383,11 @@ export function createWorkMusicSeamlessController({
       },
       onStateChange(event) {
         if (slots !== session) return;
+        playbackController.observePlayback?.(
+          event.target || slots.players[slot],
+          event.data,
+          slot === slots.activeSlot ? engine.getSnapshot().currentIndex : slots.standbyIndex
+        );
         if (slot === slots?.standbySlot && slots?.transitioning && event?.data === 1)
           beginFade(slot);
         if (slot === slots?.activeSlot && event?.data === 0 && !slots.transitionStarted) {
