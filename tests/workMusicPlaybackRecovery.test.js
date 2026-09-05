@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createWorkMusicEngine } from '../src/features/workmusic/workMusicEngine.js';
 import { createWorkMusicPlaybackController } from '../src/features/workmusic/workMusicPlaybackController.js';
 
-test('failure clears after ten seconds of playback, excluding pauses, buffering and seeking', () => {
+test('failure clears after five seconds of playback, excluding pauses, buffering and seeking', () => {
   const engine = createWorkMusicEngine({
     initialState: {
       songs: [
@@ -62,7 +62,7 @@ test('failure clears after ten seconds of playback, excluding pauses, buffering 
   controller.observePlayback(player, 1, 0);
   player.position += 60;
   advance(0.25);
-  advance(5.75);
+  advance(0.75);
   assert.equal(engine.getSnapshot().songs[0].playbackStatus, 'error');
   advance(0.25);
   assert.equal(engine.getSnapshot().songs[0].playbackStatus, undefined);

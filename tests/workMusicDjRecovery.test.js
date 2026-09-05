@@ -34,6 +34,75 @@ test('both songs crossfade before green and hand off completely at green', async
   f.controller.destroy();
 });
 
+test('failed standby is muted, verified for five seconds, then rewound and offered for DJ', async () => {
+  let time = 0;
+  let id = 0;
+  let saves = 0;
+  const timers = new Map();
+  const f = await setup([song('a', manual), song('b', { ...manual, playbackStatus: 'error' })], {
+    now: () => time,
+    playbackOptions: {
+      now: () => time,
+      setTimer: (fn) => {
+        timers.set(++id, fn);
+        return id;
+      },
+      clearTimer: (key) => timers.delete(key),
+      save: () => {
+        saves++;
+      }
+    }
+  });
+  const next = f.players[1];
+  next.options.events.onStateChange({ data: 5 });
+  assert.equal(next.played, true);
+  assert.equal(next.volume, 0);
+  assert.equal(f.controller.canManualTransition(1), false);
+  next.state = 1;
+  next.options.events.onStateChange({ data: 1 });
+  for (let tick = 0; tick < 20; tick++) {
+    time += 250;
+    next.current += 0.25;
+    const pending = [...timers.values()];
+    timers.clear();
+    pending.forEach((fn) => fn());
+    if (tick < 19) assert.equal(f.engine.getSnapshot().songs[1].playbackStatus, 'error');
+  }
+  f.controller.monitor();
+  assert.equal(f.engine.getSnapshot().songs[1].playbackStatus, undefined);
+  assert.equal(saves, 1);
+  assert.equal(f.controller.getState().probe, null);
+  assert.equal(next.current, 0);
+  assert.equal(next.volume, 0);
+  assert.equal(f.controller.canManualTransition(1), true);
+  assert.equal(f.engine.getSnapshot().currentIndex, 0);
+  f.controller.destroy();
+  f.playback.destroy();
+});
+
+test('probe timeout and current-track end skip unverified candidates without looping', async () => {
+  let time = 0;
+  const f = await setup(
+    [
+      song('a', manual),
+      song('bad', { ...manual, playbackStatus: 'error' }),
+      song('also-bad', { ...manual, playbackStatus: 'error' }),
+      song('healthy', manual)
+    ],
+    { now: () => time }
+  );
+  time = 16000;
+  f.controller.monitor();
+  assert.equal(f.controller.getState().standbyIndex, 2);
+  f.players[0].state = 0;
+  f.controller.monitor();
+  assert.equal(f.controller.getState().standbyIndex, 3);
+  assert.equal(f.controller.getState().probe, null);
+  assert.equal(f.engine.getSnapshot().currentIndex, 0);
+  f.controller.destroy();
+  f.playback.destroy();
+});
+
 test('DJ button cycles off, full, verse, off', async () => {
   const engine = createWorkMusicEngine();
   const controller = createWorkMusicPlaybackController({ engine, root: {}, youtubePort: {} });
@@ -47,13 +116,18 @@ test('DJ button cycles off, full, verse, off', async () => {
   assert.equal(engine.getSnapshot().djVerseMode, false);
 });
 
-async function setup(songs, extra = {}) {
+async function setup(songs, { playbackOptions = {}, ...extra } = {}) {
   const engine = createWorkMusicEngine({
     initialState: { songs, isPlaying: true, seamlessOverlapSeconds: 10 }
   });
   const players = [];
   const statuses = [];
-  const playback = createWorkMusicPlaybackController({ engine, root: {}, youtubePort: {} });
+  const playback = createWorkMusicPlaybackController({
+    engine,
+    root: {},
+    youtubePort: {},
+    ...playbackOptions
+  });
   const controller = createWorkMusicSeamlessController({
     engine,
     playbackController: playback,
@@ -67,6 +141,10 @@ async function setup(songs, extra = {}) {
         const player = {
           options,
           current: 0,
+          state: -1,
+          getPlayerState() {
+            return this.state;
+          },
           volume: 0,
           getCurrentTime() {
             return this.current;
@@ -77,7 +155,9 @@ async function setup(songs, extra = {}) {
           },
           mute() {},
           unMute() {},
-          playVideo() {},
+          playVideo() {
+            this.played = true;
+          },
           pauseVideo() {},
           stopVideo() {},
           destroy() {},
@@ -86,6 +166,7 @@ async function setup(songs, extra = {}) {
           },
           cueVideoById(id) {
             this.cued = id;
+            this.current = 0;
           }
         };
         players.push(player);
@@ -96,24 +177,25 @@ async function setup(songs, extra = {}) {
   });
   await controller.create(0, true);
   players.forEach((p) => p.options.events.onReady({ target: p }));
-  return { engine, players, controller, statuses };
+  return { engine, players, controller, statuses, playback };
 }
 
-test('DJ skips known failed songs; standby failure preserves active playback and cues next healthy song', async () => {
+test('DJ retries known failed songs once; another failure preserves current playback and moves on', async () => {
   const f = await setup([
     song('a', manual),
     song('bad', { playbackStatus: 'error' }),
     song('b', manual),
     song('c', manual)
   ]);
-  assert.equal(f.controller.getState().standbyIndex, 2);
-  assert.equal(f.players[1].cued, 'b');
+  assert.equal(f.controller.getState().standbyIndex, 1);
+  assert.equal(f.players[1].cued, 'bad');
+  assert.ok(f.controller.getState().probe);
   f.players[1].options.events.onError({ data: 150 });
   assert.equal(f.engine.getSnapshot().currentIndex, 0);
   assert.equal(f.engine.getSnapshot().isPlaying, true);
-  assert.equal(f.controller.getState().standbyIndex, 3);
-  assert.equal(f.players[1].cued, 'c');
-  assert.equal(f.engine.getSnapshot().songs[2].playbackStatus, 'error');
+  assert.equal(f.controller.getState().standbyIndex, 2);
+  assert.equal(f.players[1].cued, 'b');
+  assert.equal(f.engine.getSnapshot().songs[1].playbackStatus, 'error');
   f.controller.destroy();
 });
 
@@ -149,6 +231,7 @@ test('DJ preloads server results without selecting next song or posting a new an
 
 test('destroyed player events cannot change current playback; exhausted next candidates are reported', async () => {
   const f = await setup([song('a'), song('bad', { playbackStatus: 'error' })]);
+  f.players[1].options.events.onError({ data: 150 });
   assert.equal(f.controller.getState().standbyIndex, -1);
   assert.match(f.statuses.at(-1), /다음 곡이 없습니다/);
   f.controller.destroy();

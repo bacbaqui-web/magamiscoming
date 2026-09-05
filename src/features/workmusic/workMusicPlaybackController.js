@@ -22,6 +22,10 @@ export function createWorkMusicPlaybackController({
   now = Date.now
 }) {
   const watches = new Map();
+  function stopObservingPlayback(target) {
+    clearTimer(watches.get(target)?.timer);
+    watches.delete(target);
+  }
   function clearWatches() {
     for (const watch of watches.values()) clearTimer(watch.timer);
     watches.clear();
@@ -61,7 +65,7 @@ export function createWorkMusicPlaybackController({
       if (delta > 0 && delta <= wall * 2 + 0.25) watch.elapsed += Math.min(delta, wall);
       watch.position = position;
       watch.time = time;
-      if (watch.elapsed >= 10) {
+      if (watch.elapsed >= 5) {
         engine.setSongs(
           engine.getSnapshot().songs.map((item) => {
             if (item.id !== watch.id) return item;
@@ -363,6 +367,7 @@ export function createWorkMusicPlaybackController({
   }
 
   return {
+    stopObservingPlayback,
     observePlayback,
     createRegularPlayer,
     destroy,
