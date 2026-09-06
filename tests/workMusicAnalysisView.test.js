@@ -220,14 +220,24 @@ test('playhead follows playback and seeking without rebuilding markers, hides on
 });
 
 test('view shows server queue counts and only disables the current active song', () => {
+  let click;
+  let requests = 0;
   const elements = {
     workMusicAnalysisPanel: { dataset: {} },
     workMusicAnalysisQueue: {},
-    workMusicAnalyzeBtn: { addEventListener() {} }
+    workMusicAnalyzeBtn: {
+      addEventListener(type, callback) {
+        if (type === 'click') click = callback;
+      }
+    }
   };
   const view = createWorkMusicAnalysisView({
     root: { getElementById: (id) => elements[id] },
-    controller: {}
+    controller: {
+      analyzeCurrent() {
+        requests++;
+      }
+    }
   });
   const state = {
     enabled: true,
@@ -240,6 +250,12 @@ test('view shows server queue counts and only disables the current active song',
   assert.equal(elements.workMusicAnalyzeBtn.disabled, true);
   view.render({ ...state, phase: 'idle' });
   assert.equal(elements.workMusicAnalyzeBtn.disabled, false);
+  view.render({ ...state, phase: 'succeeded' });
+  assert.equal(elements.workMusicAnalyzeBtn.disabled, false);
+  click();
+  assert.equal(requests, 1);
+  view.render({ ...state, phase: 'idle', videoId: '' });
+  assert.equal(elements.workMusicAnalyzeBtn.disabled, true);
   view.render({ ...state, queueUnavailable: true });
   assert.match(elements.workMusicAnalysisQueue.textContent, /확인할 수 없습니다/);
   view.render({ ...state, queue: { runningCount: 0, queuedCount: 0 } });

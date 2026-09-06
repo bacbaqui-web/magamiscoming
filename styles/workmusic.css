@@ -2024,6 +2024,13 @@ body {
   color: inherit;
   cursor: pointer;
 }
+.workmusic-auto-analysis-row button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.workmusic-auto-analysis-row button svg {
+  vertical-align: middle;
+}
 .workmusic-handle-time {
   position: absolute;
   color: #8bdab6;

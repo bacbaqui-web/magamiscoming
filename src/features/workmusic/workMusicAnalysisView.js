@@ -163,10 +163,9 @@ export function createWorkMusicAnalysisView({ root = document, controller, onSee
           : '서버 큐 확인 중...';
     }
     if (analyzeButton) {
-      analyzeButton.disabled =
-        !state.enabled ||
-        !state.videoId ||
-        ['submitting', 'queued', 'running'].includes(state.phase);
+      const busy = ['submitting', 'queued', 'running'].includes(state.phase);
+      analyzeButton.disabled = !state.enabled || !state.videoId || busy;
+      analyzeButton.title = busy ? state.message || '분석 진행 중' : '현재 곡 재분석';
     }
     if (bpm) bpm.textContent = result?.bpm ? Number(result.bpm).toFixed(1) : '—';
     if (confidence) {
