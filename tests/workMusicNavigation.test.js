@@ -5,6 +5,26 @@ import { createWorkMusicEngine } from '../src/features/workmusic/workMusicEngine
 const songs = ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, videoId: id }));
 const make = (extra = {}) => createWorkMusicEngine({ initialState: { songs, ...extra } });
 
+test('deletion preserves current identity and keeps deleted playback outside saved songs', () => {
+  const e = make({ currentIndex: 2 });
+  e.removeKeepingPlayback('a');
+  assert.equal(e.getActiveSongs()[e.getSnapshot().currentIndex].id, 'c');
+  e.removeKeepingPlayback('c');
+  assert.equal(e.getActiveSongs()[e.getSnapshot().currentIndex].id, 'c');
+  assert.equal(
+    e.getSnapshot().songs.some((song) => song.id === 'c'),
+    false
+  );
+  const next = e.getUpcomingIndices()[0];
+  assert.equal(e.getActiveSongs()[next].id, 'd');
+  e.setState('currentIndex', next);
+  assert.equal(
+    e.getActiveSongs().some((song) => song.id === 'c'),
+    false
+  );
+  assert.equal(e.getActiveSongs()[e.getSnapshot().currentIndex].id, 'd');
+});
+
 test('history starts empty, follows actual playback and supports stepping back without wrapping', () => {
   const e = make();
   assert.equal(e.getPreviousIndex(), -1);

@@ -142,7 +142,7 @@ styles/
 - `features/bookmarks/bookmarksHelper.js`: URL 종류·도메인·안전한 열기와 YouTube 미리보기 순수 계산
 - `features/workmusic.js`: WorkMusicComposer만 호출하는 얇은 노동요 진입점
 - `features/workmusic/workMusicComposer.js`: 노동요 DOM 조회·렌더·이벤트와 Engine·Controller 조립
-- `features/workmusic/workMusicEngine.js`: 곡·탭·현재 곡·순서·볼륨·이어듣기 상태, 세션 재생 이력·다음 후보 교체의 단일 소유자와 기존 전역 프록시
+- `features/workmusic/workMusicEngine.js`: 곡·탭·현재 곡·순서·볼륨·이어듣기 상태, 세션 재생 이력·삭제 중 재생 유지·다음 후보 교체의 단일 소유자와 기존 전역 프록시
 - `features/workmusic/workMusicTabsController.js`: 노동요 탭 CRUD와 저장 요청
 - `features/workmusic/workMusicListController.js`: 곡 목록 추가·수정·삭제 요청
 - `features/workmusic/workMusicPlaybackController.js`: 일반 Player 생성·파괴, 재생·정지·seek·이전·다음·음량과 오류 곡 건너뛰기 실행

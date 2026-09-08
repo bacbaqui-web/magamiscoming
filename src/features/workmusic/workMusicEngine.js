@@ -49,8 +49,15 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
   }
   state.seamlessEnabled = state.seamlessOverlapSeconds > 0;
 
-  const activeSongRefs = () =>
-    state.songs.filter((song) => (song.workMusicTabId || 'default') === state.activeTabId);
+  let detachedSong = null;
+  const activeSongRefs = () => {
+    const songs = state.songs.filter(
+      (song) => (song.workMusicTabId || 'default') === state.activeTabId
+    );
+    if (detachedSong && (detachedSong.workMusicTabId || 'default') === state.activeTabId)
+      songs.push(detachedSong);
+    return songs;
+  };
 
   const activeSongs = () => cloneItems(activeSongRefs());
   const songKey = (song) => String(song?.id || song?.videoId || '');
@@ -155,6 +162,7 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
         state.activeTabId = state.tabs[0]?.id || 'default';
       }
     } else if (key === 'activeTabId') {
+      detachedSong = null;
       state.activeTabId = state.tabs.some((tab) => tab.id === value)
         ? value
         : state.tabs[0]?.id || 'default';
@@ -163,6 +171,10 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
       nextOverride = null;
     } else if (key === 'currentIndex') {
       const next = Math.max(0, Number(value || 0));
+      if (next !== state.currentIndex && detachedSong) {
+        detachedSong = null;
+        state.playOrder = state.playOrder.filter((index) => index < activeSongRefs().length);
+      }
       if (next !== state.currentIndex) nextOverride = null;
       state.currentIndex = next;
     } else if (key === 'volume' || key === 'lastVolume') state[key] = normalizeVolume(value);
@@ -186,6 +198,25 @@ export function createWorkMusicEngine({ initialState = {} } = {}) {
   setState('playOrder', state.playOrder);
 
   return {
+    removeKeepingPlayback(id) {
+      const before = activeSongRefs();
+      const current = before[state.currentIndex];
+      const upcoming = getUpcomingIndices()
+        .map((index) => before[index])
+        .filter((song) => song?.id !== id);
+      const orderedIds = state.playOrder.map((index) => before[index]?.id);
+      if (current?.id === id) detachedSong = { ...current, playbackOnly: true };
+      state.songs = state.songs.filter((song) => song.id !== id);
+      const after = activeSongRefs();
+      state.currentIndex = Math.max(
+        0,
+        after.findIndex((song) => song.id === current?.id)
+      );
+      state.playOrder = orderedIds
+        .map((key) => after.findIndex((song) => song.id === key))
+        .filter((index) => index >= 0);
+      nextOverride = upcoming[0] ? songKey(upcoming[0]) : null;
+    },
     recordPlayed,
     getPreviousIndex: (distance = 1) => previousEntry(distance).index,
     requestPrevious,

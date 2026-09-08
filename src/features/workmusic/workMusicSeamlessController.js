@@ -330,6 +330,14 @@ export function createWorkMusicSeamlessController({
     );
   }
   function getTriggerTiming({ currentSong, nextSong, duration, currentTime }) {
+    if (!engine.getSnapshot().seamlessEnabled) {
+      return {
+        mode: 'sequential',
+        triggerAtSeconds: duration,
+        nextStartSeconds: 0,
+        crossfadeSeconds: 0
+      };
+    }
     return calculateDjTransitionPlan({
       currentSong,
       nextSong,
@@ -422,7 +430,7 @@ export function createWorkMusicSeamlessController({
   async function create(index, autoplay = true) {
     const songs = engine.getActiveSongs();
     const box = root.getElementById('workMusicPlayerBox');
-    if (!box || songs.length <= 1 || !songs[index]?.videoId) return null;
+    if (!box || !songs[index]?.videoId) return null;
     destroy();
     const creating = generation;
     box.classList.add('seamless');
@@ -451,7 +459,7 @@ export function createWorkMusicSeamlessController({
           event.target.playVideo?.();
           startMonitor();
         }
-        if (slot === 'b') cueStandby(index);
+        if (slot === 'b') cueStandby(engine.getSnapshot().currentIndex);
       },
       onStateChange(event) {
         if (slots !== session) return;
@@ -481,6 +489,12 @@ export function createWorkMusicSeamlessController({
         if (slot === slots?.standbySlot && slots?.transitioning && event?.data === 1)
           beginFade(slot);
         if (slot === slots?.activeSlot && event?.data === 0 && !slots.transitionStarted) {
+          const songs = engine.getActiveSongs();
+          if (songs.length === 1 && !songs[0].playbackOnly) {
+            event.target.seekTo?.(0, true);
+            event.target.playVideo?.();
+            return;
+          }
           if (slots.probe) {
             monitor();
             return;

@@ -982,6 +982,7 @@ export function createWorkMusicComposer({
     displayOrder.forEach((idx) => {
       const song = songs[idx];
       if (!song) return;
+      if (song.playbackOnly) return;
       const row = document.createElement('div');
       const isActive = idx === (window.workMusicCurrentIndex || 0);
       const isMusicTrack = isWorkMusicAudioCard(song);
@@ -1089,18 +1090,13 @@ export function createWorkMusicComposer({
     const idx = Number(window.currentWorkMusicSettingIndex);
     const songs = getActiveWorkMusicSongs();
     if (!songs[idx]) return;
-    const deletingCurrent = idx === Number(window.workMusicCurrentIndex || 0);
     const deleteId = songs[idx].id;
-    await listController.remove(deleteId);
-    resetWorkMusicDisplayShuffle(getActiveWorkMusicTabId());
-    const nextSongs = getActiveWorkMusicSongs();
-    if (window.workMusicCurrentIndex >= nextSongs.length)
-      window.workMusicCurrentIndex = Math.max(0, nextSongs.length - 1);
-    if (deletingCurrent) window.workMusicIsPlaying = false;
+    seamlessController?.cancelTransition?.();
+    engine.removeKeepingPlayback(deleteId);
+    seamlessController?.refreshNext?.(engine.getUpcomingIndices()[0]);
     await window.cloudSaveWorkMusic?.();
     closeWorkMusicSettings();
     renderWorkMusic();
-    playbackController.loadAt(window.workMusicCurrentIndex || 0, false);
     showFeedbackMessage('삭제했습니다.');
   }
 
@@ -1911,6 +1907,7 @@ export function createWorkMusicComposer({
     youtubePort,
     root,
     failureDelayMs: WORK_MUSIC_FAILURE_SKIP_DELAY_MS,
+    keepPlayers: true,
     notify: showFeedbackMessage,
     save: () => window.cloudSaveWorkMusic?.(),
     renderVolume: renderWorkMusicVolumeUI,

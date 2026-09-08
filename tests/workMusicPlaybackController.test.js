@@ -79,7 +79,7 @@ test('이어듣기 Controller가 전환 시점과 두 Player 전환 정보를 �
 
 test('SeamlessController는 두 곡 수동 구간으로 실제 전환 시작 시각을 계산한다', () => {
   const seamless = createWorkMusicSeamlessController({
-    engine: createWorkMusicEngine(),
+    engine: createWorkMusicEngine({ initialState: { seamlessOverlapSeconds: 10 } }),
     playbackController: {},
     root: {},
     youtubePort: {}

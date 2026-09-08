@@ -139,6 +139,25 @@ test('DJ button cycles off, full, verse, off', async () => {
   assert.equal(engine.getSnapshot().djVerseMode, false);
 });
 
+test('persistent players switch DJ modes without invoking player creation', async () => {
+  const engine = createWorkMusicEngine({
+    initialState: { songs: [{ id: 'a', videoId: 'a' }], isPlaying: true }
+  });
+  const controller = createWorkMusicPlaybackController({
+    engine,
+    keepPlayers: true,
+    root: {
+      getElementById() {
+        throw new Error('must not rebuild players');
+      }
+    },
+    youtubePort: {}
+  });
+  for (let i = 0; i < 3; i++) await controller.cycleDjMode();
+  assert.equal(engine.getSnapshot().isPlaying, true);
+  assert.equal(engine.getSnapshot().seamlessEnabled, false);
+});
+
 async function setup(songs, { playbackOptions = {}, ...extra } = {}) {
   const engine = createWorkMusicEngine({
     initialState: { songs, isPlaying: true, seamlessOverlapSeconds: 10 }

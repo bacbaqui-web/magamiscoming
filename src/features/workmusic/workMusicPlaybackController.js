@@ -17,6 +17,7 @@ export function createWorkMusicPlaybackController({
   notify = () => {},
   render = () => {},
   renderVolume = render,
+  keepPlayers = false,
   save = () => {},
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -224,7 +225,10 @@ export function createWorkMusicPlaybackController({
     engine.setState('isPlaying', autoplay);
     render();
     const state = engine.getSnapshot();
-    if (state.seamlessEnabled && state.seamlessOverlapSeconds > 0 && songs.length > 1) {
+    if (
+      keepPlayers ||
+      (state.seamlessEnabled && state.seamlessOverlapSeconds > 0 && songs.length > 1)
+    ) {
       playerGeneration++;
       player?.destroy?.();
       player = null;
@@ -283,9 +287,10 @@ export function createWorkMusicPlaybackController({
   async function setSeamlessSeconds(value, { save: shouldSave = true, refreshPlayer = true } = {}) {
     const before = engine.getSnapshot().seamlessEnabled;
     engine.setSeamlessSeconds(value);
+    if (keepPlayers) seamlessController?.cancelTransition?.();
     render();
     const state = engine.getSnapshot();
-    if (refreshPlayer && before !== state.seamlessEnabled && activeSongs().length) {
+    if (!keepPlayers && refreshPlayer && before !== state.seamlessEnabled && activeSongs().length) {
       if (state.isPlaying) await playAt(state.currentIndex, { resetSkipSession: false });
       else await loadAt(state.currentIndex, false);
     }
