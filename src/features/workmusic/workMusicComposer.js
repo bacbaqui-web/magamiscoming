@@ -26,7 +26,7 @@ export function createWorkMusicComposer({
       songs: host.workMusicSongs,
       tabs: host.__workMusicTabList,
       activeTabId: host.__workMusicActiveTabId,
-      mode: 'sequential',
+      mode: 'random',
       currentIndex: host.workMusicCurrentIndex,
       volume: host.workMusicVolume,
       lastVolume: host.workMusicLastVolume,
@@ -37,8 +37,8 @@ export function createWorkMusicComposer({
     }
   });
   engine.bindCompatibility(host);
-  // 셔플은 현재 접속 중인 목록에만 적용하고, 새로 접속하면 항상 원래 순서로 시작합니다.
-  window.workMusicMode = 'sequential';
+  // 저장된 모드와 관계없이 새 접속은 랜덤으로 시작합니다.
+  window.workMusicMode = 'random';
   window.__workMusicDisplayShuffle = {};
   window.workMusicCurrentIndex = window.workMusicCurrentIndex || 0;
   window.workMusicVolume = window.workMusicVolume ?? 80;
@@ -133,7 +133,6 @@ export function createWorkMusicComposer({
   let workMusicFlowDirectionHint = '';
   let workMusicPlaybackWatchTimer = null;
   let workMusicAutoSkipSession = null;
-  let workMusicPendingStartSeconds = null;
   window.workMusicCurrentPlayOrder = [];
   const tabsController = createWorkMusicTabsController({
     engine,
@@ -752,17 +751,6 @@ export function createWorkMusicComposer({
     return [...baseOrder.slice(startPosition), ...baseOrder.slice(0, startPosition)];
   }
 
-  function applyWorkMusicPendingStartSeconds(player) {
-    const seconds = Number(workMusicPendingStartSeconds);
-    workMusicPendingStartSeconds = null;
-    if (!player || !Number.isFinite(seconds) || seconds <= 0) return;
-    try {
-      player.seekTo(seconds, true);
-    } catch (err) {
-      console.warn('work music shuffle seek restore failed', err);
-    }
-  }
-
   function getWorkMusicSongKey(song, index) {
     const activeTabId = song?.workMusicTabId || getActiveWorkMusicTabId();
     return String(song?.id || `${activeTabId}:${song?.videoId || index}`);
@@ -920,6 +908,8 @@ export function createWorkMusicComposer({
     }
   }
 
+  let renderedListKey = null;
+  let renderedOrderKey = null;
   function renderWorkMusic() {
     const songs = getActiveWorkMusicSongs();
     normalizeWorkMusicCurrentIndex(songs);
@@ -948,7 +938,6 @@ export function createWorkMusicComposer({
       renderWorkMusicPlayerView();
       return;
     }
-    workMusicList.innerHTML = '';
     const activeTabForList = getWorkMusicTabs().find((t) => t.id === getActiveWorkMusicTabId());
     function isWorkMusicAudioCard(song) {
       const typeText = String(song?.sourceType || activeTabForList?.sourceType || '').toLowerCase();
@@ -967,6 +956,29 @@ export function createWorkMusicComposer({
     const displayOrder = putFailedSongsLast(getWorkMusicDisplayOrder(songs), songs);
     renderWorkMusicPlayerView();
     renderWorkMusicTrackPreviews();
+    const listKey = JSON.stringify([
+      songs,
+      window.workMusicCurrentIndex,
+      window.workMusicIsPlaying,
+      activeTabForList?.sourceType
+    ]);
+    const orderKey = JSON.stringify(displayOrder);
+    if (renderedListKey === listKey) {
+      if (renderedOrderKey !== orderKey) {
+        const rows = new Map(
+          [...workMusicList.children].map((row) => [Number(row.dataset.index), row])
+        );
+        for (const index of displayOrder) {
+          const row = rows.get(index);
+          if (row) workMusicList.appendChild(row);
+        }
+        renderedOrderKey = orderKey;
+      }
+      return;
+    }
+    renderedListKey = listKey;
+    renderedOrderKey = orderKey;
+    workMusicList.innerHTML = '';
     displayOrder.forEach((idx) => {
       const song = songs[idx];
       if (!song) return;
@@ -1808,24 +1820,16 @@ export function createWorkMusicComposer({
     const toggleWorkMusicMode = async () => {
       const songs = getActiveWorkMusicSongs();
       const isEnablingShuffle = window.workMusicMode !== 'random';
-      const wasPlaying = !!window.workMusicIsPlaying;
-      try {
-        workMusicPendingStartSeconds = Number(getWorkMusicRuntimePlayer()?.getCurrentTime?.() || 0);
-      } catch (_) {
-        workMusicPendingStartSeconds = null;
-      }
       if (isEnablingShuffle) {
         window.workMusicMode = 'random';
-        const pinnedIndex = wasPlaying ? Number(window.workMusicCurrentIndex || 0) : -1;
-        const order = createWorkMusicDisplayShuffle(songs, pinnedIndex);
-        if (!wasPlaying && order.length) window.workMusicCurrentIndex = order[0];
+        createWorkMusicDisplayShuffle(songs, Number(window.workMusicCurrentIndex || 0));
       } else {
         window.workMusicMode = 'sequential';
         resetWorkMusicDisplayShuffle();
       }
+      seamlessController?.cancelTransition?.();
+      seamlessController?.refreshNext?.(engine.getUpcomingIndices()[0]);
       renderWorkMusic();
-      if (songs.length) playbackController.loadAt(window.workMusicCurrentIndex || 0, wasPlaying);
-      else workMusicPendingStartSeconds = null;
       await window.cloudSaveWorkMusic?.();
     };
     workMusicModeBtn?.addEventListener('click', toggleWorkMusicMode);
@@ -1916,8 +1920,7 @@ export function createWorkMusicComposer({
       renderWorkMusic();
     },
     actions: {
-      onStateChange: onWorkMusicPlayerStateChange,
-      onReady: applyWorkMusicPendingStartSeconds
+      onStateChange: onWorkMusicPlayerStateChange
     }
   });
   listController = createWorkMusicListController({

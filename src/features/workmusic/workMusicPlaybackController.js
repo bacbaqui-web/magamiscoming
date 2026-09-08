@@ -283,13 +283,13 @@ export function createWorkMusicPlaybackController({
   async function setSeamlessSeconds(value, { save: shouldSave = true, refreshPlayer = true } = {}) {
     const before = engine.getSnapshot().seamlessEnabled;
     engine.setSeamlessSeconds(value);
-    if (shouldSave) await save();
     render();
     const state = engine.getSnapshot();
     if (refreshPlayer && before !== state.seamlessEnabled && activeSongs().length) {
       if (state.isPlaying) await playAt(state.currentIndex, { resetSkipSession: false });
       else await loadAt(state.currentIndex, false);
     }
+    if (shouldSave) await save();
   }
 
   async function cycleDjMode() {

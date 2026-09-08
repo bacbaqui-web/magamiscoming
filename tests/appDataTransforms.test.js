@@ -131,14 +131,14 @@ test('build, split, merge and apply preserve stored fields while resetting sessi
   });
   const rebuilt = buildAppData(applied);
   const expected = persistedMeaning(built);
-  expected.state.workMusicMode = 'sequential';
+  expected.state.workMusicMode = 'random';
 
   assert.deepEqual(persistedMeaning(rebuilt), expected);
   assert.deepEqual(window.__hiddenMainTabs, ['notes', 'bookmarks']);
   assert.deepEqual(window.__mainCustomTabs, [
     { id: 'custom-1', name: '자료실', url: 'https://example.com', order: 10 }
   ]);
-  assert.equal(window.workMusicMode, 'sequential');
+  assert.equal(window.workMusicMode, 'random');
   assert.deepEqual(window.workMusicCurrentPlayOrder, []);
   assert.deepEqual(window.__workMusicDisplayShuffle, {});
   assert.equal(revokeCount, 1);

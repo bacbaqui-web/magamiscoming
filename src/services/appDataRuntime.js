@@ -81,7 +81,7 @@ export function applyStoredAppData(
   host.workMusicSongs = Array.isArray(state.workMusicSongs) ? state.workMusicSongs : [];
   host.__workMusicTabList = state.workMusicTabList || [{ id: 'default', name: '기본', order: 0 }];
   host.__workMusicActiveTabId = state.workMusicActiveTabId || 'default';
-  host.workMusicMode = 'sequential';
+  host.workMusicMode = 'random';
   host.__workMusicDisplayShuffle = {};
   host.workMusicCurrentPlayOrder = [];
   host.workMusicCurrentIndex = Number(state.workMusicCurrentIndex || 0);

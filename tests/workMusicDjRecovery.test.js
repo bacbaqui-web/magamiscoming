@@ -103,6 +103,29 @@ test('probe timeout and current-track end skip unverified candidates without loo
   f.playback.destroy();
 });
 
+test('DJ updates its controls before waiting for persistence', async () => {
+  const engine = createWorkMusicEngine();
+  let release;
+  let rendered = false;
+  const controller = createWorkMusicPlaybackController({
+    engine,
+    root: {},
+    youtubePort: {},
+    render: () => {
+      rendered = true;
+    },
+    save: () =>
+      new Promise((resolve) => {
+        release = resolve;
+      })
+  });
+  const pending = controller.cycleDjMode();
+  assert.equal(rendered, true);
+  assert.equal(engine.getSnapshot().seamlessEnabled, true);
+  release();
+  await pending;
+});
+
 test('DJ button cycles off, full, verse, off', async () => {
   const engine = createWorkMusicEngine();
   const controller = createWorkMusicPlaybackController({ engine, root: {}, youtubePort: {} });
