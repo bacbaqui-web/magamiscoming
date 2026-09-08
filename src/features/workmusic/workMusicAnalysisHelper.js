@@ -15,12 +15,7 @@ export function normalizeAnalysisRange(value, durationSeconds = 0) {
 
 export function automaticPlaybackRange(result, durationSeconds = result?.durationSeconds) {
   const duration = Number(durationSeconds || 0);
-  const withMinimumIntro = (range) =>
-    range && {
-      ...range,
-      drumStart: Math.max(range.drumStart, Math.min(10, Math.max(0, range.drumEnd - 0.1)))
-    };
-  const fallback = withMinimumIntro(normalizeAnalysisRange(result, duration));
+  const fallback = normalizeAnalysisRange(result, duration);
   if (!(duration > 0)) return fallback;
   const sections = (result?.sections || []).filter(
     (s) =>
@@ -30,16 +25,24 @@ export function automaticPlaybackRange(result, durationSeconds = result?.duratio
       s.end > s.start &&
       s.end <= duration + 0.01
   );
+  const advanceToSectionEnd = (range) => {
+    if (!range || range.drumStart >= 10) return range;
+    const boundaries = sections
+      .map((section) => section.end)
+      .filter((end) => end >= 10 && end < range.drumEnd);
+    // Without a usable musical boundary, preserve the detected start rather than cut a section.
+    return boundaries.length ? { ...range, drumStart: Math.min(...boundaries) } : range;
+  };
   const intros = sections.filter((s) => s.label === 'intro');
   const outros = sections.filter((s) => s.label === 'outro');
-  if (!intros.length && !outros.length) return fallback;
+  if (!intros.length && !outros.length) return advanceToSectionEnd(fallback);
   const drumStart = intros.length
     ? Math.min(duration, Math.max(...intros.map((s) => s.end)))
     : (fallback?.drumStart ?? 0);
   const drumEnd = outros.length
     ? Math.min(...outros.map((s) => s.start))
     : (fallback?.drumEnd ?? duration);
-  return withMinimumIntro(normalizeAnalysisRange({ drumStart, drumEnd }, duration)) || fallback;
+  return advanceToSectionEnd(normalizeAnalysisRange({ drumStart, drumEnd }, duration) || fallback);
 }
 
 export function isCurrentAnalysis(result) {
