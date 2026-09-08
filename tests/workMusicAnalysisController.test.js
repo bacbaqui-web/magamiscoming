@@ -50,7 +50,7 @@ test('verse marker persists independently of green edits and restores without al
     }
   });
   await controller.selectSong(song);
-  assert.equal(controller.getState().draft.verseEnd, 100);
+  assert.equal(controller.getState().draft.verseEnd, 190);
   controller.updateDraft('verseEnd', 70);
   await controller.commitDraft();
   assert.equal(saved.verseEnd, 70);
@@ -63,7 +63,7 @@ test('verse marker persists independently of green edits and restores without al
   assert.equal(controller.getState().draft.verseEnd, 200);
   assert.equal(controller.getState().detected.drumStart, 10);
   await controller.restoreDetected();
-  assert.equal(controller.getState().draft.verseEnd, 100);
+  assert.equal(controller.getState().draft.verseEnd, 190);
   assert.equal(saved, null);
   controller.destroy();
 });
@@ -275,7 +275,7 @@ test('controller runs POST, poll, result and keeps detected values runtime-only'
   controller.updateDraft('drumStart', 14);
   assert.deepEqual(saved, []);
   await controller.commitDraft();
-  assert.deepEqual(saved[0].manual, { drumStart: 14, drumEnd: 190, verseEnd: 100 });
+  assert.deepEqual(saved[0].manual, { drumStart: 14, drumEnd: 190, verseEnd: 190 });
   await controller.restoreDetected();
   assert.equal(saved[1].manual, null);
 });

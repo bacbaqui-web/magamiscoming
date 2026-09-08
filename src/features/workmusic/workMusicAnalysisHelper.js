@@ -104,15 +104,27 @@ export function suggestVerseEnd(result, range) {
     );
   const chorusOpening =
     first && (modelStructure ? !verseBefore : first.start <= opening + openingWindow);
-  const selected = chorusOpening ? choruses[1] : first;
-  const value = selected?.end ?? (start + end) / 2;
+  const candidates = [
+    ...choruses.slice(chorusOpening ? 1 : 0).map((section) => ({ ...section, kind: '후렴' })),
+    ...(result?.sections || [])
+      .filter(
+        (section) =>
+          ['inst', 'interlude'].includes(section.label) &&
+          Number.isFinite(section.start) &&
+          Number.isFinite(section.end) &&
+          section.end > section.start
+      )
+      .map((section) => ({ ...section, kind: '간주' }))
+  ];
+  const selected = candidates
+    .filter((section) => section.end >= start + 60 && section.end <= end)
+    .sort((a, b) => a.end - b.end)[0];
+  const value = selected?.end ?? end;
   return {
     value: Math.max(0, Math.min(Number(result?.durationSeconds) || end, value)),
     reason: selected
-      ? chorusOpening
-        ? `두 번째 후렴 끝 추정${repeated.length >= 2 ? ' · 음파 반복 후보' : ''}`
-        : `첫 번째 후렴 끝 추정${repeated.length >= 2 ? ' · 음파 반복 후보' : ''}`
-      : '후렴 불확실 · 임시 중앙 위치'
+      ? `시작 후 1분 이상 · ${selected.kind} 끝 추정${selected.kind === '후렴' && repeated.length >= 2 ? ' · 음파 반복 후보' : ''}`
+      : '후렴/간주 경계 불확실 · 재생 구간 끝 유지'
   };
 }
 

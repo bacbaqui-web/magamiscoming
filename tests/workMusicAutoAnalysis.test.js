@@ -25,13 +25,13 @@ test('model verse labels override early-chorus heuristic and fallback attempt is
     structureModel: 'all-in-one-mlx-1.0.6',
     sections: [
       { start: 0, end: 5, label: 'verse' },
-      { start: 5, end: 15, label: 'chorus_candidate' },
-      { start: 30, end: 45, label: 'chorus_candidate' }
+      { start: 5, end: 65, label: 'chorus_candidate' },
+      { start: 80, end: 110, label: 'chorus_candidate' }
     ]
   };
-  assert.equal(suggestVerseEnd(result, { drumStart: 0, drumEnd: 190 }).value, 15);
+  assert.equal(suggestVerseEnd(result, { drumStart: 0, drumEnd: 190 }).value, 65);
   result.sections[0].label = 'intro';
-  assert.equal(suggestVerseEnd(result, { drumStart: 0, drumEnd: 190 }).value, 45);
+  assert.equal(suggestVerseEnd(result, { drumStart: 0, drumEnd: 190 }).value, 110);
   assert.equal(isCurrentAnalysis({ ...result, structureAttemptVersion: undefined }), false);
   assert.equal(isCurrentAnalysis({ ...result, structureModel: null }), true);
 });
@@ -126,16 +126,34 @@ test('verse suggestion chooses second chorus for chorus opening, first after a v
   );
   assert.equal(
     suggestVerseEnd({ sections: [s(10, 35, 'section'), s(35, 65), s(100, 130)] }, range).value,
-    65
+    130
   );
   assert.match(suggestVerseEnd({ sections: [] }, range).reason, /불확실/);
   assert.equal(isCurrentAnalysis({ ...current('a'), waveform: [] }), false);
   assert.equal(isCurrentAnalysis(current('a')), true);
 });
 
+test('verse end uses a chorus or instrumental boundary at least a minute after green start', () => {
+  const result = {
+    ...current('a'),
+    structureModel: 'all-in-one-mlx-1.0.6',
+    sections: [
+      { start: 0, end: 25, label: 'verse' },
+      { start: 25, end: 65, label: 'chorus_candidate' },
+      { start: 65, end: 90, label: 'inst' },
+      { start: 100, end: 130, label: 'chorus_candidate' }
+    ]
+  };
+  assert.equal(suggestVerseEnd(result, { drumStart: 25, drumEnd: 190 }).value, 90);
+  assert.equal(suggestVerseEnd(result, { drumStart: 30, drumEnd: 190 }).value, 90);
+  assert.equal(suggestVerseEnd(result, { drumStart: 31, drumEnd: 190 }).value, 130);
+  assert.equal(suggestVerseEnd(result, { drumStart: 80, drumEnd: 190 }).value, 190);
+  assert.equal(suggestVerseEnd(result, { drumStart: 25, drumEnd: 70 }).value, 70);
+});
+
 test('background upgrades preserve dirty edits; edge saves pin the existing verse independently', async () => {
   let saved;
-  const result = { ...current('a'), sections: [{ start: 40, end: 65, label: 'chorus_candidate' }] };
+  const result = { ...current('a'), sections: [{ start: 40, end: 75, label: 'chorus_candidate' }] };
   const analysis = createWorkMusicAnalysisController({
     mediaAnalysisPort: { enabled: true, getResult: async () => result },
     saveManual: async (v) => {
@@ -143,17 +161,17 @@ test('background upgrades preserve dirty edits; edge saves pin the existing vers
     }
   });
   await analysis.selectSong({ id: 'a', videoId: 'a' });
-  assert.equal(analysis.getState().draft.verseEnd, 65);
+  assert.equal(analysis.getState().draft.verseEnd, 75);
   analysis.updateDraft('drumStart', 15);
   analysis.acceptResult({ ...result, drumStart: 20 });
   assert.equal(analysis.getState().draft.drumStart, 15);
   assert.equal(analysis.getState().dirty, true);
   await analysis.commitDraft();
-  assert.equal(saved.verseEnd, 65);
+  assert.equal(saved.verseEnd, 75);
   analysis.updateDraft('drumStart', 80);
-  assert.equal(analysis.getState().draft.verseEnd, 65);
+  assert.equal(analysis.getState().draft.verseEnd, 75);
   await analysis.commitDraft();
-  assert.equal(analysis.getState().draft.verseEnd, 65);
+  assert.equal(analysis.getState().draft.verseEnd, 75);
   analysis.updateDraft('verseEnd', 70);
   await analysis.commitDraft();
   analysis.acceptResult({
