@@ -15,7 +15,12 @@ export function normalizeAnalysisRange(value, durationSeconds = 0) {
 
 export function automaticPlaybackRange(result, durationSeconds = result?.durationSeconds) {
   const duration = Number(durationSeconds || 0);
-  const fallback = normalizeAnalysisRange(result, duration);
+  const withMinimumIntro = (range) =>
+    range && {
+      ...range,
+      drumStart: Math.max(range.drumStart, Math.min(10, Math.max(0, range.drumEnd - 0.1)))
+    };
+  const fallback = withMinimumIntro(normalizeAnalysisRange(result, duration));
   if (!(duration > 0)) return fallback;
   const sections = (result?.sections || []).filter(
     (s) =>
@@ -34,7 +39,7 @@ export function automaticPlaybackRange(result, durationSeconds = result?.duratio
   const drumEnd = outros.length
     ? Math.min(...outros.map((s) => s.start))
     : (fallback?.drumEnd ?? duration);
-  return normalizeAnalysisRange({ drumStart, drumEnd }, duration) || fallback;
+  return withMinimumIntro(normalizeAnalysisRange({ drumStart, drumEnd }, duration)) || fallback;
 }
 
 export function isCurrentAnalysis(result) {

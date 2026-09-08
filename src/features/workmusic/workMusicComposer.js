@@ -1835,11 +1835,14 @@ export function createWorkMusicComposer({
     workMusicMuteBtn?.addEventListener('click', playbackController.toggleMute);
     workMusicRemoteMuteBtn?.addEventListener('click', playbackController.toggleMute);
     workMusicVolumeRange?.addEventListener('input', async (e) => {
-      await playbackController.setVolume(Number(e.target.value || 0));
+      await playbackController.setVolume(Number(e.target.value || 0), { save: false });
     });
     workMusicRemoteVolumeRange?.addEventListener('input', async (e) => {
-      await playbackController.setVolume(Number(e.target.value || 0));
+      await playbackController.setVolume(Number(e.target.value || 0), { save: false });
     });
+    for (const range of [workMusicVolumeRange, workMusicRemoteVolumeRange]) {
+      range?.addEventListener('change', () => window.cloudSaveWorkMusic?.());
+    }
     const handleWorkMusicVolumeWheel = async (e) => {
       if (!workMusicVolumeRange) return;
       if (e.deltaY === 0) return;
@@ -1906,6 +1909,7 @@ export function createWorkMusicComposer({
     failureDelayMs: WORK_MUSIC_FAILURE_SKIP_DELAY_MS,
     notify: showFeedbackMessage,
     save: () => window.cloudSaveWorkMusic?.(),
+    renderVolume: renderWorkMusicVolumeUI,
     render: () => {
       renderWorkMusicPlayButton();
       updateWorkMusicRemoteUI();

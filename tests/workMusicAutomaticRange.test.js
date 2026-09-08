@@ -6,6 +6,17 @@ import {
 } from '../src/features/workmusic/workMusicAnalysisHelper.js';
 
 const base = { durationSeconds: 200, drumStart: 10, drumEnd: 190 };
+test('automatic intro reserves ten seconds without exceeding short playback ranges', () => {
+  assert.equal(automaticPlaybackRange({ ...base, drumStart: 1 }).drumStart, 10);
+  assert.equal(
+    automaticPlaybackRange({ ...base, sections: [{ start: 0, end: 2, label: 'intro' }] }).drumStart,
+    10
+  );
+  assert.equal(
+    automaticPlaybackRange({ durationSeconds: 8, drumStart: 1, drumEnd: 8 }).drumStart,
+    7.9
+  );
+});
 test('section boundaries take priority independently and malformed/crossed ranges fall back', () => {
   const intro = { start: 0, end: 25, label: 'intro' };
   const outro = { start: 170, end: 200, label: 'outro' };

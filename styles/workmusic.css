@@ -2031,6 +2031,18 @@ body {
 .workmusic-auto-analysis-row button svg {
   vertical-align: middle;
 }
+#workMusicAnalyzeBtn {
+  border: 1px solid #ffffff26;
+  border-radius: 50%;
+  background: #ffffff08;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+#workMusicAnalyzeBtn:hover:not(:disabled) {
+  background: #ffffff18;
+  border-color: #ffffff66;
+}
 .workmusic-handle-time {
   position: absolute;
   color: #8bdab6;

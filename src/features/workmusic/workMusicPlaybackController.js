@@ -16,6 +16,7 @@ export function createWorkMusicPlaybackController({
   failureDelayMs = 1200,
   notify = () => {},
   render = () => {},
+  renderVolume = render,
   save = () => {},
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -270,7 +271,7 @@ export function createWorkMusicPlaybackController({
     if (normalized > 0) engine.setState('lastVolume', normalized);
     setPlayerVolume();
     seamlessController?.applyVolume?.();
-    render();
+    renderVolume();
     if (shouldSave) await save();
   }
   async function toggleMute() {

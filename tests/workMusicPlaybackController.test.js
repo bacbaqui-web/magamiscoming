@@ -409,3 +409,25 @@ test('zero-head DJ switches immediately because no pre-green crossfade is availa
   controller.cancelTransition();
   assert.equal(controller.getState().transitioning, false);
 });
+test('volume-only rendering avoids full playlist updates and can defer saving', async () => {
+  const engine = createWorkMusicEngine();
+  let fullRenders = 0;
+  let volumeRenders = 0;
+  let saves = 0;
+  const controller = createWorkMusicPlaybackController({
+    engine,
+    root: {},
+    youtubePort: {},
+    render: () => fullRenders++,
+    renderVolume: () => volumeRenders++,
+    save: () => saves++
+  });
+  await controller.setVolume(35, { save: false });
+  assert.equal(engine.getSnapshot().volume, 35);
+  assert.equal(fullRenders, 0);
+  assert.equal(volumeRenders, 1);
+  assert.equal(saves, 0);
+  await controller.setVolume(40);
+  assert.equal(saves, 1);
+  controller.destroy();
+});
