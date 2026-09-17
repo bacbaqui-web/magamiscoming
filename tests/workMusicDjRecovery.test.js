@@ -9,6 +9,25 @@ const song = (id, extra = {}) => ({ id, videoId: id, durationSeconds: 100, ...ex
 const manual = { mediaAnalysisManual: { drumStart: 10, drumEnd: 80 } };
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
+test('manual next switches immediately to the cued player without waiting for PLAYING', async () => {
+  const f = await setup([song('a', manual), song('b', manual), song('c', manual)]);
+  f.engine.recordPlayed(0);
+  assert.equal(f.controller.playImmediately(1), true);
+  assert.equal(f.engine.getSnapshot().currentIndex, 1);
+  assert.equal(f.controller.getActivePlayer(), f.players[1]);
+  assert.equal(f.players[1].played, true);
+  assert.equal(f.players.length, 2);
+  f.players[1].loadVideoById = function (id) {
+    this.loaded = id;
+  };
+  assert.equal(f.controller.playImmediately(0), true);
+  assert.equal(f.players[1].loaded, 'a');
+  assert.equal(f.engine.getSnapshot().currentIndex, 0);
+  assert.equal(f.players.length, 2);
+  f.controller.destroy();
+  f.playback.destroy();
+});
+
 test('both songs crossfade before green and hand off completely at green', async () => {
   const callbacks = [];
   const f = await setup([song('a', manual), song('b', manual)], {

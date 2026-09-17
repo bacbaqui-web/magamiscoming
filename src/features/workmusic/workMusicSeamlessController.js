@@ -427,6 +427,37 @@ export function createWorkMusicSeamlessController({
     return !!slots && !slots.probe && !slots.transitionStarted && slots.standbyIndex === index;
   }
 
+  function playImmediately(index) {
+    if (!slots) return false;
+    const song = engine.getActiveSongs()[index];
+    const prepared = index === slots.standbyIndex && !slots.probe && !slots.transitioning;
+    const targetSlot = prepared ? slots.standbySlot : slots.activeSlot;
+    const target = slots.players[targetSlot];
+    if (!song?.videoId || !slots.ready?.[targetSlot] || (!prepared && !target?.loadVideoById))
+      return false;
+    stopTimers();
+    playbackController.stopObservingPlayback?.(target);
+    if (prepared) {
+      const previous = slots.activeSlot;
+      slots.activeSlot = targetSlot;
+      slots.standbySlot = previous;
+    }
+    slots.transitioning = false;
+    slots.transitionStarted = false;
+    slots.fadeStarted = false;
+    slots.transition = null;
+    slots.probe = null;
+    engine.setState('currentIndex', index);
+    engine.setState('isPlaying', true);
+    if (prepared) target.playVideo?.();
+    else target.loadVideoById(song.videoId);
+    applyVolume();
+    cueStandby(index);
+    startMonitor();
+    render();
+    return true;
+  }
+
   async function create(index, autoplay = true) {
     const songs = engine.getActiveSongs();
     const box = root.getElementById('workMusicPlayerBox');
@@ -441,6 +472,7 @@ export function createWorkMusicSeamlessController({
     const standbyIndex = nextIndex(index);
     slots = {
       players: { a: null, b: null },
+      ready: { a: false, b: false },
       activeSlot: 'a',
       standbySlot: 'b',
       standbyIndex,
@@ -454,6 +486,7 @@ export function createWorkMusicSeamlessController({
       onReady(event) {
         if (slots !== session) return;
         slots.players[slot] = event.target;
+        slots.ready[slot] = true;
         setVolume(event.target, slot === 'a' ? volume() : 0);
         if (slot === 'a' && autoplay) {
           event.target.playVideo?.();
@@ -464,6 +497,12 @@ export function createWorkMusicSeamlessController({
       onStateChange(event) {
         if (slots !== session) return;
         const videoId = slots.players[slot]?.getVideoData?.()?.video_id;
+        if (
+          slot === slots.activeSlot &&
+          videoId &&
+          videoId !== engine.getActiveSongs()[engine.getSnapshot().currentIndex]?.videoId
+        )
+          return;
         if (
           slot === slots.standbySlot &&
           videoId &&
@@ -541,6 +580,7 @@ export function createWorkMusicSeamlessController({
   }
 
   return {
+    playImmediately,
     getUpcomingIndices,
     refreshNext,
     applyVolume,

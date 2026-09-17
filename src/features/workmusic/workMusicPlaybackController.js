@@ -17,6 +17,7 @@ export function createWorkMusicPlaybackController({
   notify = () => {},
   render = () => {},
   renderVolume = render,
+  renderPlayback = render,
   keepPlayers = false,
   save = () => {},
   setTimer = setTimeout,
@@ -244,14 +245,14 @@ export function createWorkMusicPlaybackController({
     seamlessController?.pause?.();
     player?.pauseVideo?.();
     engine.setState('isPlaying', false);
-    render();
+    renderPlayback();
   }
   function resume() {
     const state = engine.getSnapshot();
     if (!player && !seamlessController?.getActivePlayer?.()) return playAt(state.currentIndex);
     engine.setState('isPlaying', true);
     if (!seamlessController?.resume?.()) player?.playVideo?.();
-    render();
+    renderPlayback();
     return true;
   }
   function toggle() {
@@ -260,11 +261,13 @@ export function createWorkMusicPlaybackController({
   function previous() {
     const index = engine.requestPrevious();
     if (index < 0) return false;
+    if (keepPlayers && seamlessController?.playImmediately?.(index)) return true;
     return playAt(index);
   }
   function next() {
     const index = getAdjacentIndex(1);
     if (index < 0) return false;
+    if (keepPlayers && seamlessController?.playImmediately?.(index)) return true;
     if (seamlessController?.canManualTransition?.(index)) return seamlessController.transition();
     return playAt(index);
   }

@@ -1911,6 +1911,7 @@ export function createWorkMusicComposer({
     notify: showFeedbackMessage,
     save: () => window.cloudSaveWorkMusic?.(),
     renderVolume: renderWorkMusicVolumeUI,
+    renderPlayback: renderWorkMusicPlaybackState,
     render: () => {
       renderWorkMusicPlayButton();
       updateWorkMusicRemoteUI();
