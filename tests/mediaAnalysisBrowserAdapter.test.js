@@ -5,7 +5,8 @@ import { createMediaAnalysisBrowserAdapter } from '../src/services/mediaAnalysis
 
 test('waveform viewport uses authenticated range route and abort signal', async () => {
   const calls = [];
-  const signal = new AbortController().signal;
+  const abort = new AbortController();
+  const signal = abort.signal;
   const adapter = createMediaAnalysisBrowserAdapter({
     apiBaseUrl: 'https://example.com/media-analysis',
     getAccessToken: async () => 'token',
@@ -20,7 +21,8 @@ test('waveform viewport uses authenticated range route and abort signal', async 
     'https://example.com/media-analysis/v1/results/dQw4w9WgXcQ/waveform?start=10.5&end=20&pixels=800'
   );
   assert.equal(calls[0].options.headers.Authorization, 'Bearer token');
-  assert.equal(calls[0].options.signal, signal);
+  abort.abort();
+  assert.equal(calls[0].options.signal.aborted, true);
 });
 
 test('local connection failure explains the local server and browser permission', async () => {

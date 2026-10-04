@@ -1,3 +1,5 @@
+import { createMediaAnalysisCache } from './mediaAnalysisCache.js';
+
 export class MediaAnalysisRequestError extends Error {
   constructor(message, { status = 0, code = 'request_failed' } = {}) {
     super(message);
@@ -22,6 +24,7 @@ function normalizeBaseUrl(value) {
 export function createMediaAnalysisBrowserAdapter({
   apiBaseUrl = '',
   getAccessToken,
+  cache = createMediaAnalysisCache(),
   fetchImpl = globalThis.fetch?.bind(globalThis)
 } = {}) {
   const baseUrl = normalizeBaseUrl(apiBaseUrl);
@@ -78,6 +81,23 @@ export function createMediaAnalysisBrowserAdapter({
     return payload;
   }
 
+  async function cachedRequest(path, options = {}, fallbackPath = path) {
+    const signal = options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(4000)])
+      : AbortSignal.timeout(4000);
+    try {
+      const value = await request(path, { ...options, signal });
+      await cache.put(`${baseUrl}${path}`, value);
+      return value;
+    } catch (error) {
+      if (options.signal?.aborted || (error.status && error.status < 500)) throw error;
+      const value =
+        (await cache.get(`${baseUrl}${path}`)) || (await cache.get(`${baseUrl}${fallbackPath}`));
+      if (value) return { ...value, fromCache: true };
+      throw error;
+    }
+  }
+
   return {
     enabled: !!baseUrl,
     getQueue: (videoId = '', { signal } = {}) =>
@@ -97,12 +117,33 @@ export function createMediaAnalysisBrowserAdapter({
       }),
     getJob: (jobId, { signal } = {}) =>
       request(`/v1/jobs/${encodeURIComponent(jobId)}`, { signal }),
-    getResult: (videoId, { signal } = {}) =>
-      request(`/v1/results/${encodeURIComponent(videoId)}`, { signal }),
+    getResult: async (videoId, { signal } = {}) => {
+      const path = `/v1/results/${encodeURIComponent(videoId)}`;
+      const previous = await cache.get(`${baseUrl}${path}`);
+      const result = await cachedRequest(path, { signal });
+      if (!result.fromCache && result.durationSeconds > 0) {
+        if (JSON.stringify(previous) !== JSON.stringify(result)) {
+          await cache.clearPrefix?.(`${baseUrl}${path}/waveform`);
+        }
+        const overview = `${path}/waveform?${new URLSearchParams({ start: 0, end: result.durationSeconds, pixels: 2048 })}`;
+        try {
+          const waveform =
+            JSON.stringify(previous) === JSON.stringify(result)
+              ? (await cache.get(`${baseUrl}${path}/waveform/offline`)) ||
+                (await cachedRequest(overview, { signal }))
+              : await cachedRequest(overview, { signal });
+          if (!waveform.fromCache) await cache.put(`${baseUrl}${path}/waveform/offline`, waveform);
+        } catch {
+          /* Result remains useful even when detail is unavailable. */
+        }
+      }
+      return result;
+    },
     getWaveform: (videoId, { start, end, pixels = 1000, signal } = {}) =>
-      request(
+      cachedRequest(
         `/v1/results/${encodeURIComponent(videoId)}/waveform?${new URLSearchParams({ start, end, pixels })}`,
-        { signal }
+        { signal },
+        `/v1/results/${encodeURIComponent(videoId)}/waveform/offline`
       )
   };
 }

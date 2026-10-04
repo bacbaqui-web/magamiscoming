@@ -286,7 +286,11 @@ export function createWorkMusicPrecisionEditor({
           throw new Error('invalid waveform');
         data = result;
         panel.hidden = false;
-        if (status) status.hidden = true;
+        if (status) {
+          status.hidden = !result.fromCache;
+          if (result.fromCache)
+            status.textContent = '저장된 파형 사용 중 · 서버 연결 시 상세 파형을 갱신합니다.';
+        }
         draw();
       } catch (error) {
         if (token !== sequence || abort.signal.aborted) return;
