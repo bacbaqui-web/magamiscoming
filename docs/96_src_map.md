@@ -264,3 +264,8 @@ styles/
 ## 현재 호환 계약
 
 - 저장 의미 동등성, 초기화 순서, 공개 `window.*` 정의자·호출자·제거 예정 Sprint와 탭별 회귀 기준은 `docs/architecture/runtime-contracts.md`를 따른다.
+
+## 우리동네 공개 주소
+
+- `.github/workflows/pages.yml`: 기존 사이트와 고정 버전의 우리동네를 하나의 Pages 결과물로 배포한다.
+- `docs/architecture/neighborhood-hosting.md`: `/neighborhood/` 주소, 브라우저 저장, 배포 버전 계약.
