@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: bacbaqui-web/our-neighborhood
-          ref: 315ed5a1c2ef70e4c29ee843fcadd56a795348cd
+          ref: e7fd1f057fd66e86309ce435b45fdc1ec418f938
           path: _neighborhood
       - uses: actions/setup-node@v4
         with:
